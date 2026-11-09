@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#3d8be0" />
-  <title>Disc Golf Lab — Maple Park</title>
+  <title>Disc Golf Lab</title>
   <link rel="icon" href="data:," />
   <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -121,6 +121,23 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
 #pullread b { font-size: 22px; font-weight: 900; } #pullread span { color: #fff; font-weight: 700; opacity: .9; }
 body.charging #help { visibility: hidden; }
 @media (max-height: 500px) { #pullread { top: 26%; } }
+
+/* Course name above the hole title */
+#scorebox .coursename { font-size: 11px; font-weight: 800; letter-spacing: .06em; opacity: .85; text-transform: uppercase; margin-bottom: 1px; }
+body[data-world="river"] #scorebox .title { color: #9fe3ff; }
+/* Course picker */
+#picker { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: auto; z-index: 8; background: linear-gradient(180deg, rgba(10,50,40,.55), rgba(0,20,10,.75)); padding: 16px; }
+#picker .pickpanel { width: min(440px, 100%); text-align: center; }
+.picktitle { font-size: 34px; font-weight: 900; color: #ffe066; }
+.picksub { font-size: 16px; margin: 2px 0 14px; }
+#picklist { display: flex; flex-direction: column; gap: 12px; }
+#hud button.pickcourse { display: grid; grid-template-columns: 1fr auto; text-align: left; gap: 2px 10px; padding: 16px 18px; min-height: 92px; border-radius: 18px; color: #fff;
+  background: linear-gradient(120deg, var(--tint), var(--tint2)); box-shadow: 0 4px 0 rgba(0,0,0,.35); text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+.pickcourse .pname { font-size: 24px; font-weight: 900; } .pickcourse .pinfo { font-size: 15px; font-weight: 800; align-self: center; text-align: right; }
+.pickcourse .pblurb { font-size: 14px; font-weight: 600; opacity: .95; } .pickcourse .pbest { font-size: 13px; font-weight: 700; text-align: right; color: #ffe066; }
+#pickback { margin-top: 14px; padding: 11px 26px; font-size: 16px; }
+@media (max-height: 500px) { .picktitle { font-size: 24px; } .picksub { margin-bottom: 8px; } #picklist { flex-direction: row; } #hud button.pickcourse { flex: 1; min-height: 0; padding: 12px 14px; }
+  #picker .pickpanel { width: min(720px, 100%); } }
 </style>
   <script type="importmap">
     { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
@@ -130,6 +147,7 @@ body.charging #help { visibility: hidden; }
   <div id="app"></div>
   <div id="hud">
     <div id="scorebox">
+      <div class="coursename" id="coursename">Maple Park</div>
       <div class="title" id="holetitle">HOLE 1/9 · PAR 3</div>
       <div class="row"><span>Disc</span><b id="discname">Driver</b></div>
       <div class="row hintrow"><span></span><i id="dischint">suggested</i></div>
@@ -140,7 +158,7 @@ body.charging #help { visibility: hidden; }
     </div>
     <div id="topright">
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
-      <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcancel" class="ghost">Cancel</button></div>
+      <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcourse">Change course</button><button id="restartcancel" class="ghost">Cancel</button></div>
       <div id="help">
         <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q hyzer · E anhyzer<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
         <span class="touch"><b>Pull back</b> anywhere to throw<br />Arrow = aim &amp; power · let go<br />Slide back to start to cancel</span>
@@ -162,9 +180,10 @@ body.charging #help { visibility: hidden; }
         <button id="aimright" aria-label="Aim right">▶</button>
       </div>
     </div>
+    <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a course</div><div id="picklist"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
     <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
     <div id="banner" class="hidden"><div id="bannertext"></div><div id="bannersub"></div><button id="nextbtn" class="hidden">Next hole ▶</button><button id="againbtn" class="hidden">Play again</button></div>
-    <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardclose" class="ghost">Close</button></div></div></div>
+    <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardcourse" class="ghost">Courses</button><button id="cardclose" class="ghost">Close</button></div></div></div>
   </div>
   <script type="module">
 import * as THREE from 'three';
@@ -178,10 +197,26 @@ import * as THREE from 'three';
 //   trees   hand-placed obstacles { x, z, s } (s = size); a border forest is generated around the path
 //   hills   optional bumps { x, z, r, h } (h = height at the centre); the basket sits on the ground
 //   rows    optional tree lines { from: [x, z], to: [x, z], step, s, gap: [x0, x1] } expanded into trees
+// Water (river world, but any course may use it). Landing or stopping in water = Splash: +1 throw.
+//   rivers  { pts: [[x, z], ...], w, open: [extendStart, extendEnd] } a smooth band of water w metres wide;
+//           ends are extended 120 m (default) so rivers run off into the distance
+//   ponds   { x, z, r } round water;  islands { x, z, r } dry land inside water
+//   bridges { from: [x, z], to: [x, z], w } wooden footbridges: solid ground you can land on
+//   drop    [x, z] drop zone used after a splash (default: back to where you threw from)
+//   rocks   { x, z, s } decorative boulders;  greenR  radius of the putting green (default 7)
+//
+// A world is the look shared by its courses: sky, light, ground colours, tree style and scenery.
+const WORLDS = {
+  park: { id: 'park', sky: [0x3d8be0, 0xcdeeff], fog: 0x8fd0ff, hemi: [0xdff3ff, 0x3f7a2a, 1.1], sun: [0xfff1d0, 2.2],
+    ground: { ob: 0x3d7a2c, rough: 0x55a23d, fairway: 0x6cc04a, green: 0x80d95b }, trees: 'pine', borderMix: 0 },
+  river: { id: 'river', sky: [0x3b86c4, 0xffe1b5], fog: 0xd6e4d4, hemi: [0xfff2dc, 0x50803c, 1.05], sun: [0xffd8a0, 2.3],
+    ground: { ob: 0x4c8035, rough: 0x67a646, fairway: 0x84c457, green: 0x9be36c }, trees: 'willow', borderMix: 0.45,
+    water: 0x2f8fba, sand: 0xdcc88f, reeds: 0x7f9640, rock: 0x8f8d84 },
+};
 
 const PARK_COURSE = {
   id: 'park',
-  name: 'Maple Park',
+  name: 'Maple Park', world: 'park', blurb: 'Wooded park · tree lines & doglegs',
   holes: [
     {
       name: 'Warm Up', par: 3, tip: 'Open and friendly. Driver or Mid.',
@@ -242,6 +277,92 @@ const PARK_COURSE = {
   ],
 };
 
+const RIVER_COURSE = {
+  id: 'river',
+  name: 'Riverbend', world: 'river', blurb: 'Water everywhere · splash = +1',
+  holes: [
+    {
+      name: 'First Crossing', par: 3, tip: 'Carry the river. Anything past it is dry.',
+      tee: [0, 0], basket: [3, -68], width: 16, ob: 14,
+      path: [[0, 0], [0, -34], [3, -68]],
+      rivers: [{ pts: [[-70, -26], [-25, -34], [0, -36], [25, -33], [70, -40]], w: 11 }],
+      bridges: [{ from: [-13, -26], to: [-13, -46], w: 2.6 }],
+      trees: [{ x: -9, z: -56, s: 1 }, { x: 10, z: -18, s: 1 }, { x: 12, z: -62, s: 0.9 }],
+      rocks: [{ x: 7, z: -28, s: 1.2 }, { x: -6, z: -43, s: 0.9 }],
+    },
+    {
+      name: 'Bank Shot', par: 3, tip: 'Water all down the left. The Driver fades left, so aim right.',
+      tee: [0, 0], basket: [3, -84], width: 12, ob: 14,
+      path: [[0, 0], [1, -42], [3, -84]],
+      rivers: [{ pts: [[-14, 30], [-14, -30], [-11, -80], [-17, -140]], w: 14 }],
+      trees: [{ x: 12, z: -30, s: 1.1 }, { x: 11, z: -60, s: 1 }, { x: 10, z: -93, s: 1.1 }],
+      rocks: [{ x: -5, z: -50, s: 1 }, { x: -4, z: -70, s: 0.8 }],
+    },
+    {
+      name: 'Island Green', par: 3, tip: 'Basket on an island! Miss and re-throw from the drop zone.',
+      tee: [0, 0], basket: [0, -52], width: 12, ob: 14, greenR: 5,
+      path: [[0, 0], [0, -52]],
+      ponds: [{ x: 0, z: -54, r: 17 }], islands: [{ x: 0, z: -53, r: 8 }], drop: [0, -33],
+      rivers: [{ pts: [[-80, -82], [-30, -64], [0, -54], [30, -46], [80, -30]], w: 9 }],
+      trees: [{ x: 3.5, z: -58.5, s: 0.6 }, { x: -12, z: -22, s: 1 }, { x: 13, z: -25, s: 1 }],
+      rocks: [{ x: -4, z: -49, s: 0.7 }, { x: 9, z: -38, s: 1.1 }],
+    },
+    {
+      name: 'The Fork', par: 4, tip: 'A creek splits it. Narrow right is direct; wide left is safe.',
+      tee: [0, 0], basket: [17, -110], width: 14, ob: 24,
+      path: [[0, 0], [-8, -45], [-6, -88], [17, -110]],
+      rivers: [{ pts: [[4, -14], [4, -50], [6, -90], [8, -128]], w: 10, open: [false, true] }, { pts: [[-60, -136], [0, -130], [60, -140]], w: 10 }],
+      rows: [{ from: [23, -12], to: [23, -98], step: 5.5, s: 1 }],
+      trees: [{ x: -19, z: -30, s: 1.1 }, { x: -20, z: -70, s: 1.1 }],
+      rocks: [{ x: 3, z: -10, s: 1.3 }],
+    },
+    {
+      name: 'Footbridge', par: 3, tip: 'Wide water. Land on the far bank, or on the bridge.',
+      tee: [0, 0], basket: [0, -64], width: 12, ob: 12,
+      path: [[0, 0], [0, -64]],
+      rivers: [{ pts: [[-80, -40], [-30, -46], [0, -45], [30, -42], [80, -50]], w: 20 }],
+      bridges: [{ from: [0, -30], to: [0, -60], w: 3 }],
+      trees: [{ x: -6, z: -73, s: 1.1 }, { x: 7, z: -74, s: 1 }, { x: -9, z: -20, s: 1 }],
+      rocks: [{ x: 9, z: -40, s: 1.2 }, { x: -12, z: -50, s: 1 }],
+    },
+    {
+      name: 'River Bend', par: 4, tip: 'Follow the bend, or cut the corner over the water.',
+      tee: [0, 0], basket: [40, -126], width: 14, ob: 15,
+      path: [[0, 0], [-2, -70], [14, -112], [40, -126]],
+      rivers: [{ pts: [[30, 40], [24, -30], [34, -80], [52, -104], [90, -118]], w: 18 }],
+      trees: [{ x: -13, z: -40, s: 1.1 }, { x: -12, z: -95, s: 1.2 }, { x: 52, z: -134, s: 1 }],
+      rocks: [{ x: 14, z: -55, s: 1.1 }],
+    },
+    {
+      name: 'Oxbow', par: 3, tip: "The river loops round the basket. Don't go long.",
+      tee: [0, 0], basket: [4, -64], width: 12, ob: 14,
+      path: [[0, 0], [4, -64]],
+      rivers: [{ pts: [[-60, -30], [-16, -36], [-16, -62], [-6, -76], [6, -76], [16, -62], [16, -36], [60, -30]], w: 9 }],
+      trees: [{ x: -2, z: -62, s: 0.7 }, { x: -8, z: -14, s: 1 }, { x: 9, z: -16, s: 1 }],
+      rocks: [{ x: 10, z: -50, s: 0.9 }],
+    },
+    {
+      name: 'Rapids', par: 4, tip: 'Two crossings. Lay up between them, then carry home.',
+      tee: [0, 0], basket: [-4, -108], width: 13, ob: 13,
+      path: [[0, 0], [6, -50], [-4, -108]],
+      rivers: [{ pts: [[-70, -22], [0, -26], [70, -18]], w: 8 }, { pts: [[-70, -90], [-20, -84], [20, -88], [70, -80]], w: 14 }],
+      trees: [{ x: 14, z: -45, s: 1.1 }, { x: -6, z: -55, s: 1 }, { x: 5, z: -116, s: 1 }],
+      rocks: [{ x: -3, z: -85, s: 1.3 }, { x: 6, z: -89, s: 1 }, { x: 2, z: -25, s: 0.8 }],
+    },
+    {
+      name: 'Waterfront', par: 4, tip: 'Water left and in front of the green. Finish strong!',
+      tee: [0, 0], basket: [-10, -124], width: 13, ob: 14,
+      path: [[0, 0], [4, -60], [-10, -124]],
+      rivers: [{ pts: [[-22, 30], [-20, -40], [-24, -100], [-40, -150]], w: 14 }, { pts: [[-24, -104], [0, -108], [60, -100]], w: 9, open: [false, true] }],
+      bridges: [{ from: [-5, -97], to: [-7, -118], w: 3 }],
+      trees: [{ x: 14, z: -40, s: 1.1 }, { x: 12, z: -85, s: 1.1 }, { x: -2, z: -133, s: 1 }],
+      rocks: [{ x: -12, z: -60, s: 1 }],
+    },
+  ],
+};
+
+const COURSES = [PARK_COURSE, RIVER_COURSE];
+
 // Open practice field used by tests (and handy for tuning discs). Not part of the round.
 const PRACTICE_HOLE = {
   name: 'Practice Field', par: 3, tip: '', tee: [0, 0], basket: [0, -200], width: 120, ob: 60,
@@ -283,7 +404,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8fd0ff);
 scene.fog = new THREE.Fog(0x8fd0ff, 90, 230);
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.05, 600);
-scene.add(new THREE.HemisphereLight(0xdff3ff, 0x3f7a2a, 1.1));
+const hemi = new THREE.HemisphereLight(0xdff3ff, 0x3f7a2a, 1.1); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1d0, 2.2);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -315,11 +436,39 @@ const MAT = {
   chain: new THREE.MeshStandardMaterial({ color: 0xe8ecf2, metalness: 0.9, roughness: 0.25 }),
   flag: new THREE.MeshLambertMaterial({ color: 0xff4d6d, side: THREE.DoubleSide }),
   obPost: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+  willow: [0x6f9a34, 0x86ad3e].map(c => new THREE.MeshLambertMaterial({ color: c })),
+  plank: new THREE.MeshLambertMaterial({ color: 0x9a6b3f }),
+  reeds: new THREE.MeshLambertMaterial({ color: 0x7f9640 }),
+  rock: new THREE.MeshLambertMaterial({ color: 0x8f8d84, flatShading: true }),
+  dropRing: new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
 };
+// Layered flat ground (sand under water under islands) is ordered with polygon offset, not height, so it never flickers
+const layered = (mat, k) => Object.assign(mat, { polygonOffset: true, polygonOffsetFactor: -k, polygonOffsetUnits: -k * 4 });
+const rippleTex = (() => { // cheap shimmering water: a tiling canvas texture scrolled every frame
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#d9ecf7'; x.fillRect(0, 0, 128, 128);
+  const r = seeded(4242);
+  for (let i = 0; i < 70; i++) { x.strokeStyle = `rgba(255,255,255,${0.35 + r() * 0.5})`; x.lineWidth = 1 + r() * 2; const px = r() * 128, py = r() * 128, l = 6 + r() * 18;
+    for (const ox of [-128, 0, 128]) for (const oy of [-128, 0, 128]) { x.beginPath(); x.moveTo(px + ox, py + oy); x.quadraticCurveTo(px + ox + l / 2, py + oy - 2, px + ox + l, py + oy); x.stroke(); } }
+  for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(120,170,200,${0.15 + r() * 0.2})`; x.beginPath(); x.ellipse(r() * 128, r() * 128, 4 + r() * 10, 1 + r() * 2, 0, 0, Math.PI * 2); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+Object.assign(MAT, {
+  sand: layered(new THREE.MeshLambertMaterial({ color: 0xdcc88f }), 1),
+  water: layered(new THREE.MeshPhongMaterial({ color: 0x2f8fba, map: rippleTex, specular: 0x9fd4ff, shininess: 70 }), 6),
+  islandSand: layered(new THREE.MeshLambertMaterial({ color: 0xdcc88f }), 8),
+  islandGrass: layered(new THREE.MeshLambertMaterial({ color: 0x9be36c }), 9),
+});
+layered(MAT.green, 3);
 const GEO = {
   trunk: new THREE.CylinderGeometry(0.3, 0.42, 3, 8).translate(0, 1.5, 0),
   cones: [0, 1, 2].map(k => new THREE.ConeGeometry(2.4 - k * 0.6, 2.6, 10).translate(0, 3.2 + k * 1.3, 0)),
+  // willow: round crown plus a drooping open skirt
+  willow: [new THREE.SphereGeometry(2.3, 12, 8).scale(1, 0.8, 1).translate(0, 4.6, 0), new THREE.ConeGeometry(2.7, 3.4, 12, 1, true).translate(0, 3.0, 0)],
+  reed: new THREE.ConeGeometry(0.06, 1.2, 4).translate(0, 0.6, 0),
+  rock: new THREE.DodecahedronGeometry(0.55, 0).scale(1, 0.62, 1),
 };
+let WORLD = WORLDS.park;
 
 // ---------- Hole model (built from course data) ----------
 // H holds everything about the hole being played: geometry for physics and the scene group.
@@ -330,11 +479,41 @@ function seeded(seed) { return () => ((seed = (seed * 16807) % 2147483647) / 214
 function makeHole(data, index) {
   const v2 = ([x, z]) => new THREE.Vector2(x, z);
   const hills = data.hills || [];
+  // terrain (hills) for drawing the ground; physics ground adds bridge decks on top
   const groundY = (x, z) => {
     let y = 0;
     for (const h of hills) { const d = Math.hypot(x - h.x, z - h.z); if (d < h.r) { const k = 1 - (d / h.r) ** 2; y += h.h * k * k; } }
     return y;
   };
+  // ----- Water: rivers (smooth bands), ponds, with islands and bridges as dry land -----
+  const segDist2 = (pts, x, z) => {
+    let best = Infinity;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const abx = b.x - a.x, abz = b.y - a.y, t = THREE.MathUtils.clamp(((x - a.x) * abx + (z - a.y) * abz) / (abx * abx + abz * abz || 1), 0, 1);
+      best = Math.min(best, Math.hypot(x - (a.x + abx * t), z - (a.y + abz * t)));
+    }
+    return best;
+  };
+  const rivers = (data.rivers || []).map(r => {
+    const pts = r.pts.map(v2), [o0, o1] = r.open || [true, true];
+    if (o0) pts.unshift(pts[0].clone().addScaledVector(pts[0].clone().sub(pts[1]).normalize(), 120));
+    if (o1) { const n = pts.length; pts.push(pts[n - 1].clone().addScaledVector(pts[n - 1].clone().sub(pts[n - 2]).normalize(), 120)); }
+    const c = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(p.x, 0, p.y)), false, 'centripetal');
+    const sm = c.getSpacedPoints(Math.max(4, Math.ceil(c.getLength() / 1.5))).map(p => new THREE.Vector2(p.x, p.z));
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const p of sm) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minZ = Math.min(minZ, p.y); maxZ = Math.max(maxZ, p.y); }
+    return { w: r.w, samples: sm, box: [minX - r.w, maxX + r.w, minZ - r.w, maxZ + r.w] };
+  });
+  const ponds = data.ponds || [], islands = data.islands || [];
+  const bridges = (data.bridges || []).map(b => { const a = v2(b.from), c = v2(b.to), d = c.clone().sub(a); return { a, c, len: d.length(), dir: d.normalize(), w: b.w, deck: 0.34 }; });
+  const onBridge = (x, z) => bridges.find(b => { const rx = x - b.a.x, rz = z - b.a.y, along = rx * b.dir.x + rz * b.dir.y, across = Math.abs(-rx * b.dir.y + rz * b.dir.x); return along >= -0.2 && along <= b.len + 0.2 && across <= b.w / 2; });
+  const isWater = (x, z) => {
+    if (islands.some(i => Math.hypot(x - i.x, z - i.z) < i.r) || onBridge(x, z)) return false;
+    if (ponds.some(p => Math.hypot(x - p.x, z - p.z) < p.r)) return true;
+    return rivers.some(r => x > r.box[0] && x < r.box[1] && z > r.box[2] && z < r.box[3] && segDist2(r.samples, x, z) < r.w / 2);
+  };
+  const physY = (x, z) => { const b = bridges.length ? onBridge(x, z) : null; return groundY(x, z) + (b ? b.deck : 0); };
   // Smooth centreline through the path points, sampled every ~1 m
   const curve = new THREE.CatmullRomCurve3(data.path.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
   const length = curve.getLength();
@@ -361,13 +540,13 @@ function makeHole(data, index) {
   const isOB = (x, z) => distToPlay(x, z) > inBoundsR && !inHull(x, z);
 
   // Trees: hand placed + rows + generated border forest outside the in-bounds area
-  const trees = (data.trees || []).map(t => ({ ...t }));
+  const trees = (data.trees || []).map(t => ({ kind: WORLD.trees, ...t }));
   for (const r of data.rows || []) {
     const a = v2(r.from), b = v2(r.to), n = Math.round(a.distanceTo(b) / r.step);
     for (let i = 0; i <= n; i++) {
       const p = a.clone().lerp(b, i / n);
       if (r.gap && p.x > r.gap[0] && p.x < r.gap[1]) continue;
-      trees.push({ x: p.x, z: p.y, s: r.s });
+      trees.push({ x: p.x, z: p.y, s: r.s, kind: WORLD.trees });
     }
   }
   if (!data.noForest) {
@@ -385,14 +564,16 @@ function makeHole(data, index) {
         const t = p.clone().addScaledVector(nrm, side * off).addScaledVector(dir, (rnd() - 0.5) * 4);
         if (distToPath(t.x, t.y) < data.width / 2 + 4 || distToPlay(t.x, t.y) < data.width / 2 + 2) continue;
         if (t.distanceTo(v2(data.tee)) < 8 || t.distanceTo(v2(data.basket)) < 10) continue;
-        trees.push({ x: t.x, z: t.y, s: 0.9 + rnd() * 0.7, border: true });
+        if ((rivers.length || ponds.length) && (isWater(t.x, t.y) || isWater(t.x + 3, t.y) || isWater(t.x - 3, t.y) || isWater(t.x, t.y + 3) || isWater(t.x, t.y - 3))) continue; // keep banks open
+        const kind = rnd() < WORLD.borderMix ? 'pine' : WORLD.trees;
+        trees.push({ x: t.x, z: t.y, s: 0.9 + rnd() * 0.7, border: true, kind });
       }
     }
   }
-  for (const t of trees) t.y = groundY(t.x, t.z);
+  for (const t of trees) t.y = physY(t.x, t.z);
 
-  const tee = new THREE.Vector3(data.tee[0], 0, data.tee[1]); tee.y = groundY(tee.x, tee.z);
-  const basket = new THREE.Vector3(data.basket[0], 0, data.basket[1]); basket.y = groundY(basket.x, basket.z);
+  const tee = new THREE.Vector3(data.tee[0], 0, data.tee[1]); tee.y = physY(tee.x, tee.z);
+  const basket = new THREE.Vector3(data.basket[0], 0, data.basket[1]); basket.y = physY(basket.x, basket.z);
   const teeAim = data.path[1] ? new THREE.Vector3(data.path[1][0], 0, data.path[1][1]) : basket;
 
   // ----- Scene objects for this hole -----
@@ -437,8 +618,9 @@ function makeHole(data, index) {
     const prof = []; for (let i = 0; i <= 24; i++) { const d = h.r * (1 - i / 24); prof.push(new THREE.Vector2(d, groundY(h.x + d, h.z) + 0.005)); }
     const m = new THREE.Mesh(new THREE.LatheGeometry(prof, 40), MAT.rough); m.position.set(h.x, 0, h.z); m.receiveShadow = true; m.castShadow = true; group.add(m);
   }
-  {
-    const g = new THREE.CircleGeometry(7, 40).rotateX(-Math.PI / 2);
+  const basketIsland = islands.find(i => Math.hypot(basket.x - i.x, basket.z - i.z) < i.r);
+  if (!basketIsland) {
+    const g = new THREE.CircleGeometry(data.greenR || 7, 40).rotateX(-Math.PI / 2);
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i) + basket.x, z = p.getZ(i) + basket.z; p.setXYZ(i, x, groundY(x, z) + 0.045, z); }
     g.computeVertexNormals();
@@ -467,17 +649,80 @@ function makeHole(data, index) {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2), MAT.wood); post.position.set(-3.2, 0.5, 3.55); pad.add(post);
     pad.position.copy(tee); pad.rotation.y = -yaw; group.add(pad);
   }
-  // Trees as instanced meshes (cheap on phones)
-  {
-    const trunk = new THREE.InstancedMesh(GEO.trunk, MAT.trunk, trees.length);
-    const cones = GEO.cones.map((g, k) => new THREE.InstancedMesh(g, MAT.leaves[k], trees.length));
+  // Trees as instanced meshes (cheap on phones), one set per tree style
+  for (const kind of ['pine', 'willow']) {
+    const list = trees.filter(t => (t.kind || 'pine') === kind); if (!list.length) continue;
+    const parts = kind === 'pine' ? GEO.cones.map((g, k) => [g, MAT.leaves[k]]) : GEO.willow.map((g, k) => [g, MAT.willow[k]]);
+    const trunk = new THREE.InstancedMesh(GEO.trunk, MAT.trunk, list.length);
+    const crowns = parts.map(([g, m]) => new THREE.InstancedMesh(g, m, list.length));
     const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
-    trees.forEach((t, i) => {
+    list.forEach((t, i) => {
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), (i * 2.39) % 6.28);
       mtx.compose(ps.set(t.x, t.y, t.z), q, sc.setScalar(t.s));
-      trunk.setMatrixAt(i, mtx); cones.forEach(c => c.setMatrixAt(i, mtx));
+      trunk.setMatrixAt(i, mtx); crowns.forEach(c => c.setMatrixAt(i, mtx));
     });
-    for (const m of [trunk, ...cones]) { m.castShadow = true; m.receiveShadow = false; group.add(m); }
+    for (const m of [trunk, ...crowns]) { m.castShadow = true; m.receiveShadow = false; group.add(m); }
+  }
+  // Water, banks, islands, bridges, reeds and rocks
+  if (rivers.length || ponds.length) {
+    const band = (pts, halfW, y, mat) => {
+      const pos = [], uv = [], idx = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+        const d = b.clone().sub(a).normalize(), n = new THREE.Vector2(-d.y, d.x);
+        for (const sgn of [-1, 1]) { const x = pts[i].x + n.x * halfW * sgn, z = pts[i].y + n.y * halfW * sgn; pos.push(x, y, z); uv.push(x / 9, z / 9); }
+        if (i > 0) { const k = (i - 1) * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, mat); m.material.side = THREE.DoubleSide; m.receiveShadow = true; return m;
+    };
+    const disk = (x, z, r, y, mat) => { const g = new THREE.CircleGeometry(r, 48).rotateX(-Math.PI / 2); const uv = g.attributes.uv, p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + x) / 9, (p.getZ(i) + z) / 9);
+      const m = new THREE.Mesh(g, mat); m.position.set(x, y, z); m.receiveShadow = true; return m; };
+    for (const r of rivers) {
+      const ends = [r.samples[0], r.samples[r.samples.length - 1]];
+      group.add(band(r.samples, r.w / 2 + 1.7, 0.04, MAT.sand), band(r.samples, r.w / 2, 0.06, MAT.water));
+      for (const e of ends) group.add(disk(e.x, e.y, r.w / 2 + 1.7, 0.04, MAT.sand), disk(e.x, e.y, r.w / 2, 0.06, MAT.water)); // round ends for creeks
+    }
+    for (const p of ponds) group.add(disk(p.x, p.z, p.r + 1.7, 0.04, MAT.sand), disk(p.x, p.z, p.r, 0.06, MAT.water));
+    for (const i of islands) group.add(disk(i.x, i.z, i.r, 0.08, MAT.islandSand), disk(i.x, i.z, i.r - 1.1, 0.09, MAT.islandGrass));
+    for (const b of bridges) {
+      const g = new THREE.Group(), yaw = Math.atan2(b.dir.x, b.dir.y);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.16, b.len + 0.4), MAT.plank); deck.position.set(0, b.deck - 0.08, b.len / 2); deck.castShadow = deck.receiveShadow = true; g.add(deck);
+      for (const sx of [-1, 1]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, b.len + 0.4), MAT.wood); rail.position.set(sx * (b.w / 2 - 0.05), b.deck + 0.75, b.len / 2); g.add(rail);
+        for (let k = 0; k <= Math.round(b.len / 2.5); k++) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.8, 0.12), MAT.wood); post.position.set(sx * (b.w / 2 - 0.05), b.deck + 0.35, Math.min(b.len, k * 2.5)); g.add(post); }
+      }
+      g.position.set(b.a.x, 0, b.a.y); g.rotation.y = yaw; group.add(g);
+    }
+    // reeds and rocks along the banks, only near the hole (phone-friendly instance counts)
+    const rnd = seeded(500 + index * 31), reeds = [], rocks = (data.rocks || []).map(r => ({ ...r }));
+    const near = (x, z) => distToPlay(x, z) < inBoundsR + 30;
+    const bankSpot = (cx, cz, nx, nz, off) => { const x = cx + nx * off, z = cz + nz * off; return isWater(x, z) || !near(x, z) || onBridge(x, z) || Math.hypot(x - basket.x, z - basket.z) < 3 || Math.hypot(x - tee.x, z - tee.z) < 3 ? null : [x, z]; };
+    for (const r of rivers) for (let i = 1; i < r.samples.length - 1; i += 2) {
+      const a = r.samples[i - 1], b = r.samples[i + 1], d = b.clone().sub(a).normalize();
+      for (const sgn of [-1, 1]) {
+        if (rnd() < 0.45) for (let k = 0; k < 4; k++) { const sp = bankSpot(r.samples[i].x + d.x * (rnd() - 0.5) * 2, r.samples[i].y + d.y * (rnd() - 0.5) * 2, -d.y * sgn, d.x * sgn, r.w / 2 + 0.2 + rnd() * 1.3); if (sp) reeds.push(sp); }
+        if (rnd() < 0.06) { const sp = bankSpot(r.samples[i].x, r.samples[i].y, -d.y * sgn, d.x * sgn, r.w / 2 + 0.6 + rnd() * 1.5); if (sp) rocks.push({ x: sp[0], z: sp[1], s: 0.6 + rnd() * 0.9 }); }
+      }
+    }
+    for (const p of ponds) for (let a = 0; a < Math.PI * 2; a += 0.12) if (rnd() < 0.55) { const sp = bankSpot(p.x, p.z, Math.cos(a), Math.sin(a), p.r + 0.2 + rnd() * 1.3); if (sp) reeds.push(sp); }
+    for (const i of islands) for (let a = 0; a < Math.PI * 2; a += 0.35) if (rnd() < 0.4) { const x = i.x + Math.cos(a) * (i.r - 0.5), z = i.z + Math.sin(a) * (i.r - 0.5); if (Math.hypot(x - basket.x, z - basket.z) > 3) reeds.push([x, z]); }
+    const rm = new THREE.InstancedMesh(GEO.reed, MAT.reeds, Math.min(reeds.length, 1600)), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+    reeds.slice(0, 1600).forEach(([x, z], i) => { e.set((rnd() - 0.5) * 0.3, rnd() * 6, (rnd() - 0.5) * 0.3); q.setFromEuler(e); mtx.compose(new THREE.Vector3(x, groundY(x, z), z), q, new THREE.Vector3(1, 0.7 + rnd() * 0.7, 1)); rm.setMatrixAt(i, mtx); });
+    group.add(rm);
+    const km = new THREE.InstancedMesh(GEO.rock, MAT.rock, Math.max(1, rocks.length));
+    rocks.forEach((r, i) => { e.set(0, rnd() * 6, 0); q.setFromEuler(e); mtx.compose(new THREE.Vector3(r.x, groundY(r.x, r.z) + 0.05, r.z), q, new THREE.Vector3(r.s, r.s, r.s)); km.setMatrixAt(i, mtx); });
+    km.count = rocks.length; km.castShadow = true; group.add(km);
+  }
+  const drop = data.drop ? new THREE.Vector3(data.drop[0], 0, data.drop[1]) : null;
+  if (drop) {
+    drop.y = physY(drop.x, drop.z);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.25, 32).rotateX(-Math.PI / 2), MAT.dropRing); ring.position.set(drop.x, drop.y + 0.1, drop.z); group.add(ring);
+    const c = document.createElement('canvas'); c.width = 128; c.height = 48; const x = c.getContext('2d'); x.fillStyle = '#ffe066'; x.fillRect(0, 0, 128, 48); x.fillStyle = '#143'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.fillText('DROP', 64, 35);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.38), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: THREE.DoubleSide })); sign.position.set(drop.x + 1.8, drop.y + 1.1, drop.z); group.add(sign);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.0), MAT.wood); post.position.set(drop.x + 1.8, drop.y + 0.45, drop.z); group.add(post);
   }
   // Basket + flag
   {
@@ -501,7 +746,7 @@ function makeHole(data, index) {
   // Sun follows the hole so shadows cover it
   const mid = curve.getPoint(0.5);
   const span = Math.max(70, length * 0.65 + 20);
-  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY, distToPath: distToPlay, isOB, inBoundsR, length, group, mid, span };
+  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span };
 }
 
 function convexHull(pts) { // monotone chain, counter-clockwise in (x, z)
@@ -583,20 +828,37 @@ function burstConfetti() {
     scene.add(m); confetti.push(m);
   }
 }
+const splashes = [];
+const DROP_GEO = new THREE.SphereGeometry(0.07, 6, 4), DROP_MAT = new THREE.MeshBasicMaterial({ color: 0xe8f6ff, transparent: true, opacity: 0.9 });
+function spawnSplash(x, z) {
+  const y = 0.12;
+  for (let i = 0; i < 34; i++) { const m = new THREE.Mesh(DROP_GEO, DROP_MAT); m.position.set(x, y, z); const a = Math.random() * 6.28, sp = 0.6 + Math.random() * 1.8;
+    m.userData = { v: new THREE.Vector3(Math.cos(a) * sp, 3 + Math.random() * 3.5, Math.sin(a) * sp), t: 0, drop: true }; scene.add(m); splashes.push(m); }
+  for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.55, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
+    m.position.set(x, y, z); m.userData = { t: -k * 0.25, ring: true }; scene.add(m); splashes.push(m); }
+}
+function updateSplashes(dt) {
+  for (let i = splashes.length - 1; i >= 0; i--) {
+    const m = splashes[i], u = m.userData; u.t += dt;
+    if (u.drop) { u.v.y -= 9.8 * dt; m.position.addScaledVector(u.v, dt); if (m.position.y < 0.05) m.visible = false; }
+    if (u.ring && u.t > 0) { const k = 1 + u.t * 5; m.scale.set(k, 1, k); m.material.opacity = Math.max(0, 0.85 - u.t * 0.6); }
+    if (u.t > 1.6) { scene.remove(m); if (u.ring) { m.geometry.dispose(); m.material.dispose(); } splashes.splice(i, 1); }
+  }
+}
 function clearConfetti() { for (const c of confetti) { scene.remove(c); c.geometry.dispose(); c.material.dispose(); } confetti.length = 0; }
 
 // ---------- Game state ----------
 const $ = id => document.getElementById(id);
 const ui = {
-  title: $('holetitle'), disc: $('discname'), discHint: $('dischint'), throws: $('throws'), dist: $('dist'), curve: $('curve'), total: $('total'),
+  title: $('holetitle'), course: $('coursename'), disc: $('discname'), discHint: $('dischint'), throws: $('throws'), dist: $('dist'), curve: $('curve'), total: $('total'),
   banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn'), next: $('nextbtn'),
   card: $('scorecard'), cardBody: $('cardbody'), cardTitle: $('cardtitle'), cardSub: $('cardsub'), cardAgain: $('cardagain'), menu: $('restartmenu'),
 };
 const CURVE_NAMES = { '-1': 'Big hyzer', '-0.5': 'Hyzer', '0': 'Straight', '0.5': 'Anhyzer', '1': 'Big anhyzer' };
-const COURSE = PARK_COURSE;
+let COURSE = COURSES[0];
 
 const S = {
-  phase: 'aim', // aim | charging | flying | holed | done
+  phase: 'aim', // menu | aim | charging | flying | splash | holed | done
   holeIdx: 0, scores: Array(COURSE.holes.length).fill(null), practice: false,
   lie: new THREE.Vector3(), prevLie: new THREE.Vector3(), yaw: 0, power: 0, chargeT: 0, pull: null, charge: null, curve: 0, throws: 0,
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), v0: 0, dir0: new THREE.Vector3(), right0: new THREE.Vector3(),
@@ -665,6 +927,54 @@ function selectDisc(key) {
   if (!DISCS[key] || S.phase !== 'aim') return false; // only before a throw
   S.disc = key; return true;
 }
+// ---------- Worlds, courses and the course picker ----------
+function applyWorld(w) {
+  WORLD = w;
+  scene.background.setHex(w.fog); scene.fog.color.setHex(w.fog);
+  scene.userData.sky.material.uniforms.top.value.setHex(w.sky[0]); scene.userData.sky.material.uniforms.bottom.value.setHex(w.sky[1]);
+  hemi.color.setHex(w.hemi[0]); hemi.groundColor.setHex(w.hemi[1]); hemi.intensity = w.hemi[2];
+  sun.color.setHex(w.sun[0]); sun.intensity = w.sun[1];
+  for (const k of ['ob', 'rough', 'fairway', 'green']) MAT[k].color.setHex(w.ground[k]);
+  if (w.water) { MAT.water.color.setHex(w.water); MAT.sand.color.setHex(w.sand); MAT.islandSand.color.setHex(w.sand); MAT.reeds.color.setHex(w.reeds); MAT.rock.color.setHex(w.rock); MAT.islandGrass.color.setHex(w.ground.green); }
+  document.body.dataset.world = w.id;
+}
+const bestKey = id => `discgolflab.best.${id}`;
+function loadBest(id) { try { const v = Number(localStorage.getItem(bestKey(id))); return v > 0 ? v : null; } catch { return null; } }
+function saveBest(id, strokes) { try { const b = loadBest(id); if (!b || strokes < b) localStorage.setItem(bestKey(id), String(strokes)); } catch {} }
+const coursePar = c => c.holes.reduce((a, h) => a + h.par, 0);
+function loadCourse(id) {
+  const c = COURSES.find(c => c.id === id); if (!c) return false;
+  COURSE = c; applyWorld(WORLDS[c.world] || WORLDS.park);
+  S.scores = Array(COURSE.holes.length).fill(null);
+  hidePicker(); hideMenu(); hideCard();
+  ui.course.textContent = COURSE.name;
+  loadHole(0); return true;
+}
+const picker = { el: document.getElementById('picker'), list: document.getElementById('picklist'), back: document.getElementById('pickback'), resume: null };
+function renderPicker() {
+  picker.list.innerHTML = COURSES.map(c => { const par = coursePar(c), b = loadBest(c.id), w = WORLDS[c.world] || WORLDS.park;
+    return `<button class="pickcourse" id="pick-${c.id}" data-course="${c.id}" style="--tint:#${new THREE.Color(w.ground.fairway).getHexString()};--tint2:#${new THREE.Color(w.water || w.ground.ob).getHexString()}">
+      <span class="pname">${c.name}</span><span class="pinfo">${c.holes.length} holes · Par ${par}</span><span class="pblurb">${c.blurb || ''}</span>
+      <span class="pbest">${b ? `Best ${b} (${fmtToPar(b - par)})` : 'Not played yet'}</span></button>`; }).join('');
+  for (const b of picker.list.querySelectorAll('button')) b.addEventListener('click', () => loadCourse(b.dataset.course));
+}
+function showPicker(canGoBack = true) {
+  endPull(null, true);
+  renderPicker();
+  picker.resume = canGoBack ? S.phase : null;
+  picker.back.classList.toggle('hidden', !canGoBack);
+  if (S.phase !== 'flying' && S.phase !== 'splash') S.phase = 'menu';
+  hideMenu(); hideCard(); hideBanner(); picker.el.classList.remove('hidden');
+}
+function hidePicker() { picker.el.classList.add('hidden'); }
+function closePicker() {
+  if (!picker.resume) return;
+  hidePicker();
+  if (S.phase === 'menu') S.phase = picker.resume === 'charging' ? 'aim' : picker.resume;
+  if (S.phase === 'done') showCard(true);
+  else if (S.phase === 'holed') finishHole(S.result.throws, S.result.made);
+}
+const pickerOpen = () => !picker.el.classList.contains('hidden');
 function restartHole() { loadHole(S.practice ? 0 : S.holeIdx, { practice: S.practice }); }
 function restartRound() { S.scores = Array(COURSE.holes.length).fill(null); loadHole(0); }
 function nextHole() {
@@ -739,6 +1049,8 @@ function stepPhysics(dt) {
   const g2 = H.groundY(p.x, p.z);
   if (p.y <= g2 + DISC_R) {
     p.y = g2 + DISC_R;
+    // Water: only touching down counts (flying over is fine). The disc sinks where it lands or rolls in.
+    if (H.hasWater && H.isWater(p.x, p.z)) { v.set(0, 0, 0); return 'water'; }
     if (v.y < -2.5) { v.y = -v.y * 0.25; v.x *= 0.7; v.z *= 0.7; }
     else {
       v.y = 0;
@@ -781,8 +1093,9 @@ function updateFlight(dt) {
   const sub = 8, h = dt / sub;
   for (let i = 0; i < sub; i++) {
     const r = stepPhysics(h);
-    if (r && r !== 'tree') S.events.push({ type: r, disc: S.disc, throw: S.throws });
+    if (r && r !== 'tree' && r !== 'water') S.events.push({ type: r, disc: S.disc, throw: S.throws });
     if (r === 'made') { onMade(); return; }
+    if (r === 'water') { onSplash(); return; }
     const tip = S.disc === 'putter' ? 'Ease off a little' : 'Too much heat — try the Putter';
     if (r === 'pole') flashBanner('Clang!', S.disc === 'putter' ? 'Off the pole' : tip, 1200);
     if (r === 'spit') flashBanner('Spit out!', tip, 1200);
@@ -814,6 +1127,20 @@ function onLanded() {
   flashBanner(`${distToBasket().toFixed(1)} m to go`, `Throw ${S.throws + 1} next · ${DISCS[S.suggested].name} suggested`, 1500);
 }
 
+// Splash: +1 throw, back to the drop zone if the hole has one, otherwise to where you threw from.
+function onSplash() {
+  S.restTimer = 0; spawnSplash(S.pos.x, S.pos.z);
+  S.throws++; S.penalties++;
+  S.events.push({ type: 'water', disc: S.disc, throw: S.throws, at: { x: S.pos.x, z: S.pos.z } });
+  S.lie.copy(H.drop || S.prevLie); S.lie.y = 0;
+  S.phase = 'splash'; S.splashT = 1.4;
+  flashBanner('Splash! +1', H.drop ? `Penalty throw · re-throw from the drop zone (${S.throws} so far)` : `Penalty throw · back to your last spot (${S.throws} so far)`, 2400);
+}
+function finishSplash() {
+  if (S.phase !== 'splash') return;
+  if (!S.practice && S.throws >= cap()) return pickUp();
+  resetToLie(S.lie.distanceTo(H.tee) < 0.5); snapCamera();
+}
 function finishHole(score, made) {
   S.phase = 'holed';
   if (made) S.lie.set(H.basket.x, H.basket.y, H.basket.z);
@@ -832,6 +1159,7 @@ function pickUp() { S.pos.copy(S.lie); finishHole(cap(), false); }
 
 function endRound() {
   S.phase = 'done'; hideBanner();
+  const r = roundStats(); if (r.finished) saveBest(COURSE.id, r.strokes);
   showCard(true);
 }
 
@@ -850,6 +1178,7 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw }) {
   for (let i = 0; i < 480 * 20; i++) {
     const r = stepPhysics(h);
     if (r === 'made') { outcome = 'made'; break; }
+    if (r === 'water') { outcome = 'water'; break; }
     if (r === 'tree') trees++;
     if (r === 'spit' || r === 'pole') bounced = r;
     if (i % 8 === 7) {
@@ -859,7 +1188,7 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw }) {
     }
   }
   const end = { x: S.pos.x, z: S.pos.z };
-  if (outcome !== 'made' && H.isOB(end.x, end.z)) outcome = 'ob';
+  if (outcome === 'landed' && H.isOB(end.x, end.z)) outcome = 'ob';
   const out = { outcome, end, trees, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
   Object.assign(S, { knocked: keep.knocked, v0: keep.v0, curveUsed: keep.curveUsed, D: keep.D, flightTime: keep.flightTime, maxY: keep.maxY });
   S.pos.copy(keep.pos); S.vel.copy(keep.vel); S.dir0.copy(keep.dir0); S.right0.copy(keep.right0);
@@ -881,7 +1210,7 @@ function renderCard() {
     `<tr><th>Score</th>${holes.map((h, i) => cell(i)).join('')}<td><b id="cardtotal">${r.played ? r.strokes : '–'}</b></td></tr>`,
   ];
   ui.cardBody.innerHTML = `<table>${rows.join('')}</table>`;
-  ui.cardTitle.textContent = r.finished ? 'Round complete!' : `${COURSE.name} — Scorecard`;
+  ui.cardTitle.textContent = r.finished ? `${COURSE.name} — Round complete!` : `${COURSE.name} — Scorecard`;
   ui.cardSub.textContent = r.played ? `${r.strokes} throws through ${r.played} hole${r.played > 1 ? 's' : ''} · ${fmtToPar(r.toPar)} vs par ${r.par}` : `Course par ${r.coursePar}`;
 }
 function showCard(final = false) { renderCard(); ui.card.classList.remove('hidden'); ui.card.classList.toggle('final', final); ui.cardAgain.classList.toggle('hidden', !final); }
@@ -896,10 +1225,11 @@ function desiredAimCam() {
   const d = dirFromYaw(S.pull ? S.pull.baseYaw : S.yaw); // camera holds still while you pull
   const base = S.lie.clone();
   const near = distToBasket() < 15;
-  const back = near ? 4 : 6, up = near ? 2.2 : 2.8;
+  const wet = H.hasWater && !near; // water holes: a higher camera so you can read the river
+  const back = near ? 4 : wet ? 7.5 : 6, up = near ? 2.2 : wet ? 5.2 : 2.8;
   const portrait = camera.aspect < 1;
-  const look = base.clone().addScaledVector(d, near ? 6 : portrait ? 16 : 22);
-  look.y = (near ? H.basket.y + 0.8 : H.groundY(look.x, look.z) + (portrait ? 0.2 : 1.5));
+  const look = base.clone().addScaledVector(d, near ? 6 : wet ? (portrait ? 20 : 26) : portrait ? 16 : 22);
+  look.y = (near ? H.basket.y + 0.8 : H.groundY(look.x, look.z) + (portrait ? 0.2 : 1.5) + (wet ? -0.5 : 0));
   return { pos: base.clone().addScaledVector(d, -back).setY(base.y + up), look };
 }
 function snapCamera() { const c = desiredAimCam(); camPos.copy(c.pos); camLook.copy(c.look); }
@@ -911,6 +1241,8 @@ function updateCamera(dt) {
     hv.normalize();
     const p = S.pos.clone().addScaledVector(hv, -7);
     target = { pos: p.setY(Math.max(S.pos.y + 2.2, H.groundY(p.x, p.z) + 2)), look: S.pos.clone() };
+  } else if (S.phase === 'splash') {
+    target = { pos: camPos.clone(), look: camLook.clone() }; // watch the splash
   } else if (S.phase === 'holed' || S.phase === 'done') {
     const t = performance.now() / 1000, B = H.basket;
     target = { pos: new THREE.Vector3(B.x + Math.sin(t * 0.4) * 5, B.y + 2.4, B.z + Math.cos(t * 0.4) * 5), look: new THREE.Vector3(B.x, B.y + 1.0, B.z) };
@@ -982,6 +1314,7 @@ function cycleCurve(delta) { S.curve = THREE.MathUtils.clamp(S.curve + delta, -1
 
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
+  if (pickerOpen()) { if (k === 'escape') closePicker(); return; }
   keys[k] = true;
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) startCharge(); }
   if (k === 'r' && !e.repeat) { e.shiftKey ? restartRound() : restartHole(); }
@@ -1032,6 +1365,9 @@ $('restartbtn').addEventListener('click', () => ui.menu.classList.contains('hidd
 $('restarthole').addEventListener('click', () => { hideMenu(); restartHole(); });
 $('restartround').addEventListener('click', () => { hideMenu(); restartRound(); });
 $('restartcancel').addEventListener('click', hideMenu);
+$('restartcourse').addEventListener('click', () => showPicker(true));
+$('cardcourse').addEventListener('click', () => showPicker(true));
+picker.back.addEventListener('click', closePicker);
 $('cardbtn').addEventListener('click', toggleCard);
 $('cardclose').addEventListener('click', () => { if (S.phase !== 'done') hideCard(); });
 ui.cardAgain.addEventListener('click', restartRound);
@@ -1056,10 +1392,14 @@ function frame(now) {
   }
   if (S.phase === 'charging' && S.charge) S.power = keyChargePower(); // wall clock, fills to 100% and holds
   if (S.phase === 'flying') updateFlight(dt);
+  if (S.phase === 'splash' && (S.splashT -= dt) <= 0) finishSplash();
+  updateSplashes(dt);
+  rippleTex.offset.x = (rippleTex.offset.x + dt * 0.035) % 1; rippleTex.offset.y = (rippleTex.offset.y + dt * 0.012) % 1;
 
   const aiming = S.phase === 'aim' || S.phase === 'charging';
   disc.position.copy(aiming ? new THREE.Vector3(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z) : S.pos);
   for (const [k, m] of Object.entries(discMeshes)) m.visible = k === S.disc;
+  disc.visible = S.phase !== 'splash' && S.phase !== 'menu';
   disc.rotation.y += dt * (S.phase === 'flying' ? 25 : 1);
   disc.rotation.z = S.phase === 'flying' ? -S.curveUsed * 0.35 + 0.1 : 0;
   const showPower = S.phase === 'charging' && (!S.pull || S.pull.valid);
@@ -1105,7 +1445,11 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-loadHole(0);
+// Start: ?course=<id> jumps straight in (handy for links and tests); otherwise show the course picker
+{
+  const want = new URLSearchParams(location.search).get('course');
+  if (!(want && loadCourse(want))) { loadCourse(COURSES[0].id); showPicker(false); }
+}
 requestAnimationFrame(frame);
 
 // ---------- Test / debug hook ----------
@@ -1119,11 +1463,13 @@ window.__game = {
     lie: { x: S.lie.x, y: S.lie.y, z: S.lie.z }, discPos: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
     distToBasket: distToBasket(), result: S.result, hole: S.holeIdx + 1, practice: S.practice,
     banner: ui.banner.classList.contains('hidden') ? null : ui.btext.textContent + ' | ' + ui.bsub.textContent,
-    cardOpen: !ui.card.classList.contains('hidden'), menuOpen: !ui.menu.classList.contains('hidden') }),
+    cardOpen: !ui.card.classList.contains('hidden'), menuOpen: !ui.menu.classList.contains('hidden'), pickerOpen: pickerOpen(), course: COURSE.id, world: WORLD.id }),
   get basket() { return { x: H.basket.x, y: H.basket.y, z: H.basket.z }; },
   hole: () => ({ n: S.holeIdx + 1, name: H.name, par: H.par, tee: { x: H.tee.x, z: H.tee.z }, basket: { x: H.basket.x, y: H.basket.y, z: H.basket.z }, length: H.length,
     path: H.data.path, width: H.data.width, inBoundsR: H.inBoundsR, trees: H.trees.map(t => ({ x: t.x, z: t.z, s: t.s, y: t.y, border: !!t.border })) }),
-  course: () => ({ name: COURSE.name, holes: COURSE.holes.map(h => ({ name: h.name, par: h.par, tee: h.tee, basket: h.basket })), par: roundStats().coursePar }),
+  course: () => ({ id: COURSE.id, name: COURSE.name, world: COURSE.world, holes: COURSE.holes.map(h => ({ name: h.name, par: h.par, tee: h.tee, basket: h.basket, drop: h.drop || null })), par: roundStats().coursePar }),
+  courses: () => COURSES.map(c => ({ id: c.id, name: c.name, holes: c.holes.length, par: coursePar(c), best: loadBest(c.id) })),
+  loadCourse, showPicker, isWater: (x, z) => H.isWater(x, z), groundY: (x, z) => H.groundY(x, z),
   round: () => ({ ...roundStats(), scores: [...S.scores] }),
   isOB: (x, z) => H.isOB(x, z),
   loadHole: (i) => loadHole(i),
@@ -1143,7 +1489,7 @@ window.__game = {
   screenOf(x, z) { const v = new THREE.Vector3(x, H.groundY(x, z), z).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; },
   simulate: (o) => simulateThrow(o),
   yawToBasket: () => yawToward(S.lie, H.basket),
-  fastForward() { let n = 0; while (S.phase === 'flying' && n++ < 60 * 40) updateFlight(1 / 60); return this.state(); },
+  fastForward() { let n = 0; while (S.phase === 'flying' && n++ < 60 * 40) updateFlight(1 / 60); finishSplash(); return this.state(); },
 };
 </script>
 </body>
