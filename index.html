@@ -32,7 +32,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 
 #help .touch { display: none; }
 
 #controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-  display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; grid-template-areas: "aim power throw" "aim curve throw"; align-items: end; gap: 10px 14px; }
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; grid-template-areas: "disc power throw" "aim curve throw"; align-items: end; gap: 10px 14px; }
 #powerwrap { grid-area: power; justify-self: center; width: min(360px, 100%); }
 #power { position: relative; height: 24px; border-radius: 12px; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.85); overflow: hidden; }
 #powerfill { height: 100%; width: 0%; background: linear-gradient(90deg, #5be37d, #ffe066 60%, #ff6b4a); }
@@ -40,6 +40,16 @@ html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 
 #curvebtns { grid-area: curve; justify-self: center; display: flex; gap: 6px; }
 #curvebtns button { padding: 9px 12px; font-size: 14px; background: rgba(255,255,255,.85); box-shadow: 0 3px 0 #999; }
 #curvebtns button.on { background: #ffe066; box-shadow: 0 3px 0 #c9a800; }
+#discbtns { grid-area: disc; display: flex; gap: 6px; align-self: end; }
+#discbtns button { position: relative; display: flex; align-items: center; gap: 6px; padding: 9px 11px; font-size: 14px; background: rgba(255,255,255,.85); box-shadow: 0 3px 0 #999; }
+#discbtns button i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(0,0,0,.25); }
+#discbtns button kbd { font: inherit; font-size: 11px; opacity: .55; }
+#discbtns button.on { background: #ffe066; box-shadow: 0 3px 0 #c9a800; }
+#discbtns button.suggested::after { content: "★"; position: absolute; top: -7px; right: -4px; font-size: 13px; color: #ffe066; text-shadow: 0 0 2px #000, 0 1px 2px #000; }
+#discbtns button:disabled { opacity: .5; }
+#scorebox .hintrow { justify-content: flex-end; margin-top: -2px; }
+#dischint { font-size: 11px; opacity: .85; font-weight: 600; }
+#dischint:not(:empty)::before { content: "★ "; color: #ffe066; }
 #aimbtns { grid-area: aim; display: flex; gap: 8px; }
 #aimbtns button { width: 58px; height: 58px; font-size: 22px; background: rgba(255,255,255,.9); box-shadow: 0 3px 0 #999; }
 #throwbtn { grid-area: throw; width: 108px; height: 108px; border-radius: 50% !important; font-size: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
@@ -52,7 +62,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 
 .hidden { display: none !important; }
 
 /* Touch devices: short help */
-@media (pointer: coarse) { #help .desk { display: none; } #help .touch { display: inline; } #help { font-size: 13px; padding: 6px 10px; } }
+@media (pointer: coarse) { #discbtns button kbd { display: none; } #help .desk { display: none; } #help .touch { display: inline; } #help { font-size: 13px; padding: 6px 10px; } }
 body.played #help .touch { display: none; } body.played.coarse #help { display: none; }
 
 /* Small screens (phones) */
@@ -66,9 +76,10 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
 }
 /* Portrait phone: controls stack under the play area */
 @media (max-width: 600px) and (orientation: portrait) {
-  #controls { grid-template-columns: auto 1fr auto; grid-template-areas: "power power power" "curve curve curve" "aim . throw"; gap: 10px; }
+  #controls { grid-template-columns: auto 1fr auto; grid-template-areas: "power power power" "curve curve curve" "disc disc disc" "aim . throw"; gap: 10px; }
   #powerwrap { width: 100%; }
   #curvebtns { width: 100%; } #curvebtns button { flex: 1; padding: 10px 4px; }
+  #discbtns { width: 100%; } #discbtns button { flex: 1; justify-content: center; padding: 10px 4px; }
   #throwbtn { width: 112px; height: 112px; }
   #aimbtns button { width: 64px; height: 64px; }
 }
@@ -78,6 +89,7 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
   #throwbtn { width: 92px; height: 92px; font-size: 17px; }
   #aimbtns button { width: 52px; height: 52px; }
   #curvebtns button { padding: 7px 10px; font-size: 13px; }
+  #discbtns button { padding: 7px 9px; font-size: 13px; }
   #power { height: 20px; }
   #help { display: none; }
 }
@@ -91,6 +103,8 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
   <div id="hud">
     <div id="scorebox">
       <div class="title">HOLE 1 · PAR 3</div>
+      <div class="row"><span>Disc</span><b id="discname">Driver</b></div>
+      <div class="row hintrow"><span></span><i id="dischint">suggested</i></div>
       <div class="row"><span>Throws</span><b id="throws">0</b></div>
       <div class="row"><span>To basket</span><b id="dist">0 m</b></div>
       <div class="row"><span>Curve</span><b id="curve">Straight</b></div>
@@ -98,8 +112,8 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
     <div id="topright">
       <button id="restartbtn" aria-label="Restart hole">↻ Restart</button>
       <div id="help">
-        <span class="desk"><b>Aim</b> ← → / A D (or drag)<br /><b>Throw</b> hold SPACE, release<br /><b>Curve</b> Q hyzer · E anhyzer<br /><b>Restart</b> R</span>
-        <span class="touch">Drag to aim<br />Hold THROW, let go</span>
+        <span class="desk"><b>Aim</b> ← → / A D (or drag)<br /><b>Throw</b> hold SPACE, release<br /><b>Curve</b> Q hyzer · E anhyzer<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Restart</b> R</span>
+        <span class="touch">Drag to aim · pick a disc<br />Hold THROW, let go</span>
       </div>
     </div>
     <div id="controls">
@@ -108,6 +122,11 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
         <button data-curve="-0.5" id="hyzerbtn">↰ Hyzer</button>
         <button data-curve="0" id="straightbtn">Straight</button>
         <button data-curve="0.5" id="anhyzerbtn">Anhyzer ↱</button>
+      </div>
+      <div id="discbtns" role="group" aria-label="Disc">
+        <button data-disc="driver" id="disc-driver" title="Driver (1): longest range"><i style="background:#ff7a1a"></i><span>Driver</span><kbd>1</kbd></button>
+        <button data-disc="mid" id="disc-mid" title="Midrange (2): in between"><i style="background:#3fb7ff"></i><span>Mid</span><kbd>2</kbd></button>
+        <button data-disc="putter" id="disc-putter" title="Putter (3): short and accurate"><i style="background:#c77dff"></i><span>Putter</span><kbd>3</kbd></button>
       </div>
       <div id="aimbtns">
         <button id="aimleft" aria-label="Aim left">◀</button>
@@ -126,6 +145,19 @@ const TEE = new THREE.Vector3(0, 0, 0);
 const BASKET = new THREE.Vector3(6, 0, -78);
 const RELEASE_HEIGHT = 1.2;
 const DISC_R = 0.11;
+// The three discs. Speeds in m/s; power 0..1 maps linearly from vmin to vmax.
+// lift/drag shape the glide, fade pulls left late in the flight, turn scales the Q/E curve,
+// hot is the fastest the chains will hold. suggestUnder = suggested when the basket is closer than this.
+const DISCS = {
+  driver: { key: 'driver', name: 'Driver', short: 'Driver', hotkey: '1', color: 0xff7a1a, css: '#ff7a1a', vmin: 4, vmax: 30.5, l0: 4, l1: 8, liftK: 0.0085, liftMax: 8.5, dragK: 0.0045, drag0: 0.45, fade: 20, turn: 4.5, hot: 9, look: { r: 1.65, rb: 1.25, h: 0.035 } },
+  mid:    { key: 'mid', name: 'Midrange', short: 'Mid', hotkey: '2', color: 0x3fb7ff, css: '#3fb7ff', vmin: 3, vmax: 23.5, l0: 5, l1: 9, liftK: 0.012, liftMax: 8.0, dragK: 0.0055, drag0: 0.4, fade: 7, turn: 3.5, hot: 10.5, look: { r: 1.55, rb: 1.4, h: 0.05 } },
+  putter: { key: 'putter', name: 'Putter', short: 'Putter', hotkey: '3', color: 0xc77dff, css: '#c77dff', vmin: 2.5, vmax: 15, l0: 6, l1: 12, liftK: 0.03, liftMax: 7.5, dragK: 0.008, drag0: 0.35, fade: 1.5, turn: 2, hot: 14, look: { r: 1.5, rb: 1.48, h: 0.07 } },
+};
+const DISC_ORDER = ['driver', 'mid', 'putter'];
+function suggestDisc(dist) { return dist > 58 ? 'driver' : dist > 26 ? 'mid' : 'putter'; }
+// Straight full-power carry, measured by tests/play.mjs; drawn as the range ring
+const DISC_RANGE = { driver: 97, mid: 62, putter: 33 };
+
 // Basket geometry used for both visuals and catch detection
 const BK = { trayY: 0.62, trayR: 0.55, chainTop: 1.4, chainR: 0.32, poleR: 0.05, bandY: 1.45 };
 // Tree obstacles near the fairway plus a seeded border forest
@@ -250,14 +282,21 @@ scene.add(sun, sun.target);
 }
 
 // Disc + trail + aim arrow
+// One mesh per disc: drivers are thin and sharp-rimmed, putters thick and blunt
 const disc = new THREE.Group();
-{
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R * 1.6, DISC_R * 1.4, 0.05, 28), new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.4 }));
-  body.castShadow = true; disc.add(body);
+const discMeshes = {};
+for (const d of Object.values(DISCS)) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R * d.look.r, DISC_R * d.look.rb, d.look.h, 28), new THREE.MeshStandardMaterial({ color: d.color, roughness: 0.4 }));
+  body.castShadow = true; g.add(body);
   const stripe = new THREE.Mesh(new THREE.TorusGeometry(DISC_R * 1.0, 0.012, 6, 28), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  stripe.rotation.x = Math.PI / 2; stripe.position.y = 0.027; disc.add(stripe);
+  stripe.rotation.x = Math.PI / 2; stripe.position.y = d.look.h / 2 + 0.002; g.add(stripe);
+  discMeshes[d.key] = g; disc.add(g);
 }
 scene.add(disc);
+// Faint ring on the ground at the selected disc's full-power straight range
+const rangeRing = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.5, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+rangeRing.rotation.x = -Math.PI / 2; scene.add(rangeRing);
 const TRAIL_N = 90;
 const trailGeom = new THREE.BufferGeometry();
 trailGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 3), 3));
@@ -288,7 +327,7 @@ function burstConfetti() {
 
 // ---------- Game state ----------
 const $ = id => document.getElementById(id);
-const ui = { throws: $('throws'), dist: $('dist'), curve: $('curve'), fill: $('powerfill'), banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn') };
+const ui = { disc: $('discname'), discHint: $('dischint'), throws: $('throws'), dist: $('dist'), curve: $('curve'), fill: $('powerfill'), banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn') };
 const CURVE_NAMES = { '-1': 'Big hyzer', '-0.5': 'Hyzer', '0': 'Straight', '0.5': 'Anhyzer', '1': 'Big anhyzer' };
 
 const S = {
@@ -296,6 +335,7 @@ const S = {
   lie: TEE.clone(), yaw: 0, power: 0, chargeT: 0, curve: 0, throws: 0,
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), v0: 0, dir0: new THREE.Vector3(), right0: new THREE.Vector3(),
   restTimer: 0, result: null, trail: [], lastThrow: null, flightTime: 0,
+  disc: 'driver', suggested: 'driver', D: DISCS.driver, events: [],
 };
 const keys = {};
 
@@ -325,6 +365,11 @@ function resetToLie() {
   S.pos.set(S.lie.x, RELEASE_HEIGHT, S.lie.z); S.vel.set(0, 0, 0);
   S.yaw = yawToward(S.lie, BASKET);
   S.trail = [];
+  S.suggested = suggestDisc(distToBasket()); S.disc = S.suggested; // smart default each throw; player can override
+}
+function selectDisc(key) {
+  if (!DISCS[key] || S.phase !== 'aim') return false; // only before a throw
+  S.disc = key; return true;
 }
 
 function restart() {
@@ -337,16 +382,15 @@ function throwDisc(power, curve = S.curve) {
   if (S.phase !== 'aim' && S.phase !== 'charging') return false;
   power = THREE.MathUtils.clamp(power, 0, 1);
   S.throws++;
-  // Close to the basket the meter tops out lower, so putts get finer control
-  const putt = THREE.MathUtils.clamp(0.2 + distToBasket() / 40, 0.35, 1);
-  const speed = 3 + power * 27 * putt; // m/s
-  const launch = THREE.MathUtils.degToRad(4 + power * 8 + (1 - putt) * 14); // putts loft a bit more
+  const D = S.D = DISCS[S.disc];
+  const speed = D.vmin + power * (D.vmax - D.vmin); // same meter for every disc; the disc sets the range
+  const launch = THREE.MathUtils.degToRad(D.l0 + power * D.l1);
   S.dir0.copy(dirFromYaw(S.yaw)); S.right0.set(Math.cos(S.yaw), 0, Math.sin(S.yaw));
   S.pos.set(S.lie.x, RELEASE_HEIGHT, S.lie.z);
   S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
   S.v0 = speed; S.curveUsed = curve; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = [];
   document.body.classList.add('played');
-  S.lastThrow = { power, curve, speed, from: S.lie.clone(), yaw: S.yaw };
+  S.lastThrow = { disc: S.disc, power, curve, speed, from: S.lie.clone(), yaw: S.yaw };
   hideBanner();
   return true;
 }
@@ -361,15 +405,16 @@ function stepPhysics(dt) {
   S.flightTime += dt;
   if (airborne) {
     // Lift scales with speed^2 (arcade glide); drag slows horizontally
-    const lift = Math.min(8.5, 0.0085 * vh * vh);
+    const D = S.D;
+    const lift = Math.min(D.liftMax, D.liftK * vh * vh);
     v.y += (lift - G) * dt;
-    const drag = 0.0045 * vh * vh + 0.45;
+    const drag = D.dragK * vh * vh + D.drag0;
     if (vh > 0.01) { const k = Math.max(0, vh - drag * dt) / vh; v.x *= k; v.z *= k; }
     // Turn early (curve input), fade late (always left for a RHBH throw)
     const slow = THREE.MathUtils.clamp(1 - vh / S.v0, 0, 1);
     const fast = 1 - slow;
-    const scale = S.v0 / 30;
-    const lat = (S.curveUsed * 4 * fast * scale) - (16 * scale * slow * slow);
+    const scale = S.v0 / D.vmax;
+    const lat = (S.curveUsed * D.turn * fast * scale) - (D.fade * scale * slow * slow);
     v.addScaledVector(S.right0, lat * dt);
   }
   p.addScaledVector(v, dt);
@@ -414,7 +459,6 @@ function stepPhysics(dt) {
   return null;
 }
 
-const HOT = 14; // m/s: faster than this bounces off the pole or spits out of the chains
 function basketCheck(a, b) {
   const steps = 4;
   for (let i = 1; i <= steps; i++) {
@@ -422,6 +466,7 @@ function basketCheck(a, b) {
     const dx = q.x - BASKET.x, dz = q.z - BASKET.z, y = q.y - BASKET.y;
     const d = Math.hypot(dx, dz);
     const speed = S.vel.length();
+    const HOT = S.D.hot; // faster than this bounces off the pole or spits out of the chains
     // Pole hit (below tray or direct hard hit): bounce off
     if (d < BK.poleR + DISC_R && y < BK.bandY && speed > HOT) {
       const nx = dx / (d || 1), nz = dz / (d || 1);
@@ -448,9 +493,11 @@ function updateFlight(dt) {
   const sub = 8, h = dt / sub;
   for (let i = 0; i < sub; i++) {
     const r = stepPhysics(h);
+    if (r && r !== 'tree') S.events.push({ type: r, disc: S.disc, throw: S.throws });
     if (r === 'made') { onMade(); return; }
-    if (r === 'pole') flashBanner('Clang!', 'Off the pole', 1000);
-    if (r === 'spit') flashBanner('Spit out!', 'Too much heat', 1000);
+    const tip = S.disc === 'putter' ? 'Ease off a little' : 'Too much heat — try the Putter';
+    if (r === 'pole') flashBanner('Clang!', S.disc === 'putter' ? 'Off the pole' : tip, 1200);
+    if (r === 'spit') flashBanner('Spit out!', tip, 1200);
   }
   S.trail.push(S.pos.clone()); if (S.trail.length > TRAIL_N) S.trail.shift();
   const moving = S.vel.length() > 0.05 || S.pos.y > DISC_R + 0.01;
@@ -464,8 +511,8 @@ function onLanded() {
   S.restTimer = 0;
   S.lie.set(S.pos.x, 0, S.pos.z);
   const d = distToBasket();
-  flashBanner(`${d.toFixed(1)} m to go`, `Throw ${S.throws + 1} next`, 1500);
   resetToLie();
+  flashBanner(`${d.toFixed(1)} m to go`, `Throw ${S.throws + 1} next · ${DISCS[S.suggested].name} suggested`, 1500);
 }
 
 function onMade() {
@@ -516,6 +563,8 @@ addEventListener('keydown', e => {
   if (k === 'r') restart();
   if (k === 'q' && !e.repeat) cycleCurve(-0.5);
   if (k === 'e' && !e.repeat) cycleCurve(0.5);
+  const byKey = DISC_ORDER.find(d => DISCS[d].hotkey === e.key);
+  if (byKey && !e.repeat) selectDisc(byKey);
   if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) e.preventDefault();
 });
 addEventListener('keyup', e => {
@@ -551,6 +600,9 @@ holdButton($('aimright'), () => { keys['_touchright'] = true; }, () => { keys['_
 for (const b of document.querySelectorAll('#curvebtns button')) {
   b.addEventListener('pointerdown', e => { e.preventDefault(); const c = Number(b.dataset.curve); S.curve = c === 0 ? 0 : (Math.sign(S.curve) === Math.sign(c) ? THREE.MathUtils.clamp(S.curve + c, -1, 1) : c); });
 }
+for (const b of document.querySelectorAll('#discbtns button')) {
+  b.addEventListener('pointerdown', e => { e.preventDefault(); selectDisc(b.dataset.disc); });
+}
 $('restartbtn').addEventListener('click', () => restart());
 ui.again.addEventListener('click', () => restart());
 function fitView() {
@@ -561,6 +613,7 @@ function fitView() {
 addEventListener('resize', fitView); addEventListener('orientationchange', fitView); fitView();
 
 const curveBtns = [...document.querySelectorAll('#curvebtns button')];
+const discBtns = [...document.querySelectorAll('#discbtns button')];
 // ---------- Loop ----------
 let last = performance.now();
 function frame(now) {
@@ -577,10 +630,16 @@ function frame(now) {
 
   // Visuals
   disc.position.copy(S.phase === 'aim' || S.phase === 'charging' ? new THREE.Vector3(S.lie.x, RELEASE_HEIGHT, S.lie.z) : S.pos);
+  for (const [k, m] of Object.entries(discMeshes)) m.visible = k === S.disc;
   disc.rotation.y += dt * (S.phase === 'flying' ? 25 : 1);
   disc.rotation.z = S.phase === 'flying' ? -S.curveUsed * 0.35 + 0.1 : 0;
   aimArrow.visible = S.phase === 'aim' || S.phase === 'charging';
   aimArrow.position.set(S.lie.x, 0, S.lie.z); aimArrow.rotation.y = -S.yaw;
+  rangeRing.visible = aimArrow.visible;
+  if (rangeRing.visible) {
+    const rp = dirFromYaw(S.yaw).multiplyScalar(DISC_RANGE[S.disc]).add(S.lie);
+    rangeRing.position.set(rp.x, 0.06, rp.z); rangeRing.material.color.setHex(DISCS[S.disc].color);
+  }
   const arr = trailGeom.attributes.position.array;
   for (let i = 0; i < TRAIL_N; i++) {
     const t = S.trail[Math.min(i, S.trail.length - 1)] || disc.position;
@@ -597,6 +656,11 @@ function frame(now) {
   ui.throws.textContent = S.throws;
   ui.dist.textContent = `${(S.phase === 'flying' ? Math.hypot(S.pos.x - BASKET.x, S.pos.z - BASKET.z) : distToBasket()).toFixed(1)} m`;
   ui.curve.textContent = CURVE_NAMES[String(S.curve)];
+  const D = DISCS[S.disc];
+  ui.disc.textContent = D.name; ui.disc.style.color = D.css;
+  ui.discHint.textContent = S.phase !== 'aim' && S.phase !== 'charging' ? '' : S.disc === S.suggested ? 'suggested' : `suggested: ${DISCS[S.suggested].short}`;
+  const canSwitch = S.phase === 'aim';
+  for (const b of discBtns) { b.classList.toggle('on', b.dataset.disc === S.disc); b.classList.toggle('suggested', b.dataset.disc === S.suggested); b.disabled = !canSwitch; }
   for (const b of curveBtns) { const c = Number(b.dataset.curve); b.classList.toggle('on', c === 0 ? S.curve === 0 : Math.sign(S.curve) === Math.sign(c)); }
   ui.fill.style.width = `${(S.phase === 'charging' || S.phase === 'flying' ? S.power : 0) * 100}%`;
 
@@ -610,8 +674,8 @@ requestAnimationFrame(frame);
 
 // ---------- Test / debug hook ----------
 window.__game = {
-  state: () => ({ phase: S.phase, throws: S.throws, yaw: S.yaw, curve: S.curve, power: S.power,
-    lie: { x: S.lie.x, z: S.lie.z }, disc: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
+  state: () => ({ disc: S.disc, suggested: S.suggested, events: S.events.slice(-10), lastThrow: S.lastThrow && { disc: S.lastThrow.disc, power: S.lastThrow.power, speed: S.lastThrow.speed }, phase: S.phase, throws: S.throws, yaw: S.yaw, curve: S.curve, power: S.power,
+    lie: { x: S.lie.x, z: S.lie.z }, discPos: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
     distToBasket: distToBasket(), result: S.result, banner: ui.banner.classList.contains('hidden') ? null : ui.btext.textContent + ' | ' + ui.bsub.textContent }),
   basket: { x: BASKET.x, z: BASKET.z },
   placeDisc(x, z) { S.lie.set(x, 0, z); resetToLie(); snapCamera(); },
@@ -620,6 +684,10 @@ window.__game = {
   setCurve(c) { S.curve = c; },
   throwWith(power, curve) { return throwDisc(power, curve ?? S.curve); },
   restart,
+  discs: DISC_ORDER,
+  selectDisc,
+  // Tests: run the current flight to the end instantly (same physics, fixed 1/60 s steps)
+  fastForward() { let n = 0; while (S.phase === 'flying' && n++ < 60 * 40) updateFlight(1 / 60); return this.state(); },
 };
 </script>
 </body>
