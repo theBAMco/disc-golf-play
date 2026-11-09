@@ -54,11 +54,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 
 #help .touch { display: none; }
 
 #controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-  display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; grid-template-areas: "disc power throw" "aim curve throw"; align-items: end; gap: 10px 14px; }
-#powerwrap { grid-area: power; justify-self: center; width: min(360px, 100%); }
-#power { position: relative; height: 24px; border-radius: 12px; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.85); overflow: hidden; }
-#powerfill { height: 100%; width: 0%; background: linear-gradient(90deg, #5be37d, #ffe066 60%, #ff6b4a); }
-#powerlabel { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: 12px; letter-spacing: .2em; }
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; grid-template-areas: "disc curve aim"; align-items: end; gap: 10px 14px; }
 #curvebtns { grid-area: curve; justify-self: center; display: flex; gap: 6px; }
 #curvebtns button { padding: 9px 12px; font-size: 14px; background: rgba(255,255,255,.85); box-shadow: 0 3px 0 #999; }
 #curvebtns button.on { background: #ffe066; box-shadow: 0 3px 0 #c9a800; }
@@ -74,8 +70,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 
 #dischint:not(:empty)::before { content: "★ "; color: #ffe066; }
 #aimbtns { grid-area: aim; display: flex; gap: 8px; }
 #aimbtns button { width: 58px; height: 58px; font-size: 22px; background: rgba(255,255,255,.9); box-shadow: 0 3px 0 #999; }
-#throwbtn { grid-area: throw; width: 108px; height: 108px; border-radius: 50% !important; font-size: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
-#throwbtn small { font-size: 10px; font-weight: 700; opacity: .75; }
 
 #banner { position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%); text-align: center; background: rgba(10,40,20,.72); padding: 18px 30px; border-radius: 20px; width: max-content; max-width: 90vw; }
 #bannertext { font-size: 44px; font-weight: 900; color: #ffe066; }
@@ -104,23 +98,29 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
 }
 /* Portrait phone: controls stack under the play area */
 @media (max-width: 600px) and (orientation: portrait) {
-  #controls { grid-template-columns: auto 1fr auto; grid-template-areas: "power power power" "curve curve curve" "disc disc disc" "aim . throw"; gap: 10px; }
-  #powerwrap { width: 100%; }
+  #controls { grid-template-columns: 1fr auto; grid-template-areas: "curve curve" "disc aim"; gap: 10px; }
   #curvebtns { width: 100%; } #curvebtns button { flex: 1; padding: 10px 4px; }
   #discbtns { width: 100%; } #discbtns button { flex: 1; justify-content: center; padding: 10px 4px; }
-  #throwbtn { width: 112px; height: 112px; }
-  #aimbtns button { width: 64px; height: 64px; }
+  #aimbtns { gap: 6px; } #aimbtns button { width: 50px; height: 46px; font-size: 18px; }
 }
 /* Landscape phone: short screen, keep the middle clear */
 @media (max-height: 500px) and (orientation: landscape) {
   #controls { gap: 6px 10px; }
-  #throwbtn { width: 92px; height: 92px; font-size: 17px; }
   #aimbtns button { width: 52px; height: 52px; }
   #curvebtns button { padding: 7px 10px; font-size: 13px; }
   #discbtns button { padding: 7px 9px; font-size: 13px; }
-  #power { height: 20px; }
   #help { display: none; }
 }
+
+/* Pull-back throw: anchor dot where you pressed, a rubber band to your finger, and a power readout */
+#pullanchor, #pullband, #pullread { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 4; }
+#pullanchor { width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 3px solid #fff; background: none; box-shadow: 0 0 0 2px rgba(0,0,0,.3), inset 0 0 0 2px rgba(0,0,0,.3); }
+#pullband { height: 4px; margin-top: -2px; transform-origin: 0 50%; background: repeating-linear-gradient(90deg, rgba(255,255,255,.95) 0 8px, rgba(255,255,255,.2) 8px 13px); border-radius: 2px; box-shadow: 0 0 2px rgba(0,0,0,.6); }
+#pullband.bad { background: rgba(255,255,255,.35); }
+#pullread { left: 50%; top: max(24%, calc(env(safe-area-inset-top) + 150px)); transform: translate(-50%, -50%); white-space: nowrap; background: rgba(10,40,20,.78); padding: 6px 12px; border-radius: 12px; font-size: 15px; text-align: center; }
+#pullread b { font-size: 22px; font-weight: 900; } #pullread span { color: #fff; font-weight: 700; opacity: .9; }
+body.charging #help { visibility: hidden; }
+@media (max-height: 500px) { #pullread { top: 26%; } }
 </style>
   <script type="importmap">
     { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
@@ -142,12 +142,11 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
       <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcancel" class="ghost">Cancel</button></div>
       <div id="help">
-        <span class="desk"><b>Aim</b> ← → / A D (or drag)<br /><b>Throw</b> hold SPACE, release<br /><b>Curve</b> Q hyzer · E anhyzer<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
-        <span class="touch">Drag to aim · pick a disc<br />Hold THROW, let go</span>
+        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q hyzer · E anhyzer<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
+        <span class="touch"><b>Pull back</b> anywhere to throw<br />Arrow = aim &amp; power · let go<br />Slide back to start to cancel</span>
       </div>
     </div>
     <div id="controls">
-      <div id="powerwrap"><div id="power"><div id="powerfill"></div><span id="powerlabel">POWER</span></div></div>
       <div id="curvebtns" role="group" aria-label="Curve">
         <button data-curve="-0.5" id="hyzerbtn">↰ Hyzer</button>
         <button data-curve="0" id="straightbtn">Straight</button>
@@ -162,8 +161,8 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
         <button id="aimleft" aria-label="Aim left">◀</button>
         <button id="aimright" aria-label="Aim right">▶</button>
       </div>
-      <button id="throwbtn" title="Hold to charge, release to throw">THROW<small>hold &amp; release</small></button>
     </div>
+    <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
     <div id="banner" class="hidden"><div id="bannertext"></div><div id="bannersub"></div><button id="nextbtn" class="hidden">Next hole ▶</button><button id="againbtn" class="hidden">Play again</button></div>
     <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardclose" class="ghost">Close</button></div></div></div>
   </div>
@@ -258,11 +257,11 @@ const MAX_OVER_PAR = 4; // pick up at par + 4 so a round can't get stuck
 // The three discs. Speeds in m/s. Power p (0..1) maps to speed vmin + (vmax - vmin) * sqrt(p),
 // which makes carry distance grow roughly in step with power (0.75 power ≈ 72% of max range).
 // lift/drag shape the glide, fade pulls left late in the flight, turn scales the Q/E curve,
-// hot is the fastest the chains will hold, meter is the power-meter speed (cycles per second).
+// hot is the fastest the chains will hold.
 const DISCS = {
-  driver: { key: 'driver', name: 'Driver', short: 'Driver', hotkey: '1', color: 0xff7a1a, css: '#ff7a1a', vmin: 4, vmax: 30.5, l0: 4, l1: 8, liftK: 0.0085, liftMax: 8.5, dragK: 0.0045, drag0: 0.45, fade: 20, turn: 4.5, hot: 9, meter: 0.75, look: { r: 1.65, rb: 1.25, h: 0.035 } },
-  mid:    { key: 'mid', name: 'Midrange', short: 'Mid', hotkey: '2', color: 0x3fb7ff, css: '#3fb7ff', vmin: 3, vmax: 23.5, l0: 5, l1: 9, liftK: 0.012, liftMax: 8.0, dragK: 0.0055, drag0: 0.4, fade: 7, turn: 3.5, hot: 10.5, meter: 0.7, look: { r: 1.55, rb: 1.4, h: 0.05 } },
-  putter: { key: 'putter', name: 'Putter', short: 'Putter', hotkey: '3', color: 0xc77dff, css: '#c77dff', vmin: 2.5, vmax: 15, l0: 6, l1: 12, liftK: 0.03, liftMax: 7.5, dragK: 0.008, drag0: 0.35, fade: 1.5, turn: 2, hot: 14, meter: 0.45, look: { r: 1.5, rb: 1.48, h: 0.07 } },
+  driver: { key: 'driver', name: 'Driver', short: 'Driver', hotkey: '1', color: 0xff7a1a, css: '#ff7a1a', vmin: 4, vmax: 30.5, l0: 4, l1: 8, liftK: 0.0085, liftMax: 8.5, dragK: 0.0045, drag0: 0.45, fade: 20, turn: 4.5, hot: 9, look: { r: 1.65, rb: 1.25, h: 0.035 } },
+  mid:    { key: 'mid', name: 'Midrange', short: 'Mid', hotkey: '2', color: 0x3fb7ff, css: '#3fb7ff', vmin: 3, vmax: 23.5, l0: 5, l1: 9, liftK: 0.012, liftMax: 8.0, dragK: 0.0055, drag0: 0.4, fade: 7, turn: 3.5, hot: 10.5, look: { r: 1.55, rb: 1.4, h: 0.05 } },
+  putter: { key: 'putter', name: 'Putter', short: 'Putter', hotkey: '3', color: 0xc77dff, css: '#c77dff', vmin: 2.5, vmax: 15, l0: 6, l1: 12, liftK: 0.03, liftMax: 7.5, dragK: 0.008, drag0: 0.35, fade: 1.5, turn: 2, hot: 14, look: { r: 1.5, rb: 1.48, h: 0.07 } },
 };
 const DISC_ORDER = ['driver', 'mid', 'putter'];
 function suggestDisc(dist) { return dist > 58 ? 'driver' : dist > 31 ? 'mid' : 'putter'; }
@@ -548,6 +547,31 @@ const aimArrow = new THREE.Group();
   const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.0, 3), m); head.rotation.x = -Math.PI / 2; head.position.set(0, 0.05, -14.6); aimArrow.add(head);
 }
 scene.add(aimArrow);
+// Pull-back power arrow: grows out the front of the disc along the aim, green → yellow → red.
+const powerArrow = new THREE.Group();
+// opaque + no depth test: always visible over trees and hills, drawn in renderOrder before the disc
+const PA = { fill: new THREE.MeshBasicMaterial({ color: 0x5be37d, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+  edge: new THREE.MeshBasicMaterial({ color: 0x173a22, depthTest: false, depthWrite: false, side: THREE.DoubleSide }) };
+{
+  const shaft = g => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), g); m.rotation.x = -Math.PI / 2; return m; };
+  const head = (g, w, l) => { const sh = new THREE.Shape(); sh.moveTo(-w, 0); sh.lineTo(w, 0); sh.lineTo(0, l); sh.closePath(); const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), g); m.rotation.x = -Math.PI / 2; return m; };
+  PA.shaftEdge = shaft(PA.edge); PA.shaft = shaft(PA.fill); PA.headEdge = head(PA.edge, 0.95, 1.6); PA.head = head(PA.fill, 0.7, 1.25);
+  PA.shaftEdge.renderOrder = PA.headEdge.renderOrder = 10; PA.shaft.renderOrder = PA.head.renderOrder = 11;
+  powerArrow.add(PA.shaftEdge, PA.shaft, PA.headEdge, PA.head);
+  disc.traverse(o => { o.renderOrder = 12; }); // the disc draws over its arrow
+}
+scene.add(powerArrow);
+const ARROW_GREEN = new THREE.Color(0x5be37d), ARROW_YELLOW = new THREE.Color(0xffe066), ARROW_RED = new THREE.Color(0xff4d4d);
+function arrowColor(p) { return p < 0.5 ? ARROW_GREEN.clone().lerp(ARROW_YELLOW, p / 0.5) : ARROW_YELLOW.clone().lerp(ARROW_RED, (p - 0.5) / 0.5); }
+function layoutPowerArrow(p) {
+  // starts just in front of the disc, at disc height, and grows forward with power
+  const L = 0.8 + 14 * p, start = 0.35, y = RELEASE_HEIGHT - 0.12, w = 0.26 + 0.12 * p;
+  PA.shaft.scale.set(w, L, 1); PA.shaft.position.set(0, y, -start);
+  PA.shaftEdge.scale.set(w + 0.22, L + 0.2, 1); PA.shaftEdge.position.set(0, y - 0.01, -start + 0.1);
+  const hs = 0.8 + 0.6 * p; PA.head.scale.setScalar(hs); PA.headEdge.scale.setScalar(hs);
+  PA.head.position.set(0, y, -start - L + 0.05); PA.headEdge.position.set(0, y - 0.01, -start - L + 0.05 + 0.2 * hs);
+  PA.fill.color.copy(arrowColor(p));
+}
 const confetti = [];
 function burstConfetti() {
   const colors = [0xffe066, 0xff4d6d, 0x5be37d, 0x4dabf7, 0xffffff];
@@ -565,7 +589,7 @@ function clearConfetti() { for (const c of confetti) { scene.remove(c); c.geomet
 const $ = id => document.getElementById(id);
 const ui = {
   title: $('holetitle'), disc: $('discname'), discHint: $('dischint'), throws: $('throws'), dist: $('dist'), curve: $('curve'), total: $('total'),
-  fill: $('powerfill'), banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn'), next: $('nextbtn'),
+  banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn'), next: $('nextbtn'),
   card: $('scorecard'), cardBody: $('cardbody'), cardTitle: $('cardtitle'), cardSub: $('cardsub'), cardAgain: $('cardagain'), menu: $('restartmenu'),
 };
 const CURVE_NAMES = { '-1': 'Big hyzer', '-0.5': 'Hyzer', '0': 'Straight', '0.5': 'Anhyzer', '1': 'Big anhyzer' };
@@ -574,7 +598,7 @@ const COURSE = PARK_COURSE;
 const S = {
   phase: 'aim', // aim | charging | flying | holed | done
   holeIdx: 0, scores: Array(COURSE.holes.length).fill(null), practice: false,
-  lie: new THREE.Vector3(), prevLie: new THREE.Vector3(), yaw: 0, power: 0, chargeT: 0, curve: 0, throws: 0,
+  lie: new THREE.Vector3(), prevLie: new THREE.Vector3(), yaw: 0, power: 0, chargeT: 0, pull: null, charge: null, curve: 0, throws: 0,
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), v0: 0, dir0: new THREE.Vector3(), right0: new THREE.Vector3(),
   restTimer: 0, result: null, trail: [], lastThrow: null, flightTime: 0, penalties: 0,
   disc: 'driver', suggested: 'driver', D: DISCS.driver, events: [],
@@ -630,7 +654,7 @@ function loadHole(idx, { practice = false } = {}) {
 }
 
 function resetToLie(fromTee = false) {
-  S.phase = 'aim'; S.power = 0; S.chargeT = 0;
+  S.phase = 'aim'; S.power = 0; S.chargeT = 0; S.pull = null; S.charge = null; hidePullUI();
   S.lie.y = H.groundY(S.lie.x, S.lie.z);
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z); S.vel.set(0, 0, 0);
   S.yaw = yawToward(S.lie, fromTee ? H.teeAim : H.basket);
@@ -654,7 +678,7 @@ function throwDisc(power, curve = S.curve) {
   power = THREE.MathUtils.clamp(power, 0, 1);
   S.throws++;
   const D = S.D = DISCS[S.disc];
-  const q = Math.sqrt(power); // even distance growth across the meter
+  const q = Math.sqrt(power); // even distance growth across the power range
   const speed = D.vmin + q * (D.vmax - D.vmin);
   const launch = THREE.MathUtils.degToRad(D.l0 + q * D.l1);
   S.dir0.copy(dirFromYaw(S.yaw)); S.right0.set(Math.cos(S.yaw), 0, Math.sin(S.yaw));
@@ -869,7 +893,7 @@ function hideMenu() { ui.menu.classList.add('hidden'); }
 // ---------- Camera ----------
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 function desiredAimCam() {
-  const d = dirFromYaw(S.yaw);
+  const d = dirFromYaw(S.pull ? S.pull.baseYaw : S.yaw); // camera holds still while you pull
   const base = S.lie.clone();
   const near = distToBasket() < 15;
   const back = near ? 4 : 6, up = near ? 2.2 : 2.8;
@@ -897,11 +921,62 @@ function updateCamera(dt) {
 }
 
 // ---------- Input ----------
-function startCharge() { if (S.phase === 'aim') { S.phase = 'charging'; S.chargeT = 0; S.chargeStart = performance.now(); hideMenu(); } }
+// Power from how far you pull (or how long Space is held), eased so short pulls are precise for putts.
+const POWER_EASE = 1.5, CHARGE_FULL_S = 1.5;
+const easePower = f => Math.pow(THREE.MathUtils.clamp(f, 0, 1), POWER_EASE);
+const PULL = { aimGain: 0.7, aimMax: 1.1, maxFrac: 0.38, deadFrac: 0.045, maxBackAngle: 1.75 };
+function pullMetrics() { const m = Math.min(innerWidth, innerHeight); return { max: m * PULL.maxFrac, dead: Math.max(12, m * PULL.deadFrac) }; }
+// Keyboard: hold Space, power fills smoothly to 100% (no oscillation), release throws.
+function startCharge() { if (S.phase === 'aim' && !S.pull) { S.phase = 'charging'; S.charge = { start: performance.now() }; S.power = 0; hideMenu(); dismissIntro(); } }
+function keyChargePower() { return easePower((performance.now() - S.charge.start) / 1000 / CHARGE_FULL_S); }
 function releaseCharge() {
-  if (S.phase !== 'charging') return;
-  const t = (performance.now() - S.chargeStart) / 1000; // read the meter at the moment of release
-  throwDisc(1 - Math.abs(((t * DISCS[S.disc].meter * 2) % 2) - 1));
+  if (S.phase !== 'charging' || !S.charge) return;
+  const p = keyChargePower(); S.charge = null;
+  if (p < 0.005) { S.phase = 'aim'; S.power = 0; return; }
+  throwDisc(p);
+}
+// Pointer / touch: press on the field, pull back, release. Aim is opposite the pull, like a slingshot.
+function startPull(e) {
+  if (S.phase !== 'aim' || S.pull) return false;
+  S.pull = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, baseYaw: S.yaw, power: 0, offset: 0, valid: false, frac: 0 };
+  S.phase = 'charging'; S.power = 0; hideMenu(); dismissIntro(); updatePull(); return true;
+}
+function updatePull() {
+  const P = S.pull; if (!P) return;
+  const dx = P.x - P.x0, dy = P.y - P.y0, len = Math.hypot(dx, dy), { max, dead } = pullMetrics();
+  const a = Math.atan2(-dx, dy); // 0 = straight back (down the screen); pulling back-left (+) aims right
+  P.valid = len > dead && Math.abs(a) < PULL.maxBackAngle;
+  P.frac = P.valid ? THREE.MathUtils.clamp((len - dead) / (max - dead), 0, 1) : 0;
+  P.power = easePower(P.frac);
+  P.offset = P.valid ? THREE.MathUtils.clamp(a * PULL.aimGain, -PULL.aimMax, PULL.aimMax) : 0;
+  S.yaw = P.baseYaw + P.offset; S.power = P.power;
+}
+function endPull(e, cancel = false) {
+  const P = S.pull; if (!P || (e && e.pointerId !== P.id)) return;
+  if (e) { P.x = e.clientX; P.y = e.clientY; updatePull(); }
+  S.pull = null; hidePullUI();
+  if (cancel || !P.valid || P.power < 0.005) { S.phase = 'aim'; S.power = 0; S.yaw = P.baseYaw; S.events.push({ type: 'pullcancel' }); return; }
+  S.yaw = P.baseYaw + P.offset;
+  throwDisc(P.power);
+}
+const pullUI = { band: document.getElementById('pullband'), dot: document.getElementById('pullanchor'), read: document.getElementById('pullread') };
+function dismissIntro() { if (ui.banner.classList.contains('intro')) { clearTimeout(bannerTimer); hideBanner(); } }
+function hidePullUI() { for (const el of Object.values(pullUI)) el && el.classList.add('hidden'); document.body.classList.remove('charging'); }
+function drawPullUI() {
+  const charging = S.phase === 'charging';
+  if (!charging) { hidePullUI(); return; }
+  const est = Math.max(1, DISC_RANGE[S.disc] * S.power);
+  const pct = Math.round(S.power * 100);
+  const valid = S.pull ? S.pull.valid : true;
+  pullUI.read.innerHTML = valid ? `<b>${pct}%</b> <span>~${Math.round(est)} m</span>` : '<b>Pull back</b> <span>to throw · let go here to cancel</span>';
+  pullUI.read.style.color = valid ? '#' + arrowColor(S.power).getHexString() : '#fff';
+  pullUI.read.classList.remove('hidden'); document.body.classList.add('charging');
+  if (S.pull) {
+    const P = S.pull, dx = P.x - P.x0, dy = P.y - P.y0, len = Math.hypot(dx, dy);
+    pullUI.dot.style.transform = `translate(${P.x0}px, ${P.y0}px)`; pullUI.dot.classList.remove('hidden');
+    pullUI.band.style.width = `${len}px`; pullUI.band.style.transform = `translate(${P.x0}px, ${P.y0}px) rotate(${Math.atan2(dy, dx)}rad)`;
+    pullUI.band.classList.toggle('hidden', len < 2); pullUI.band.classList.toggle('bad', !valid);
+  } else { pullUI.dot.classList.add('hidden'); pullUI.band.classList.add('hidden'); }
 }
 function cycleCurve(delta) { S.curve = THREE.MathUtils.clamp(S.curve + delta, -1, 1); }
 
@@ -925,16 +1000,17 @@ addEventListener('keyup', e => {
 });
 const coarse = matchMedia('(pointer: coarse)').matches;
 if (coarse) document.body.classList.add('coarse');
-let drag = null;
 const canvas = renderer.domElement;
-canvas.addEventListener('pointerdown', e => { hideMenu(); if (!drag) drag = { id: e.pointerId, x: e.clientX }; });
-addEventListener('pointermove', e => {
-  if (!drag || e.pointerId !== drag.id) return;
-  if (S.phase === 'aim' || S.phase === 'charging') S.yaw += (e.clientX - drag.x) * (coarse ? 0.0035 : 0.004);
-  drag.x = e.clientX;
+canvas.addEventListener('pointerdown', e => {
+  hideMenu();
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (S.pull && e.pointerId !== S.pull.id) { endPull(null, true); return; } // a second finger cancels (no accidental pinch throws)
+  if (startPull(e)) { try { canvas.setPointerCapture(e.pointerId); } catch {} }
 });
-const endDrag = e => { if (drag && e.pointerId === drag.id) drag = null; };
-addEventListener('pointerup', endDrag); addEventListener('pointercancel', endDrag);
+addEventListener('pointermove', e => { if (S.pull && e.pointerId === S.pull.id) { S.pull.x = e.clientX; S.pull.y = e.clientY; updatePull(); } });
+addEventListener('pointerup', e => endPull(e));
+addEventListener('pointercancel', e => endPull(e, true));
+addEventListener('blur', () => { endPull(null, true); if (S.phase === 'charging' && S.charge) { S.charge = null; S.phase = 'aim'; S.power = 0; } });
 for (const ev of ['contextmenu', 'gesturestart', 'gesturechange', 'selectstart', 'dragstart']) addEventListener(ev, e => e.preventDefault());
 addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 addEventListener('dblclick', e => e.preventDefault());
@@ -944,7 +1020,6 @@ function holdButton(el, down, up) {
   const release = () => { if (el.classList.contains('held')) { el.classList.remove('held'); up(); } };
   el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release); el.addEventListener('lostpointercapture', release);
 }
-holdButton($('throwbtn'), startCharge, releaseCharge);
 holdButton($('aimleft'), () => { keys['_touchleft'] = true; }, () => { keys['_touchleft'] = false; });
 holdButton($('aimright'), () => { keys['_touchright'] = true; }, () => { keys['_touchright'] = false; });
 for (const b of document.querySelectorAll('#curvebtns button')) {
@@ -977,12 +1052,9 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (S.phase === 'aim' || S.phase === 'charging') {
     const turn = (keys['arrowleft'] || keys['a'] || keys['_touchleft'] ? -1 : 0) + (keys['arrowright'] || keys['d'] || keys['_touchright'] ? 1 : 0);
-    S.yaw += turn * dt * 0.9;
+    if (S.pull) { S.pull.baseYaw += turn * dt * 0.9; updatePull(); } else S.yaw += turn * dt * 0.9;
   }
-  if (S.phase === 'charging') {
-    S.chargeT = (now - S.chargeStart) / 1000; // wall clock, so a slow phone doesn't slow the meter
-    S.power = 1 - Math.abs(((S.chargeT * DISCS[S.disc].meter * 2) % 2) - 1); // ping-pong 0→1→0
-  }
+  if (S.phase === 'charging' && S.charge) S.power = keyChargePower(); // wall clock, fills to 100% and holds
   if (S.phase === 'flying') updateFlight(dt);
 
   const aiming = S.phase === 'aim' || S.phase === 'charging';
@@ -990,11 +1062,16 @@ function frame(now) {
   for (const [k, m] of Object.entries(discMeshes)) m.visible = k === S.disc;
   disc.rotation.y += dt * (S.phase === 'flying' ? 25 : 1);
   disc.rotation.z = S.phase === 'flying' ? -S.curveUsed * 0.35 + 0.1 : 0;
-  aimArrow.visible = aiming;
+  const showPower = S.phase === 'charging' && (!S.pull || S.pull.valid);
+  aimArrow.visible = aiming && !showPower;
   aimArrow.position.set(S.lie.x, S.lie.y, S.lie.z); aimArrow.rotation.y = -S.yaw;
+  powerArrow.visible = showPower;
+  if (showPower) { powerArrow.position.set(S.lie.x, S.lie.y, S.lie.z); powerArrow.rotation.y = -S.yaw; layoutPowerArrow(S.power); }
+  drawPullUI();
   rangeRing.visible = aiming;
   if (aiming) {
-    const rp = dirFromYaw(S.yaw).multiplyScalar(DISC_RANGE[S.disc]).add(S.lie);
+    // while charging the ring marks the rough straight carry at this power; otherwise this disc's full range
+    const rp = dirFromYaw(S.yaw).multiplyScalar(showPower ? Math.max(1.5, DISC_RANGE[S.disc] * S.power) : DISC_RANGE[S.disc]).add(S.lie);
     rangeRing.position.set(rp.x, H.groundY(rp.x, rp.z) + 0.07, rp.z); rangeRing.material.color.setHex(DISCS[S.disc].color);
   }
   const arr = trailGeom.attributes.position.array;
@@ -1022,7 +1099,6 @@ function frame(now) {
   ui.disc.textContent = D.name; ui.disc.style.color = D.css;
   ui.discHint.textContent = !aiming ? '' : S.disc === S.suggested ? 'suggested' : `suggested: ${DISCS[S.suggested].short}`;
   for (const b of discBtns) { b.classList.toggle('on', b.dataset.disc === S.disc); b.classList.toggle('suggested', b.dataset.disc === S.suggested); b.disabled = S.phase !== 'aim'; }
-  ui.fill.style.width = `${(S.phase === 'charging' || S.phase === 'flying' ? S.power : 0) * 100}%`;
 
   updateCamera(dt);
   renderer.render(scene, camera);
@@ -1037,6 +1113,9 @@ window.__game = {
   state: () => ({ disc: S.disc, suggested: S.suggested, events: S.events.slice(-10), phase: S.phase, throws: S.throws, penalties: S.penalties,
     lastThrow: S.lastThrow && { disc: S.lastThrow.disc, power: S.lastThrow.power, speed: S.lastThrow.speed },
     yaw: S.yaw, curve: S.curve, power: S.power, maxY: S.maxY,
+    pull: S.pull && { valid: S.pull.valid, frac: S.pull.frac, power: S.pull.power, offset: S.pull.offset, baseYaw: S.pull.baseYaw },
+    arrow: powerArrow.visible ? { length: PA.shaft.scale.y, color: '#' + PA.fill.color.getHexString(), yaw: S.yaw } : null,
+    ring: rangeRing.visible ? { x: rangeRing.position.x, z: rangeRing.position.z } : null,
     lie: { x: S.lie.x, y: S.lie.y, z: S.lie.z }, discPos: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
     distToBasket: distToBasket(), result: S.result, hole: S.holeIdx + 1, practice: S.practice,
     banner: ui.banner.classList.contains('hidden') ? null : ui.btext.textContent + ' | ' + ui.bsub.textContent,
@@ -1058,6 +1137,10 @@ window.__game = {
   setCurve(c) { S.curve = c; },
   throwWith(power, curve) { return throwDisc(power, curve ?? S.curve); },
   discs: DISC_ORDER, selectDisc, discRange: DISC_RANGE,
+  pullMetrics, easePower, PULL, CHARGE_FULL_S,
+  // screen offset (from the press point) that gives this power and aim offset; used by tests to drag precisely
+  pullFor(power, offset = 0) { const { max, dead } = pullMetrics(); const f = Math.pow(power, 1 / POWER_EASE), len = dead + f * (max - dead), a = offset / PULL.aimGain; return { dx: -Math.sin(a) * len, dy: Math.cos(a) * len }; },
+  screenOf(x, z) { const v = new THREE.Vector3(x, H.groundY(x, z), z).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; },
   simulate: (o) => simulateThrow(o),
   yawToBasket: () => yawToward(S.lie, H.basket),
   fastForward() { let n = 0; while (S.phase === 'flying' && n++ < 60 * 40) updateFlight(1 / 60); return this.state(); },
