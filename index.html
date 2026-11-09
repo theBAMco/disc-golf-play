@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#3d8be0" />
+  <title>Disc Golf Lab — Hole 1</title>
+  <link rel="icon" href="data:," />
+  <style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 0; background: #87c5f0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  touch-action: none; overscroll-behavior: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+#app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5);
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+#hud button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  font: inherit; font-weight: 800; border: 0; border-radius: 12px; cursor: pointer; color: #143; background: #ffe066; box-shadow: 0 3px 0 #c9a800; }
+#hud button:active, #hud button.held { transform: translateY(2px); box-shadow: 0 1px 0 #c9a800; }
+.panel { background: rgba(10,40,20,.55); border-radius: 14px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+
+#scorebox { position: absolute; top: inherit; left: 0; margin: 0; background: rgba(10,40,20,.55); border-radius: 14px; padding: 12px 16px; min-width: 190px; }
+#scorebox { top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); }
+#scorebox .title { font-weight: 800; letter-spacing: .08em; font-size: 14px; margin-bottom: 6px; color: #ffe066; }
+#scorebox .row { display: flex; justify-content: space-between; gap: 16px; font-size: 16px; margin: 2px 0; }
+
+#topright { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+#restartbtn { padding: 10px 16px; background: #fff !important; box-shadow: 0 3px 0 #bbb !important; }
+#help { background: rgba(10,40,20,.55); border-radius: 14px; padding: 10px 14px; font-size: 14px; line-height: 1.6; }
+#help .touch { display: none; }
+
+#controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; grid-template-areas: "aim power throw" "aim curve throw"; align-items: end; gap: 10px 14px; }
+#powerwrap { grid-area: power; justify-self: center; width: min(360px, 100%); }
+#power { position: relative; height: 24px; border-radius: 12px; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.85); overflow: hidden; }
+#powerfill { height: 100%; width: 0%; background: linear-gradient(90deg, #5be37d, #ffe066 60%, #ff6b4a); }
+#powerlabel { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: 12px; letter-spacing: .2em; }
+#curvebtns { grid-area: curve; justify-self: center; display: flex; gap: 6px; }
+#curvebtns button { padding: 9px 12px; font-size: 14px; background: rgba(255,255,255,.85); box-shadow: 0 3px 0 #999; }
+#curvebtns button.on { background: #ffe066; box-shadow: 0 3px 0 #c9a800; }
+#aimbtns { grid-area: aim; display: flex; gap: 8px; }
+#aimbtns button { width: 58px; height: 58px; font-size: 22px; background: rgba(255,255,255,.9); box-shadow: 0 3px 0 #999; }
+#throwbtn { grid-area: throw; width: 108px; height: 108px; border-radius: 50% !important; font-size: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+#throwbtn small { font-size: 10px; font-weight: 700; opacity: .75; }
+
+#banner { position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%); text-align: center; background: rgba(10,40,20,.72); padding: 18px 30px; border-radius: 20px; width: max-content; max-width: 90vw; }
+#bannertext { font-size: 44px; font-weight: 900; color: #ffe066; }
+#bannersub { font-size: 20px; margin: 6px 0 12px; }
+#againbtn { padding: 12px 22px; font-size: 18px; }
+.hidden { display: none !important; }
+
+/* Touch devices: short help */
+@media (pointer: coarse) { #help .desk { display: none; } #help .touch { display: inline; } #help { font-size: 13px; padding: 6px 10px; } }
+body.played #help .touch { display: none; } body.played.coarse #help { display: none; }
+
+/* Small screens (phones) */
+@media (max-width: 600px), (max-height: 500px) {
+  #scorebox { padding: 8px 10px; min-width: 0; border-radius: 12px; }
+  #scorebox .title { font-size: 11px; margin-bottom: 3px; }
+  #scorebox .row { font-size: 13px; gap: 10px; margin: 0; }
+  #restartbtn { padding: 8px 12px; font-size: 14px; }
+  #help { max-width: 46vw; text-align: right; }
+  #bannertext { font-size: 30px; } #bannersub { font-size: 15px; }
+}
+/* Portrait phone: controls stack under the play area */
+@media (max-width: 600px) and (orientation: portrait) {
+  #controls { grid-template-columns: auto 1fr auto; grid-template-areas: "power power power" "curve curve curve" "aim . throw"; gap: 10px; }
+  #powerwrap { width: 100%; }
+  #curvebtns { width: 100%; } #curvebtns button { flex: 1; padding: 10px 4px; }
+  #throwbtn { width: 112px; height: 112px; }
+  #aimbtns button { width: 64px; height: 64px; }
+}
+/* Landscape phone: short screen, keep the middle clear */
+@media (max-height: 500px) and (orientation: landscape) {
+  #controls { gap: 6px 10px; }
+  #throwbtn { width: 92px; height: 92px; font-size: 17px; }
+  #aimbtns button { width: 52px; height: 52px; }
+  #curvebtns button { padding: 7px 10px; font-size: 13px; }
+  #power { height: 20px; }
+  #help { display: none; }
+}
+</style>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="hud">
+    <div id="scorebox">
+      <div class="title">HOLE 1 · PAR 3</div>
+      <div class="row"><span>Throws</span><b id="throws">0</b></div>
+      <div class="row"><span>To basket</span><b id="dist">0 m</b></div>
+      <div class="row"><span>Curve</span><b id="curve">Straight</b></div>
+    </div>
+    <div id="topright">
+      <button id="restartbtn" aria-label="Restart hole">↻ Restart</button>
+      <div id="help">
+        <span class="desk"><b>Aim</b> ← → / A D (or drag)<br /><b>Throw</b> hold SPACE, release<br /><b>Curve</b> Q hyzer · E anhyzer<br /><b>Restart</b> R</span>
+        <span class="touch">Drag to aim<br />Hold THROW, let go</span>
+      </div>
+    </div>
+    <div id="controls">
+      <div id="powerwrap"><div id="power"><div id="powerfill"></div><span id="powerlabel">POWER</span></div></div>
+      <div id="curvebtns" role="group" aria-label="Curve">
+        <button data-curve="-0.5" id="hyzerbtn">↰ Hyzer</button>
+        <button data-curve="0" id="straightbtn">Straight</button>
+        <button data-curve="0.5" id="anhyzerbtn">Anhyzer ↱</button>
+      </div>
+      <div id="aimbtns">
+        <button id="aimleft" aria-label="Aim left">◀</button>
+        <button id="aimright" aria-label="Aim right">▶</button>
+      </div>
+      <button id="throwbtn" title="Hold to charge, release to throw">THROW<small>hold &amp; release</small></button>
+    </div>
+    <div id="banner" class="hidden"><div id="bannertext"></div><div id="bannersub"></div><button id="againbtn" class="hidden">Play again</button></div>
+  </div>
+  <script type="module">
+import * as THREE from 'three';
+
+// ---------- Hole layout (meters) ----------
+const PAR = 3;
+const TEE = new THREE.Vector3(0, 0, 0);
+const BASKET = new THREE.Vector3(6, 0, -78);
+const RELEASE_HEIGHT = 1.2;
+const DISC_R = 0.11;
+// Basket geometry used for both visuals and catch detection
+const BK = { trayY: 0.62, trayR: 0.55, chainTop: 1.4, chainR: 0.32, poleR: 0.05, bandY: 1.45 };
+// Tree obstacles near the fairway plus a seeded border forest
+const TREES = [
+  { x: -7, z: -22, s: 1.0 }, { x: 10, z: -33, s: 1.2 }, { x: -3, z: -47, s: 1.1 },
+  { x: 14, z: -58, s: 1.0 }, { x: -9, z: -66, s: 1.3 }, { x: 1, z: -64, s: 0.9 },
+  { x: 15, z: -84, s: 1.1 }, { x: -4, z: -92, s: 1.2 },
+];
+(function borderForest() {
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 70; i++) {
+    const side = i % 2 ? 1 : -1;
+    TREES.push({ x: side * (24 + rnd() * 30), z: 20 - rnd() * 140, s: 0.9 + rnd() * 0.8 });
+  }
+  for (let i = 0; i < 18; i++) TREES.push({ x: -40 + rnd() * 80, z: -108 - rnd() * 25, s: 0.9 + rnd() * 0.8 });
+})();
+
+// ---------- Renderer / scene ----------
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8fd0ff);
+scene.fog = new THREE.Fog(0x8fd0ff, 90, 220);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.05, 500);
+
+scene.add(new THREE.HemisphereLight(0xdff3ff, 0x3f7a2a, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1d0, 2.2);
+sun.position.set(-30, 60, 20);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 200 });
+sun.target.position.set(0, 0, -45);
+scene.add(sun, sun.target);
+
+// Sky dome gradient
+{
+  const g = new THREE.SphereGeometry(400, 32, 16);
+  const m = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new THREE.Color(0x3d8be0) }, bottom: { value: new THREE.Color(0xcdeeff) } },
+    vertexShader: 'varying vec3 p; void main(){ p = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 p; void main(){ float h = clamp(normalize(p).y*1.6,0.0,1.0); gl_FragColor = vec4(mix(bottom, top, h),1.0); }',
+  });
+  scene.add(new THREE.Mesh(g, m));
+}
+
+// Ground: rough + mown fairway strip
+{
+  const rough = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: 0x4f9a3a }));
+  rough.rotation.x = -Math.PI / 2; rough.receiveShadow = true; scene.add(rough);
+  const fwShape = new THREE.Shape();
+  fwShape.moveTo(-9, 6); fwShape.bezierCurveTo(-16, -30, -6, -60, -4, -90);
+  fwShape.lineTo(16, -90); fwShape.bezierCurveTo(18, -60, 14, -30, 9, 6); fwShape.lineTo(-9, 6);
+  const fw = new THREE.Mesh(new THREE.ShapeGeometry(fwShape), new THREE.MeshLambertMaterial({ color: 0x6cc04a }));
+  fw.rotation.x = -Math.PI / 2; fw.position.y = 0.01; fw.receiveShadow = true;
+  // ShapeGeometry is in XY; after rotating, shape Y maps to -Z, so flip
+  fw.scale.y = -1; fw.material.side = THREE.DoubleSide; scene.add(fw);
+  // Mowing stripes
+  for (let i = 0; i < 9; i++) {
+    const s = new THREE.Mesh(new THREE.PlaneGeometry(18, 5), new THREE.MeshLambertMaterial({ color: 0x77c955, transparent: true, opacity: 0.45 }));
+    s.rotation.x = -Math.PI / 2; s.position.set(2 + i * 0.6, 0.02, -8 - i * 10); s.receiveShadow = true; scene.add(s);
+  }
+  // Green circle around basket
+  const green = new THREE.Mesh(new THREE.CircleGeometry(10, 48), new THREE.MeshLambertMaterial({ color: 0x7fd65a }));
+  green.rotation.x = -Math.PI / 2; green.position.set(BASKET.x, 0.025, BASKET.z); green.receiveShadow = true; scene.add(green);
+  // Tee pad
+  const tee = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 4), new THREE.MeshLambertMaterial({ color: 0xb8b0a2 }));
+  tee.position.set(TEE.x, 0.06, TEE.z + 0.8); tee.receiveShadow = true; scene.add(tee);
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.08), new THREE.MeshLambertMaterial({ color: 0x2b5d8a }));
+  sign.position.set(-3.2, 1.2, 3.5); sign.castShadow = true; scene.add(sign);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2), new THREE.MeshLambertMaterial({ color: 0x5b4632 }));
+  post.position.set(-3.2, 0.5, 3.55); scene.add(post);
+}
+
+// Trees
+{
+  const trunkM = new THREE.MeshLambertMaterial({ color: 0x6b4a2f });
+  const leafMs = [0x2f7d32, 0x3a8f3a, 0x276b2b].map(c => new THREE.MeshLambertMaterial({ color: c }));
+  for (const [i, t] of TREES.entries()) {
+    const grp = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * t.s, 0.42 * t.s, 3 * t.s, 8), trunkM);
+    trunk.position.y = 1.5 * t.s; trunk.castShadow = true; grp.add(trunk);
+    for (let k = 0; k < 3; k++) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry((2.4 - k * 0.6) * t.s, 2.6 * t.s, 10), leafMs[(i + k) % 3]);
+      cone.position.y = (3.2 + k * 1.3) * t.s; cone.castShadow = true; grp.add(cone);
+    }
+    grp.position.set(t.x, 0, t.z); scene.add(grp);
+  }
+}
+
+// Basket
+{
+  const metal = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: 0.8, roughness: 0.35 });
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xffd23f, metalness: 0.3, roughness: 0.5 });
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(BK.poleR, BK.poleR, 1.7, 12), metal); pole.position.y = 0.85; g.add(pole);
+  const tray = new THREE.Mesh(new THREE.CylinderGeometry(BK.trayR, BK.trayR * 0.8, 0.22, 24, 1, true), yellow); tray.position.y = BK.trayY; g.add(tray);
+  const trayBottom = new THREE.Mesh(new THREE.CircleGeometry(BK.trayR * 0.8, 24), metal); trayBottom.rotation.x = -Math.PI / 2; trayBottom.position.y = BK.trayY - 0.1; g.add(trayBottom);
+  const band = new THREE.Mesh(new THREE.TorusGeometry(BK.trayR * 0.9, 0.035, 8, 32), yellow); band.rotation.x = Math.PI / 2; band.position.y = BK.bandY; g.add(band);
+  const chainM = new THREE.MeshStandardMaterial({ color: 0xe8ecf2, metalness: 0.9, roughness: 0.25 });
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    const top = new THREE.Vector3(Math.cos(a) * BK.trayR * 0.85, BK.bandY, Math.sin(a) * BK.trayR * 0.85);
+    const bot = new THREE.Vector3(Math.cos(a) * 0.09, BK.trayY + 0.05, Math.sin(a) * 0.09);
+    const mid = top.clone().lerp(bot, 0.5).multiplyScalar(1); mid.x *= 1.25; mid.z *= 1.25;
+    const curve = new THREE.QuadraticBezierCurve3(top, mid, bot);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 8, 0.012, 4), chainM));
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.position.copy(BASKET); scene.add(g);
+  // Flag on top so it reads from the tee
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.6), new THREE.MeshLambertMaterial({ color: 0xff4d6d, side: THREE.DoubleSide }));
+  flag.position.set(BASKET.x + 0.5, 2.9, BASKET.z); scene.add(flag);
+  const fpole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.6), metal); fpole.position.set(BASKET.x, 2.4, BASKET.z); scene.add(fpole);
+}
+
+// Disc + trail + aim arrow
+const disc = new THREE.Group();
+{
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R * 1.6, DISC_R * 1.4, 0.05, 28), new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.4 }));
+  body.castShadow = true; disc.add(body);
+  const stripe = new THREE.Mesh(new THREE.TorusGeometry(DISC_R * 1.0, 0.012, 6, 28), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  stripe.rotation.x = Math.PI / 2; stripe.position.y = 0.027; disc.add(stripe);
+}
+scene.add(disc);
+const TRAIL_N = 90;
+const trailGeom = new THREE.BufferGeometry();
+trailGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 3), 3));
+const trail = new THREE.Line(trailGeom, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 }));
+trail.frustumCulled = false; scene.add(trail);
+const aimArrow = new THREE.Group();
+{
+  const m = new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.85, depthWrite: false });
+  for (let i = 0; i < 7; i++) {
+    const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 1.1), m); dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.05, -(1.5 + i * 1.8)); aimArrow.add(dash);
+  }
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.0, 3), m); head.rotation.x = -Math.PI / 2; head.position.set(0, 0.05, -14.6); aimArrow.add(head);
+}
+scene.add(aimArrow);
+
+// Confetti
+const confetti = [];
+function burstConfetti() {
+  const colors = [0xffe066, 0xff4d6d, 0x5be37d, 0x4dabf7, 0xffffff];
+  for (let i = 0; i < 160; i++) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.09), new THREE.MeshBasicMaterial({ color: colors[i % 5], side: THREE.DoubleSide }));
+    m.position.set(BASKET.x, 1.4, BASKET.z);
+    m.userData.v = new THREE.Vector3((Math.random() - 0.5) * 6, 4 + Math.random() * 5, (Math.random() - 0.5) * 6);
+    m.userData.r = new THREE.Vector3(Math.random() * 8, Math.random() * 8, 0);
+    scene.add(m); confetti.push(m);
+  }
+}
+
+// ---------- Game state ----------
+const $ = id => document.getElementById(id);
+const ui = { throws: $('throws'), dist: $('dist'), curve: $('curve'), fill: $('powerfill'), banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn') };
+const CURVE_NAMES = { '-1': 'Big hyzer', '-0.5': 'Hyzer', '0': 'Straight', '0.5': 'Anhyzer', '1': 'Big anhyzer' };
+
+const S = {
+  phase: 'aim', // aim | charging | flying | landed | made
+  lie: TEE.clone(), yaw: 0, power: 0, chargeT: 0, curve: 0, throws: 0,
+  pos: new THREE.Vector3(), vel: new THREE.Vector3(), v0: 0, dir0: new THREE.Vector3(), right0: new THREE.Vector3(),
+  restTimer: 0, result: null, trail: [], lastThrow: null, flightTime: 0,
+};
+const keys = {};
+
+const dirFromYaw = y => new THREE.Vector3(Math.sin(y), 0, -Math.cos(y));
+const yawToward = (from, to) => Math.atan2(to.x - from.x, -(to.z - from.z));
+const distToBasket = () => Math.hypot(S.lie.x - BASKET.x, S.lie.z - BASKET.z);
+
+function scoreName(n) {
+  const d = n - PAR;
+  if (n === 1) return 'ACE!';
+  return { '-2': 'Eagle!', '-1': 'Birdie!', '0': 'Par', '1': 'Bogey', '2': 'Double Bogey', '3': 'Triple Bogey' }[d] ?? `+${d}`;
+}
+
+function showBanner(text, sub = '', again = false) {
+  ui.btext.textContent = text; ui.bsub.textContent = sub;
+  ui.banner.classList.remove('hidden'); ui.again.classList.toggle('hidden', !again);
+}
+function hideBanner() { ui.banner.classList.add('hidden'); }
+let bannerTimer = null;
+function flashBanner(text, sub, ms = 1400) {
+  showBanner(text, sub); clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { if (S.phase !== 'made') hideBanner(); }, ms);
+}
+
+function resetToLie() {
+  S.phase = 'aim'; S.power = 0; S.chargeT = 0;
+  S.pos.set(S.lie.x, RELEASE_HEIGHT, S.lie.z); S.vel.set(0, 0, 0);
+  S.yaw = yawToward(S.lie, BASKET);
+  S.trail = [];
+}
+
+function restart() {
+  S.lie.copy(TEE); S.throws = 0; S.curve = 0; S.result = null; S.lastThrow = null;
+  for (const c of confetti) scene.remove(c); confetti.length = 0;
+  hideBanner(); resetToLie(); snapCamera();
+}
+
+function throwDisc(power, curve = S.curve) {
+  if (S.phase !== 'aim' && S.phase !== 'charging') return false;
+  power = THREE.MathUtils.clamp(power, 0, 1);
+  S.throws++;
+  // Close to the basket the meter tops out lower, so putts get finer control
+  const putt = THREE.MathUtils.clamp(0.2 + distToBasket() / 40, 0.35, 1);
+  const speed = 3 + power * 27 * putt; // m/s
+  const launch = THREE.MathUtils.degToRad(4 + power * 8 + (1 - putt) * 14); // putts loft a bit more
+  S.dir0.copy(dirFromYaw(S.yaw)); S.right0.set(Math.cos(S.yaw), 0, Math.sin(S.yaw));
+  S.pos.set(S.lie.x, RELEASE_HEIGHT, S.lie.z);
+  S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
+  S.v0 = speed; S.curveUsed = curve; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = [];
+  document.body.classList.add('played');
+  S.lastThrow = { power, curve, speed, from: S.lie.clone(), yaw: S.yaw };
+  hideBanner();
+  return true;
+}
+
+// ---------- Physics ----------
+const G = 9.8;
+function stepPhysics(dt) {
+  const p = S.pos, v = S.vel;
+  const prev = p.clone();
+  const vh = Math.hypot(v.x, v.z);
+  const airborne = p.y > DISC_R + 0.001;
+  S.flightTime += dt;
+  if (airborne) {
+    // Lift scales with speed^2 (arcade glide); drag slows horizontally
+    const lift = Math.min(8.5, 0.0085 * vh * vh);
+    v.y += (lift - G) * dt;
+    const drag = 0.0045 * vh * vh + 0.45;
+    if (vh > 0.01) { const k = Math.max(0, vh - drag * dt) / vh; v.x *= k; v.z *= k; }
+    // Turn early (curve input), fade late (always left for a RHBH throw)
+    const slow = THREE.MathUtils.clamp(1 - vh / S.v0, 0, 1);
+    const fast = 1 - slow;
+    const scale = S.v0 / 30;
+    const lat = (S.curveUsed * 4 * fast * scale) - (16 * scale * slow * slow);
+    v.addScaledVector(S.right0, lat * dt);
+  }
+  p.addScaledVector(v, dt);
+
+  // Basket: catch / pole bounce, tested along the segment
+  const res = basketCheck(prev, p);
+  if (res) return res;
+
+  // Trees
+  for (const t of TREES) {
+    const dx = p.x - t.x, dz = p.z - t.z;
+    const d = Math.hypot(dx, dz);
+    const trunkR = 0.38 * t.s + DISC_R;
+    // canopy is a cone: radius shrinks with height
+    const canopyBase = 2.0 * t.s, canopyTop = 7.5 * t.s;
+    let r = 0;
+    if (p.y < canopyBase) r = trunkR;
+    else if (p.y < canopyTop) r = Math.max(trunkR, 2.2 * t.s * (1 - (p.y - canopyBase) / (canopyTop - canopyBase)));
+    if (r > 0 && d < r) {
+      const nx = dx / (d || 1), nz = dz / (d || 1);
+      const dot = v.x * nx + v.z * nz;
+      if (dot < 0) { v.x -= 2 * dot * nx; v.z -= 2 * dot * nz; }
+      const isTrunk = r === trunkR;
+      v.x *= isTrunk ? 0.3 : 0.18; v.z *= isTrunk ? 0.3 : 0.18; v.y = Math.min(v.y, 0) * 0.3;
+      p.x = t.x + nx * (r + 0.02); p.z = t.z + nz * (r + 0.02);
+      S.hitTree = true;
+      return 'tree';
+    }
+  }
+
+  // Ground: skip, then slide to a stop
+  if (p.y <= DISC_R) {
+    p.y = DISC_R;
+    if (v.y < -2.5) { v.y = -v.y * 0.25; v.x *= 0.7; v.z *= 0.7; }
+    else {
+      v.y = 0;
+      const h = Math.hypot(v.x, v.z);
+      const nh = Math.max(0, h - 9 * dt);
+      if (h > 0) { v.x *= nh / h; v.z *= nh / h; }
+    }
+  }
+  return null;
+}
+
+const HOT = 14; // m/s: faster than this bounces off the pole or spits out of the chains
+function basketCheck(a, b) {
+  const steps = 4;
+  for (let i = 1; i <= steps; i++) {
+    const q = a.clone().lerp(b, i / steps);
+    const dx = q.x - BASKET.x, dz = q.z - BASKET.z, y = q.y - BASKET.y;
+    const d = Math.hypot(dx, dz);
+    const speed = S.vel.length();
+    // Pole hit (below tray or direct hard hit): bounce off
+    if (d < BK.poleR + DISC_R && y < BK.bandY && speed > HOT) {
+      const nx = dx / (d || 1), nz = dz / (d || 1);
+      S.vel.set(nx * speed * 0.25, 1.5, nz * speed * 0.25);
+      S.pos.set(BASKET.x + nx * 0.3, q.y, BASKET.z + nz * 0.3);
+      return 'pole';
+    }
+    // Chains / tray catch zone
+    if (d < BK.trayR * 0.95 && y > BK.trayY - 0.08 && y < BK.bandY) {
+      if (speed > HOT) { // too hot: blows through / spits out
+        S.vel.multiplyScalar(-0.15); S.vel.y = 1;
+        S.pos.set(BASKET.x + (dx / (d || 1)) * 0.7, q.y, BASKET.z + (dz / (d || 1)) * 0.7);
+        return 'spit';
+      }
+      S.pos.set(BASKET.x + dx * 0.3, BASKET.y + BK.trayY, BASKET.z + dz * 0.3);
+      S.vel.set(0, 0, 0);
+      return 'made';
+    }
+  }
+  return null;
+}
+
+function updateFlight(dt) {
+  const sub = 8, h = dt / sub;
+  for (let i = 0; i < sub; i++) {
+    const r = stepPhysics(h);
+    if (r === 'made') { onMade(); return; }
+    if (r === 'pole') flashBanner('Clang!', 'Off the pole', 1000);
+    if (r === 'spit') flashBanner('Spit out!', 'Too much heat', 1000);
+  }
+  S.trail.push(S.pos.clone()); if (S.trail.length > TRAIL_N) S.trail.shift();
+  const moving = S.vel.length() > 0.05 || S.pos.y > DISC_R + 0.01;
+  if (!moving || S.flightTime > 20) {
+    S.restTimer += dt;
+    if (S.restTimer > 0.7) onLanded();
+  } else S.restTimer = 0;
+}
+
+function onLanded() {
+  S.restTimer = 0;
+  S.lie.set(S.pos.x, 0, S.pos.z);
+  const d = distToBasket();
+  flashBanner(`${d.toFixed(1)} m to go`, `Throw ${S.throws + 1} next`, 1500);
+  resetToLie();
+}
+
+function onMade() {
+  S.phase = 'made';
+  S.result = { throws: S.throws, name: scoreName(S.throws), diff: S.throws - PAR };
+  const diff = S.result.diff;
+  const vs = diff === 0 ? 'Even par' : diff < 0 ? `${-diff} under par` : `${diff} over par`;
+  showBanner('In the basket!', `${S.result.name} — ${S.throws} throw${S.throws > 1 ? 's' : ''} (${vs})`, true);
+  burstConfetti();
+}
+
+// ---------- Camera ----------
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+function desiredAimCam() {
+  const d = dirFromYaw(S.yaw);
+  const base = new THREE.Vector3(S.lie.x, 0, S.lie.z);
+  const near = distToBasket() < 15;
+  const back = near ? 4 : 6, up = near ? 2.2 : 2.8;
+  const portrait = camera.aspect < 1; // tilt down a bit on tall screens so the fairway fills more of the view
+  return { pos: base.clone().addScaledVector(d, -back).setY(up), look: base.clone().addScaledVector(d, near ? 6 : portrait ? 16 : 22).setY(near ? 0.8 : portrait ? 0.2 : 1.5) };
+}
+function snapCamera() { const c = desiredAimCam(); camPos.copy(c.pos); camLook.copy(c.look); }
+function updateCamera(dt) {
+  let target;
+  if (S.phase === 'flying') {
+    const hv = new THREE.Vector3(S.vel.x, 0, S.vel.z);
+    if (hv.lengthSq() < 0.01) hv.copy(S.dir0);
+    hv.normalize();
+    target = { pos: S.pos.clone().addScaledVector(hv, -7).setY(Math.max(S.pos.y + 2.2, 2)), look: S.pos.clone() };
+  } else if (S.phase === 'made') {
+    const t = performance.now() / 1000;
+    target = { pos: new THREE.Vector3(BASKET.x + Math.sin(t * 0.4) * 5, 2.4, BASKET.z + Math.cos(t * 0.4) * 5), look: new THREE.Vector3(BASKET.x, 1.0, BASKET.z) };
+  } else target = desiredAimCam();
+  const k = 1 - Math.exp(-dt * (S.phase === 'flying' ? 5 : 4));
+  camPos.lerp(target.pos, k); camLook.lerp(target.look, k);
+  camera.position.copy(camPos); camera.lookAt(camLook);
+}
+
+// ---------- Input ----------
+function startCharge() { if (S.phase === 'aim') { S.phase = 'charging'; S.chargeT = 0; } }
+function releaseCharge() { if (S.phase === 'charging') throwDisc(S.power); }
+function cycleCurve(delta) { S.curve = THREE.MathUtils.clamp(S.curve + delta, -1, 1); }
+
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) startCharge(); }
+  if (k === 'r') restart();
+  if (k === 'q' && !e.repeat) cycleCurve(-0.5);
+  if (k === 'e' && !e.repeat) cycleCurve(0.5);
+  if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) e.preventDefault();
+});
+addEventListener('keyup', e => {
+  keys[e.key.toLowerCase()] = false;
+  if (e.code === 'Space') releaseCharge();
+});
+// Pointer (mouse + touch): drag on the field to aim; buttons for aim, throw, curve
+const coarse = matchMedia('(pointer: coarse)').matches;
+if (coarse) document.body.classList.add('coarse');
+let drag = null;
+const canvas = renderer.domElement;
+canvas.addEventListener('pointerdown', e => { if (!drag) drag = { id: e.pointerId, x: e.clientX }; });
+addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (S.phase === 'aim' || S.phase === 'charging') S.yaw += (e.clientX - drag.x) * (coarse ? 0.0035 : 0.004);
+  drag.x = e.clientX;
+});
+const endDrag = e => { if (drag && e.pointerId === drag.id) drag = null; };
+addEventListener('pointerup', endDrag); addEventListener('pointercancel', endDrag);
+// Stop long-press menus, pinch zoom, double-tap zoom and page scroll
+for (const ev of ['contextmenu', 'gesturestart', 'gesturechange', 'selectstart', 'dragstart']) addEventListener(ev, e => e.preventDefault());
+addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+addEventListener('dblclick', e => e.preventDefault());
+
+function holdButton(el, down, up) {
+  el.addEventListener('pointerdown', e => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch {} el.classList.add('held'); down(); });
+  const release = () => { if (el.classList.contains('held')) { el.classList.remove('held'); up(); } };
+  el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release); el.addEventListener('lostpointercapture', release);
+}
+holdButton($('throwbtn'), startCharge, releaseCharge);
+holdButton($('aimleft'), () => { keys['_touchleft'] = true; }, () => { keys['_touchleft'] = false; });
+holdButton($('aimright'), () => { keys['_touchright'] = true; }, () => { keys['_touchright'] = false; });
+for (const b of document.querySelectorAll('#curvebtns button')) {
+  b.addEventListener('pointerdown', e => { e.preventDefault(); const c = Number(b.dataset.curve); S.curve = c === 0 ? 0 : (Math.sign(S.curve) === Math.sign(c) ? THREE.MathUtils.clamp(S.curve + c, -1, 1) : c); });
+}
+$('restartbtn').addEventListener('click', () => restart());
+ui.again.addEventListener('click', () => restart());
+function fitView() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.fov = camera.aspect < 1 ? 72 : 60; // wider view on portrait phones
+  camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', fitView); addEventListener('orientationchange', fitView); fitView();
+
+const curveBtns = [...document.querySelectorAll('#curvebtns button')];
+// ---------- Loop ----------
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (S.phase === 'aim' || S.phase === 'charging') {
+    const turn = (keys['arrowleft'] || keys['a'] || keys['_touchleft'] ? -1 : 0) + (keys['arrowright'] || keys['d'] || keys['_touchright'] ? 1 : 0);
+    S.yaw += turn * dt * 0.9;
+  }
+  if (S.phase === 'charging') {
+    S.chargeT += dt;
+    S.power = 1 - Math.abs(((S.chargeT * 0.75) % 2) - 1); // ping-pong 0→1→0
+  }
+  if (S.phase === 'flying') updateFlight(dt);
+
+  // Visuals
+  disc.position.copy(S.phase === 'aim' || S.phase === 'charging' ? new THREE.Vector3(S.lie.x, RELEASE_HEIGHT, S.lie.z) : S.pos);
+  disc.rotation.y += dt * (S.phase === 'flying' ? 25 : 1);
+  disc.rotation.z = S.phase === 'flying' ? -S.curveUsed * 0.35 + 0.1 : 0;
+  aimArrow.visible = S.phase === 'aim' || S.phase === 'charging';
+  aimArrow.position.set(S.lie.x, 0, S.lie.z); aimArrow.rotation.y = -S.yaw;
+  const arr = trailGeom.attributes.position.array;
+  for (let i = 0; i < TRAIL_N; i++) {
+    const t = S.trail[Math.min(i, S.trail.length - 1)] || disc.position;
+    arr[i * 3] = t.x; arr[i * 3 + 1] = t.y; arr[i * 3 + 2] = t.z;
+  }
+  trailGeom.attributes.position.needsUpdate = true;
+  trail.visible = S.trail.length > 1;
+  for (const c of confetti) {
+    c.userData.v.y -= 6 * dt; c.position.addScaledVector(c.userData.v, dt);
+    c.rotation.x += c.userData.r.x * dt; c.rotation.y += c.userData.r.y * dt;
+    if (c.position.y < 0.02) { c.position.y = 0.02; c.userData.v.set(0, 0, 0); }
+  }
+
+  ui.throws.textContent = S.throws;
+  ui.dist.textContent = `${(S.phase === 'flying' ? Math.hypot(S.pos.x - BASKET.x, S.pos.z - BASKET.z) : distToBasket()).toFixed(1)} m`;
+  ui.curve.textContent = CURVE_NAMES[String(S.curve)];
+  for (const b of curveBtns) { const c = Number(b.dataset.curve); b.classList.toggle('on', c === 0 ? S.curve === 0 : Math.sign(S.curve) === Math.sign(c)); }
+  ui.fill.style.width = `${(S.phase === 'charging' || S.phase === 'flying' ? S.power : 0) * 100}%`;
+
+  updateCamera(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+restart();
+requestAnimationFrame(frame);
+
+// ---------- Test / debug hook ----------
+window.__game = {
+  state: () => ({ phase: S.phase, throws: S.throws, yaw: S.yaw, curve: S.curve, power: S.power,
+    lie: { x: S.lie.x, z: S.lie.z }, disc: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
+    distToBasket: distToBasket(), result: S.result, banner: ui.banner.classList.contains('hidden') ? null : ui.btext.textContent + ' | ' + ui.bsub.textContent }),
+  basket: { x: BASKET.x, z: BASKET.z },
+  placeDisc(x, z) { S.lie.set(x, 0, z); resetToLie(); snapCamera(); },
+  setAim(yaw) { S.yaw = yaw; },
+  aimAtBasket() { S.yaw = yawToward(S.lie, BASKET); },
+  setCurve(c) { S.curve = c; },
+  throwWith(power, curve) { return throwDisc(power, curve ?? S.curve); },
+  restart,
+};
+</script>
+</body>
+</html>
