@@ -1265,23 +1265,48 @@ const aimArrow = new THREE.Group();
   const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.0, 3), m); head.rotation.x = -Math.PI / 2; head.position.set(0, 0.05, -14.6); aimArrow.add(head);
 }
 scene.add(aimArrow);
-// Curve preview: dots along the no-wind flight + roll path when Left/Right Curve is picked (wind is for the player to read)
-const CURVE_DOTS = 26;
-const curveDots = new THREE.InstancedMesh(new THREE.CircleGeometry(0.32, 10).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, depthWrite: false }), CURVE_DOTS);
-curveDots.frustumCulled = false; curveDots.visible = false; scene.add(curveDots);
-const curvePreview = { key: '', pts: [], end: null };
+// Flight preview: a trail of soft ghost dots along the predicted 3D flight (rising, curving, coming down, then the roll),
+// plus faint shadow dots on the ground under the airborne part. Uses simulateThrow, i.e. the same physics as a real throw,
+// including the current wind. Updates live while pulling (power changes). Dots shrink and fade along the path.
+const PREVIEW_N = 38;
+const previewShader = (shadow) => new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { uColor: { value: new THREE.Color(0x1b2733) }, uRim: { value: new THREE.Color(0xffffff) }, uOpacity: { value: shadow ? 0.22 : 0.62 }, uScale: { value: 800 } },
+  vertexShader: 'attribute float aSize; attribute float aAlpha; uniform float uScale; varying float vA; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = max(3.0, aSize * uScale / -mv.z); gl_Position = projectionMatrix * mv; vA = aAlpha; }',
+  fragmentShader: shadow
+    ? 'uniform vec3 uColor; uniform float uOpacity; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.05, d); if (a <= 0.01) discard; gl_FragColor = vec4(uColor, a * vA * uOpacity); }'
+    : 'uniform vec3 uColor; uniform vec3 uRim; uniform float uOpacity; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.36, d); if (a <= 0.01) discard; float rim = smoothstep(0.24, 0.4, d); gl_FragColor = vec4(mix(uColor, uRim, rim * 0.55), a * vA * uOpacity); }',
+});
+const mkPreviewPoints = (shadow) => { const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PREVIEW_N * 3), 3)); g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(PREVIEW_N), 1)); g.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(PREVIEW_N), 1));
+  const pts = new THREE.Points(g, previewShader(shadow)); pts.frustumCulled = false; pts.visible = false; pts.renderOrder = shadow ? 1 : 2; scene.add(pts); return pts; };
+const previewDots = mkPreviewPoints(false), previewShadow = mkPreviewPoints(true);
+const curvePreview = { key: '', pts: [], end: null, maxH: 0, outcome: null };
 function updateCurvePreview(power) {
-  const key = [S.lie.x.toFixed(2), S.lie.z.toFixed(2), S.yaw.toFixed(3), S.disc, S.curve, power.toFixed(2), COURSE.id, H.name].join('|');
+  const W = S.wind, key = [S.lie.x.toFixed(2), S.lie.z.toFixed(2), S.yaw.toFixed(3), S.disc, S.curve, power.toFixed(3), W.mph, W.deg, COURSE.id, H.name, S.noVents ? 0 : 1].join('|');
   if (key !== curvePreview.key) {
-    const w = S.wind; S.wind = CALM; const pts = []; simulateThrow({ power, curve: S.curve, path: pts }); S.wind = w;
-    let len = 0; const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z));
-    const m = new THREE.Matrix4(), out = [];
-    for (let j = 0; j < CURVE_DOTS; j++) { const d = len * (j + 1) / CURVE_DOTS; let i = 1; while (i < cum.length - 1 && cum[i] < d) i++;
-      const a = pts[i - 1], b = pts[i] || a, t = cum[i] > cum[i - 1] ? (d - cum[i - 1]) / (cum[i] - cum[i - 1]) : 0;
-      const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t; out.push({ x, z }); m.makeTranslation(x, H.groundY(x, z) + 0.06, z); curveDots.setMatrixAt(j, m); }
-    curveDots.instanceMatrix.needsUpdate = true; Object.assign(curvePreview, { key, pts: out, end: out[out.length - 1] });
+    const path = []; const r = simulateThrow({ power, curve: S.curve, path });
+    path.unshift(new THREE.Vector3(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z));
+    let len = 0; const cum = [0]; for (let i = 1; i < path.length; i++) cum.push(len += path[i].distanceTo(path[i - 1]));
+    const P = previewDots.geometry.attributes, Q = previewShadow.geometry.attributes, out = []; let maxH = 0;
+    for (let j = 0; j < PREVIEW_N; j++) { const t = (j + 1) / PREVIEW_N, d = len * t; let i = 1; while (i < cum.length - 1 && cum[i] < d) i++;
+      const a = path[i - 1], b = path[i] || a, f = cum[i] > cum[i - 1] ? (d - cum[i - 1]) / (cum[i] - cum[i - 1]) : 0;
+      const x = a.x + (b.x - a.x) * f, y = a.y + (b.y - a.y) * f, z = a.z + (b.z - a.z) * f, gy = H.groundY(x, z), h = y - gy; maxH = Math.max(maxH, h);
+      out.push({ x, y, z, h });
+      P.position.setXYZ(j, x, Math.max(y, gy + 0.3), z); P.aSize.setX(j, 0.44 - 0.16 * t); P.aAlpha.setX(j, 1 - 0.45 * t);
+      Q.position.setXYZ(j, x, gy + 0.05, z); Q.aSize.setX(j, 0.62 - 0.22 * t); Q.aAlpha.setX(j, h > 0.4 ? Math.min(1, h / 2) * (1 - 0.5 * t) : 0); }
+    for (const A of [P, Q]) for (const k of ['position', 'aSize', 'aAlpha']) A[k].needsUpdate = true;
+    const e = r.end; Object.assign(curvePreview, { key, pts: out, end: { x: e.x, z: e.z }, maxH, outcome: r.outcome });
   }
   return curvePreview.end;
+}
+// Aim camera turns part-way toward a big curve so its far end stays on screen (frozen while pulling, like the camera)
+function previewCamOffset() {
+  if (!curvePreview.pts.length || S.curve === 0) return 0;
+  const half = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect), d = dirFromYaw(S.yaw), r = new THREE.Vector3(Math.cos(S.yaw), 0, Math.sin(S.yaw));
+  let worst = 0; for (const q of curvePreview.pts) { const fx = (q.x - S.lie.x) * d.x + (q.z - S.lie.z) * d.z + 6, sx = (q.x - S.lie.x) * r.x + (q.z - S.lie.z) * r.z; if (fx < 8) continue;
+    const a = Math.atan2(sx, fx); if (Math.abs(a) > Math.abs(worst)) worst = a; }
+  return Math.sign(worst) * THREE.MathUtils.clamp(Math.abs(worst) - 0.72 * half, 0, 0.6);
 }
 // Pull-back power arrow: grows out the front of the disc along the aim, green → yellow → red.
 const powerArrow = new THREE.Group();
@@ -1575,6 +1600,8 @@ function applyWorld(w) {
   WORLD = w;
   scene.background.setHex(w.fog); scene.fog.color.setHex(w.fog); [scene.fog.near, scene.fog.far] = w.fogRange || [90, 230];
   MAT.obPost.color.setHex(w.obPost || 0xffffff);
+  previewDots.material.uniforms.uColor.value.setHex(w.lava ? 0xfff1dd : 0x1b2733); previewDots.material.uniforms.uRim.value.setHex(w.lava ? 0x2a1410 : 0xffffff);
+  previewShadow.material.uniforms.uColor.value.setHex(w.lava ? 0x000000 : 0x0b1a24); previewShadow.material.uniforms.uOpacity.value = w.lava ? 0.4 : 0.22;
   scene.userData.sky.material.uniforms.top.value.setHex(w.sky[0]); scene.userData.sky.material.uniforms.bottom.value.setHex(w.sky[1]);
   hemi.color.setHex(w.hemi[0]); hemi.groundColor.setHex(w.hemi[1]); hemi.intensity = w.hemi[2];
   sun.color.setHex(w.sun[0]); sun.intensity = w.sun[1];
@@ -1938,7 +1965,7 @@ function hideMenu() { ui.menu.classList.add('hidden'); }
 // ---------- Camera ----------
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 function desiredAimCam() {
-  const d = dirFromYaw(S.pull ? S.pull.baseYaw : S.yaw); // camera holds still while you pull
+  const d = dirFromYaw((S.pull ? S.pull.baseYaw : S.yaw) + (S.camOff || 0)); // camera holds still while you pull; turns toward a big curve
   const base = S.lie.clone();
   const near = distToBasket() < 15;
   const wet = H.hasWater && !near; // water holes: a higher camera so you can read the river
@@ -2126,13 +2153,16 @@ function frame(now) {
   if (showPower) { powerArrow.position.set(S.lie.x, S.lie.y, S.lie.z); powerArrow.rotation.y = -S.yaw; layoutPowerArrow(S.power); }
   drawPullUI();
   rangeRing.visible = aiming;
-  curveDots.visible = aiming && S.curve !== 0;
+  previewDots.visible = previewShadow.visible = aiming;
   if (aiming) {
     // while charging the ring marks the rough straight carry at this power; otherwise this disc's full range
     // with a curve picked, dots show the bend and the ring sits where the curved (no-wind) flight lands
     const rp = dirFromYaw(S.yaw).multiplyScalar(showPower ? Math.max(1.5, DISC_RANGE[S.disc] * S.power) : DISC_RANGE[S.disc]).add(S.lie);
-    if (S.curve !== 0) { const e = updateCurvePreview(showPower ? Math.max(0.05, S.power) : 1); if (e) { rp.x = e.x; rp.z = e.z; } }
-    rangeRing.position.set(rp.x, H.groundY(rp.x, rp.z) + 0.07, rp.z); rangeRing.material.color.setHex(DISCS[S.disc].color);
+    { const e = updateCurvePreview(showPower ? Math.max(0.05, S.power) : 1); if (e) { rp.x = e.x; rp.z = e.z; } }
+    if (!S.pull && S.phase === 'aim') S.camOff = previewCamOffset();
+    const sc = renderer.getDrawingBufferSize(new THREE.Vector2()).y / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    for (const m of [previewDots, previewShadow]) m.material.uniforms.uScale.value = sc;
+    rangeRing.position.set(rp.x, H.groundY(rp.x, rp.z) + 0.07 + Math.min(0.25, Math.hypot(rp.x - S.lie.x, rp.z - S.lie.z) / 400), rp.z); rangeRing.scale.setScalar(THREE.MathUtils.clamp(Math.hypot(rp.x - S.lie.x, rp.z - S.lie.z) / 45, 1, 2.4)); // bigger far away so it stays readable rangeRing.material.color.setHex(DISCS[S.disc].color);
   }
   const arr = trailGeom.attributes.position.array;
   for (let i = 0; i < TRAIL_N; i++) {
@@ -2184,7 +2214,7 @@ window.__game = {
     pull: S.pull && { valid: S.pull.valid, frac: S.pull.frac, power: S.pull.power, offset: S.pull.offset, baseYaw: S.pull.baseYaw },
     arrow: powerArrow.visible ? { length: PA.shaft.scale.y, color: '#' + PA.fill.color.getHexString(), yaw: S.yaw } : null,
     ring: rangeRing.visible ? { x: rangeRing.position.x, z: rangeRing.position.z } : null,
-    curvePreview: curveDots.visible && curvePreview.end ? { end: { ...curvePreview.end }, n: curvePreview.pts.length } : null,
+    curvePreview: previewDots.visible && curvePreview.end ? { end: { ...curvePreview.end }, n: curvePreview.pts.length, maxH: curvePreview.maxH, outcome: curvePreview.outcome, pts: curvePreview.pts.map(q => ({ ...q })) } : null, camOff: S.camOff || 0,
     lie: { x: S.lie.x, y: S.lie.y, z: S.lie.z }, discPos: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
     distToBasket: distToBasket(), result: S.result, hole: S.holeIdx + 1, practice: S.practice,
     banner: ui.banner.classList.contains('hidden') ? null : ui.btext.textContent + ' | ' + ui.bsub.textContent,
