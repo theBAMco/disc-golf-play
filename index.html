@@ -21,8 +21,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 
 #hud button:active, #hud button.held { transform: translateY(2px); box-shadow: 0 1px 0 #c9a800; }
 .panel { background: rgba(10,40,20,.55); border-radius: 14px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 
-#scorebox { position: absolute; top: inherit; left: 0; margin: 0; background: rgba(10,40,20,.55); border-radius: 14px; padding: 12px 16px; min-width: 190px; }
-#scorebox { top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); }
+#scorebox { margin: 0; background: rgba(10,40,20,.55); border-radius: 14px; padding: 12px 16px; min-width: 190px; }
+#topleft { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 #scorebox .title { font-weight: 800; letter-spacing: .08em; font-size: 14px; margin-bottom: 6px; color: #ffe066; }
 #scorebox .row { display: flex; justify-content: space-between; gap: 16px; font-size: 16px; margin: 2px 0; }
 
@@ -138,6 +138,21 @@ body[data-world="river"] #scorebox .title { color: #9fe3ff; }
 #pickback { margin-top: 14px; padding: 11px 26px; font-size: 16px; }
 @media (max-height: 500px) { .picktitle { font-size: 24px; } .picksub { margin-bottom: 8px; } #picklist { flex-direction: row; } #hud button.pickcourse { flex: 1; min-height: 0; padding: 12px 14px; }
   #picker .pickpanel { width: min(720px, 100%); } }
+
+/* Wind key: dial arrow = which way the wind pushes the disc on screen; colour = strength */
+#windkey { --wind: #dfe8e2; display: flex; align-items: center; gap: 8px; background: rgba(10,40,20,.55); border-radius: 14px; padding: 6px 12px 6px 6px; }
+#windkey .dial { width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); background: rgba(0,0,0,.25); display: grid; place-items: center; }
+#windarrow { width: 36px; height: 36px; fill: var(--wind); stroke: rgba(0,0,0,.45); stroke-width: 1.2; transition: transform .12s linear; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
+#windkey .wtext { display: flex; flex-direction: column; line-height: 1.15; }
+#windkey #windmph { font-size: 17px; font-weight: 900; color: var(--wind); }
+#windkey #windband { font-size: 12px; font-weight: 700; opacity: .9; }
+#bannersub { white-space: pre-line; }
+@media (max-width: 600px), (max-height: 500px) {
+  #topleft { gap: 6px; }
+  #windkey { padding: 4px 10px 4px 4px; gap: 6px; border-radius: 12px; }
+  #windkey .dial { width: 36px; height: 36px; } #windarrow { width: 30px; height: 30px; }
+  #windkey #windmph { font-size: 14px; } #windkey #windband { font-size: 11px; }
+}
 </style>
   <script type="importmap">
     { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
@@ -146,6 +161,7 @@ body[data-world="river"] #scorebox .title { color: #9fe3ff; }
 <body>
   <div id="app"></div>
   <div id="hud">
+    <div id="topleft">
     <div id="scorebox">
       <div class="coursename" id="coursename">Maple Park</div>
       <div class="title" id="holetitle">HOLE 1/9 · PAR 3</div>
@@ -155,6 +171,11 @@ body[data-world="river"] #scorebox .title { color: #9fe3ff; }
       <div class="row"><span>To basket</span><b id="dist">0 m</b></div>
       <div class="row"><span>Round</span><b id="total">E</b></div>
       <div class="row curverow"><span>Curve</span><b id="curve">Straight</b></div>
+    </div>
+    <div id="windkey" title="Wind: the arrow shows which way it pushes the disc on screen">
+      <div class="dial"><svg id="windarrow" viewBox="-20 -20 40 40" aria-hidden="true"><path d="M0,-15 L8,-3 L3,-3 L3,14 L-3,14 L-3,-3 L-8,-3 Z" /></svg></div>
+      <div class="wtext"><b id="windmph">Calm</b><span id="windband">no wind</span></div>
+    </div>
     </div>
     <div id="topright">
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
@@ -206,11 +227,12 @@ import * as THREE from 'three';
 //   rocks   { x, z, s } decorative boulders;  greenR  radius of the putting green (default 7)
 //
 // A world is the look shared by its courses: sky, light, ground colours, tree style and scenery.
+// windMax is the strongest wind (mph) a hole in that world can roll; each hole gets a seeded random wind.
 const WORLDS = {
   park: { id: 'park', sky: [0x3d8be0, 0xcdeeff], fog: 0x8fd0ff, hemi: [0xdff3ff, 0x3f7a2a, 1.1], sun: [0xfff1d0, 2.2],
-    ground: { ob: 0x3d7a2c, rough: 0x55a23d, fairway: 0x6cc04a, green: 0x80d95b }, trees: 'pine', borderMix: 0 },
+    ground: { ob: 0x3d7a2c, rough: 0x55a23d, fairway: 0x6cc04a, green: 0x80d95b }, trees: 'pine', borderMix: 0, windMax: 11, leaf: 0x6f9a34 },
   river: { id: 'river', sky: [0x3b86c4, 0xffe1b5], fog: 0xd6e4d4, hemi: [0xfff2dc, 0x50803c, 1.05], sun: [0xffd8a0, 2.3],
-    ground: { ob: 0x4c8035, rough: 0x67a646, fairway: 0x84c457, green: 0x9be36c }, trees: 'willow', borderMix: 0.45,
+    ground: { ob: 0x4c8035, rough: 0x67a646, fairway: 0x84c457, green: 0x9be36c }, trees: 'willow', borderMix: 0.45, windMax: 15, leaf: 0xc9b458,
     water: 0x2f8fba, sand: 0xdcc88f, reeds: 0x7f9640, rock: 0x8f8d84 },
 };
 
@@ -378,11 +400,11 @@ const MAX_OVER_PAR = 4; // pick up at par + 4 so a round can't get stuck
 // The three discs. Speeds in m/s. Power p (0..1) maps to speed vmin + (vmax - vmin) * sqrt(p),
 // which makes carry distance grow roughly in step with power (0.75 power ≈ 72% of max range).
 // lift/drag shape the glide, fade pulls left late in the flight, turn scales the Q/E curve,
-// hot is the fastest the chains will hold.
+// hot is the fastest the chains will hold, windK how much wind moves it (lighter/slower discs a bit more).
 const DISCS = {
-  driver: { key: 'driver', name: 'Driver', short: 'Driver', hotkey: '1', color: 0xff7a1a, css: '#ff7a1a', vmin: 4, vmax: 30.5, l0: 4, l1: 8, liftK: 0.0085, liftMax: 8.5, dragK: 0.0045, drag0: 0.45, fade: 20, turn: 4.5, hot: 9, look: { r: 1.65, rb: 1.25, h: 0.035 } },
-  mid:    { key: 'mid', name: 'Midrange', short: 'Mid', hotkey: '2', color: 0x3fb7ff, css: '#3fb7ff', vmin: 3, vmax: 23.5, l0: 5, l1: 9, liftK: 0.012, liftMax: 8.0, dragK: 0.0055, drag0: 0.4, fade: 7, turn: 3.5, hot: 10.5, look: { r: 1.55, rb: 1.4, h: 0.05 } },
-  putter: { key: 'putter', name: 'Putter', short: 'Putter', hotkey: '3', color: 0xc77dff, css: '#c77dff', vmin: 2.5, vmax: 15, l0: 6, l1: 12, liftK: 0.03, liftMax: 7.5, dragK: 0.008, drag0: 0.35, fade: 1.5, turn: 2, hot: 14, look: { r: 1.5, rb: 1.48, h: 0.07 } },
+  driver: { key: 'driver', name: 'Driver', short: 'Driver', hotkey: '1', color: 0xff7a1a, css: '#ff7a1a', vmin: 4, vmax: 30.5, l0: 4, l1: 8, liftK: 0.0085, liftMax: 8.5, dragK: 0.0045, drag0: 0.45, fade: 20, turn: 4.5, hot: 9, windK: 1.0, look: { r: 1.65, rb: 1.25, h: 0.035 } },
+  mid:    { key: 'mid', name: 'Midrange', short: 'Mid', hotkey: '2', color: 0x3fb7ff, css: '#3fb7ff', vmin: 3, vmax: 23.5, l0: 5, l1: 9, liftK: 0.012, liftMax: 8.0, dragK: 0.0055, drag0: 0.4, fade: 7, turn: 3.5, hot: 10.5, windK: 1.1, look: { r: 1.55, rb: 1.4, h: 0.05 } },
+  putter: { key: 'putter', name: 'Putter', short: 'Putter', hotkey: '3', color: 0xc77dff, css: '#c77dff', vmin: 2.5, vmax: 15, l0: 6, l1: 12, liftK: 0.03, liftMax: 7.5, dragK: 0.008, drag0: 0.35, fade: 1.5, turn: 2, hot: 14, windK: 1.25, look: { r: 1.5, rb: 1.48, h: 0.07 } },
 };
 const DISC_ORDER = ['driver', 'mid', 'putter'];
 function suggestDisc(dist) { return dist > 58 ? 'driver' : dist > 31 ? 'mid' : 'putter'; }
@@ -390,6 +412,21 @@ function suggestDisc(dist) { return dist > 58 ? 'driver' : dist > 31 ? 'mid' : '
 const DISC_RANGE = { driver: 97, mid: 62, putter: 33 };
 // Basket geometry used for both visuals and catch detection (heights above the ground at the basket)
 const BK = { trayY: 0.62, trayR: 0.55, poleR: 0.05, bandY: 1.45 };
+// Wind: airborne discs are pushed along the wind (accel = push * windK * wind m/s); a headwind lifts a little, a tailwind sinks a little.
+// Only in the air: rolling on the ground ignores wind. Tuned so a 15 mph crosswind moves a full Driver drive ~12 m.
+const WIND = { push: 0.26, lift: 0.11, mph: 0.447, firstHoleMax: 4 };
+const WIND_BANDS = [{ max: 1.5, name: 'Calm', color: '#dfe8e2' }, { max: 5.5, name: 'Light', color: '#7de38f' }, { max: 9.5, name: 'Breezy', color: '#ffe066' }, { max: 99, name: 'Strong', color: '#ff7a5c' }];
+const windBand = mph => WIND_BANDS.find(b => mph <= b.max);
+function makeWind(mph, deg) { const r = THREE.MathUtils.degToRad(deg), ms = mph * WIND.mph; return { mph, deg: ((deg % 360) + 360) % 360, ms, x: Math.sin(r) * ms, z: -Math.cos(r) * ms, band: windBand(mph).name }; }
+const CALM = makeWind(0, 0);
+// deg is the bearing the wind blows TOWARD in hole space (0 = down the usual tee direction, -z; 90 = +x)
+function windFor(courseId, holeIdx, seed, maxMph) {
+  let h = 2166136261; for (const ch of `${courseId}|${holeIdx}|${seed}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  const r = seeded((Math.abs(h) % 2147483646) + 1); r(); r();
+  let mph = Math.round(Math.pow(r(), 0.85) * maxMph);
+  if (holeIdx === 0) mph = Math.min(mph, WIND.firstHoleMax); // ease new players in
+  return makeWind(mph, Math.floor(r() * 360));
+}
 
 // ---------- Renderer / scene (shared by every hole) ----------
 const app = document.getElementById('app');
@@ -469,6 +506,7 @@ const GEO = {
   rock: new THREE.DodecahedronGeometry(0.55, 0).scale(1, 0.62, 1),
 };
 let WORLD = WORLDS.park;
+let flagRef = null;
 
 // ---------- Hole model (built from course data) ----------
 // H holds everything about the hole being played: geometry for physics and the scene group.
@@ -738,8 +776,11 @@ function makeHole(data, index) {
       const mid = top.clone().lerp(bot, 0.5); mid.x *= 1.25; mid.z *= 1.25;
       g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(top, mid, bot), 8, 0.012, 4), MAT.chain));
     }
-    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.6), MAT.flag); flag.position.set(0.5, 2.9, 0); g.add(flag);
+    // flag on a pivot at the top of its pole so it can stream with the wind (or hang when calm)
+    const flagPivot = new THREE.Group(); flagPivot.position.set(0, 3.15, 0); g.add(flagPivot);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.6, 6, 1).translate(0.5, -0.3, 0), MAT.flag); flagPivot.add(flag); g.userData.flag = flag; g.userData.flagPivot = flagPivot;
     const fpole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.6), MAT.metal); fpole.position.set(0, 2.4, 0); g.add(fpole);
+    flagRef = { flag, pivot: flagPivot };
     g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     g.position.copy(basket); group.add(g);
   }
@@ -847,6 +888,48 @@ function updateSplashes(dt) {
 }
 function clearConfetti() { for (const c of confetti) { scene.remove(c); c.geometry.dispose(); c.material.dispose(); } confetti.length = 0; }
 
+// ---------- Wind visuals: basket flag, drifting leaves, HUD key ----------
+function setFlagWind() { if (!flagRef) return; const w = S.wind; flagRef.pivot.rotation.y = w.ms > 0 ? Math.atan2(-w.z, w.x) : 0; }
+function animateFlag(t) {
+  if (!flagRef) return; const w = S.wind, k = Math.min(1, w.mph / 8);
+  flagRef.flag.rotation.z = -1.25 * (1 - k) + Math.sin(t * (3 + w.mph * 0.6)) * 0.05 * k; // hangs when calm, streams when windy
+  flagRef.flag.rotation.y = Math.sin(t * (4 + w.mph)) * 0.25 * k;
+}
+const LEAF_N = 90;
+const leaves = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(LEAF_N * 3), 3)),
+  new THREE.PointsMaterial({ color: 0x6f9a34, size: 0.13, transparent: true, opacity: 0.9, depthWrite: false }));
+leaves.frustumCulled = false; scene.add(leaves);
+const leafSeed = Array.from({ length: LEAF_N }, (_, i) => [((i * 7919) % 997) / 997, ((i * 104729) % 991) / 991, ((i * 1299709) % 983) / 983]);
+function updateLeaves(dt, t) {
+  const w = S.wind, n = Math.round(LEAF_N * Math.min(1, w.mph / 12)), arr = leaves.geometry.attributes.position.array;
+  leaves.visible = w.mph >= 2 && S.phase !== 'menu'; leaves.geometry.setDrawRange(0, n);
+  if (!leaves.visible) return;
+  leaves.material.color.setHex(WORLD.leaf || 0x6f9a34);
+  const c = camLook, R = 22;
+  for (let i = 0; i < n; i++) {
+    const s = leafSeed[i]; let x = arr[i * 3], y = arr[i * 3 + 1], z = arr[i * 3 + 2];
+    if (!S.leavesInit) { x = c.x + (s[0] * 2 - 1) * R; z = c.z + (s[1] * 2 - 1) * R; y = 0.4 + s[2] * 5; }
+    x += (w.x * 1.1 + Math.sin(t * 2 + i) * 0.3) * dt; z += (w.z * 1.1 + Math.cos(t * 1.7 + i) * 0.3) * dt; y += Math.sin(t * 3 + i * 1.3) * 0.25 * dt - 0.05 * dt;
+    if (x - c.x > R) x -= 2 * R; if (x - c.x < -R) x += 2 * R; if (z - c.z > R) z -= 2 * R; if (z - c.z < -R) z += 2 * R; if (y < 0.2) y = 5.5;
+    arr[i * 3] = x; arr[i * 3 + 1] = y; arr[i * 3 + 2] = z;
+  }
+  S.leavesInit = true; leaves.geometry.attributes.position.needsUpdate = true;
+}
+const windUI = { box: document.getElementById('windkey'), arrow: document.getElementById('windarrow'), mph: document.getElementById('windmph'), band: document.getElementById('windband') };
+const camDir = new THREE.Vector3();
+function updateWindKey() {
+  const w = S.wind, b = windBand(w.mph);
+  camera.getWorldDirection(camDir);
+  const camYaw = Math.atan2(camDir.x, -camDir.z);
+  // arrow angle on screen: 0 = blowing straight away from you (up the screen), +90 = pushing right
+  S.windScreenDeg = THREE.MathUtils.radToDeg(windRel(w, camYaw));
+  windUI.arrow.style.transform = `rotate(${S.windScreenDeg.toFixed(1)}deg)`;
+  windUI.arrow.style.opacity = w.mph < 1.5 ? 0.25 : 1;
+  windUI.mph.textContent = w.mph < 1.5 ? 'Calm' : `${w.mph} mph`;
+  windUI.band.textContent = w.mph < 1.5 ? 'no wind' : b.name;
+  windUI.box.style.setProperty('--wind', b.color);
+}
+
 // ---------- Game state ----------
 const $ = id => document.getElementById(id);
 const ui = {
@@ -864,6 +947,7 @@ const S = {
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), v0: 0, dir0: new THREE.Vector3(), right0: new THREE.Vector3(),
   restTimer: 0, result: null, trail: [], lastThrow: null, flightTime: 0, penalties: 0,
   disc: 'driver', suggested: 'driver', D: DISCS.driver, events: [],
+  wind: CALM, roundSeed: 1 + Math.floor(Math.random() * 1e9), windMode: 'on',
 };
 const keys = {};
 const dirFromYaw = y => new THREE.Vector3(Math.sin(y), 0, -Math.cos(y));
@@ -908,13 +992,24 @@ function loadHole(idx, { practice = false } = {}) {
   Object.assign(sun.shadow.camera, { left: -H.span, right: H.span, top: H.span, bottom: -H.span }); sun.shadow.camera.updateProjectionMatrix();
   scene.userData.sky.position.set(H.mid.x, 0, H.mid.z);
   S.throws = 0; S.penalties = 0; S.curve = 0; S.result = null; S.lastThrow = null; S.events = [];
+  S.leavesInit = false;
+  S.wind = practice || S.windMode === 'calm' ? CALM : windFor(COURSE.id, idx, S.roundSeed, (WORLDS[COURSE.world] || WORLDS.park).windMax);
+  setFlagWind();
   clearConfetti(); hideBanner(); hideCard();
   S.lie.copy(H.tee); S.prevLie.copy(H.tee);
   resetToLie(true); snapCamera();
   ui.title.textContent = practice ? 'PRACTICE' : `HOLE ${idx + 1}/${COURSE.holes.length} · PAR ${H.par}`;
-  if (!practice) flashBanner(`Hole ${idx + 1} · Par ${H.par} · ${Math.round(H.length)} m`, `${H.name} — ${H.tip}`, 2600, true);
+  if (!practice) flashBanner(`Hole ${idx + 1} · Par ${H.par} · ${Math.round(H.length)} m`, `${H.name} — ${H.tip}\n${windWords(S.wind, yawToward(H.tee, H.teeAim))}`, 3200, true);
 }
 
+// Plain words for the wind relative to a facing direction (yaw), e.g. "Wind 9 mph, breezy, pushing right"
+function windRel(w, yaw) { let a = THREE.MathUtils.degToRad(w.deg) - yaw; a = Math.atan2(Math.sin(a), Math.cos(a)); return a; }
+function windWords(w, yaw) {
+  if (w.mph < 1.5) return 'Wind: calm';
+  const a = THREE.MathUtils.radToDeg(windRel(w, yaw)), abs = Math.abs(a);
+  const how = abs < 35 ? 'behind you (flies longer)' : abs > 145 ? 'in your face (flies shorter)' : a > 0 ? (abs < 70 ? 'behind, pushing right' : abs > 110 ? 'into you, pushing right' : 'pushing right') : (abs < 70 ? 'behind, pushing left' : abs > 110 ? 'into you, pushing left' : 'pushing left');
+  return `Wind ${w.mph} mph, ${w.band.toLowerCase()}, ${how}`;
+}
 function resetToLie(fromTee = false) {
   S.phase = 'aim'; S.power = 0; S.chargeT = 0; S.pull = null; S.charge = null; hidePullUI();
   S.lie.y = H.groundY(S.lie.x, S.lie.z);
@@ -945,7 +1040,7 @@ const coursePar = c => c.holes.reduce((a, h) => a + h.par, 0);
 function loadCourse(id) {
   const c = COURSES.find(c => c.id === id); if (!c) return false;
   COURSE = c; applyWorld(WORLDS[c.world] || WORLDS.park);
-  S.scores = Array(COURSE.holes.length).fill(null);
+  S.scores = Array(COURSE.holes.length).fill(null); newRoundSeed();
   hidePicker(); hideMenu(); hideCard();
   ui.course.textContent = COURSE.name;
   loadHole(0); return true;
@@ -976,7 +1071,8 @@ function closePicker() {
 }
 const pickerOpen = () => !picker.el.classList.contains('hidden');
 function restartHole() { loadHole(S.practice ? 0 : S.holeIdx, { practice: S.practice }); }
-function restartRound() { S.scores = Array(COURSE.holes.length).fill(null); loadHole(0); }
+function newRoundSeed() { if (!S.fixedSeed) S.roundSeed = 1 + Math.floor(Math.random() * 1e9); }
+function restartRound() { S.scores = Array(COURSE.holes.length).fill(null); newRoundSeed(); loadHole(0); }
 function nextHole() {
   if (S.phase !== 'holed') return false;
   if (S.holeIdx >= COURSE.holes.length - 1) { endRound(); return true; }
@@ -1019,6 +1115,12 @@ function stepPhysics(dt) {
     const slow = THREE.MathUtils.clamp(1 - vh / S.v0, 0, 1), fast = 1 - slow, scale = S.v0 / D.vmax;
     const lat = (S.curveUsed * D.turn * fast * scale) - (D.fade * scale * slow * slow);
     if (!S.knocked) v.addScaledVector(S.right0, lat * dt); // after hitting a tree the disc just drops
+    const W = S.wind;
+    if (W.ms > 0) {
+      const k = WIND.push * D.windK * (0.3 + 0.7 * Math.min(1, vh / 22)); // fast discs catch more wind; slow putts barely drift
+      v.x += W.x * k * dt; v.z += W.z * k * dt;
+      if (vh > 0.5 && !S.knocked) v.y -= ((W.x * v.x + W.z * v.z) / vh) * WIND.lift * dt; // headwind (negative along) lifts
+    }
   }
   p.addScaledVector(v, dt);
   S.maxY = Math.max(S.maxY, p.y);
@@ -1394,6 +1496,7 @@ function frame(now) {
   if (S.phase === 'flying') updateFlight(dt);
   if (S.phase === 'splash' && (S.splashT -= dt) <= 0) finishSplash();
   updateSplashes(dt);
+  animateFlag(now / 1000); updateLeaves(dt, now / 1000);
   rippleTex.offset.x = (rippleTex.offset.x + dt * 0.035) % 1; rippleTex.offset.y = (rippleTex.offset.y + dt * 0.012) % 1;
 
   const aiming = S.phase === 'aim' || S.phase === 'charging';
@@ -1441,13 +1544,16 @@ function frame(now) {
   for (const b of discBtns) { b.classList.toggle('on', b.dataset.disc === S.disc); b.classList.toggle('suggested', b.dataset.disc === S.suggested); b.disabled = S.phase !== 'aim'; }
 
   updateCamera(dt);
+  updateWindKey();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
 // Start: ?course=<id> jumps straight in (handy for links and tests); otherwise show the course picker
 {
-  const want = new URLSearchParams(location.search).get('course');
+  const q = new URLSearchParams(location.search), want = q.get('course');
+  if (q.get('wind') === 'calm') S.windMode = 'calm';
+  if (q.get('seed')) { S.roundSeed = Number(q.get('seed')) || 1; S.fixedSeed = true; }
   if (!(want && loadCourse(want))) { loadCourse(COURSES[0].id); showPicker(false); }
 }
 requestAnimationFrame(frame);
@@ -1463,13 +1569,18 @@ window.__game = {
     lie: { x: S.lie.x, y: S.lie.y, z: S.lie.z }, discPos: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
     distToBasket: distToBasket(), result: S.result, hole: S.holeIdx + 1, practice: S.practice,
     banner: ui.banner.classList.contains('hidden') ? null : ui.btext.textContent + ' | ' + ui.bsub.textContent,
+    wind: { ...S.wind }, windScreenDeg: S.windScreenDeg, roundSeed: S.roundSeed,
     cardOpen: !ui.card.classList.contains('hidden'), menuOpen: !ui.menu.classList.contains('hidden'), pickerOpen: pickerOpen(), course: COURSE.id, world: WORLD.id }),
   get basket() { return { x: H.basket.x, y: H.basket.y, z: H.basket.z }; },
   hole: () => ({ n: S.holeIdx + 1, name: H.name, par: H.par, tee: { x: H.tee.x, z: H.tee.z }, basket: { x: H.basket.x, y: H.basket.y, z: H.basket.z }, length: H.length,
     path: H.data.path, width: H.data.width, inBoundsR: H.inBoundsR, trees: H.trees.map(t => ({ x: t.x, z: t.z, s: t.s, y: t.y, border: !!t.border })) }),
   course: () => ({ id: COURSE.id, name: COURSE.name, world: COURSE.world, holes: COURSE.holes.map(h => ({ name: h.name, par: h.par, tee: h.tee, basket: h.basket, drop: h.drop || null })), par: roundStats().coursePar }),
   courses: () => COURSES.map(c => ({ id: c.id, name: c.name, holes: c.holes.length, par: coursePar(c), best: loadBest(c.id) })),
-  loadCourse, showPicker, isWater: (x, z) => H.isWater(x, z), groundY: (x, z) => H.groundY(x, z),
+  loadCourse, showPicker,
+  setWind(mph, deg) { S.wind = makeWind(mph, deg); setFlagWind(); },
+  setSeed(seed) { S.roundSeed = seed; S.fixedSeed = true; },
+  windFor: (courseId, idx, seed) => windFor(courseId, idx, seed, (WORLDS[(COURSES.find(c => c.id === courseId) || COURSE).world] || WORLDS.park).windMax),
+  windWords: () => windWords(S.wind, yawToward(H.tee, H.teeAim)), isWater: (x, z) => H.isWater(x, z), groundY: (x, z) => H.groundY(x, z),
   round: () => ({ ...roundStats(), scores: [...S.scores] }),
   isOB: (x, z) => H.isOB(x, z),
   loadHole: (i) => loadHole(i),
