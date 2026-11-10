@@ -181,15 +181,15 @@ body[data-world="river"] #scorebox .title { color: #9fe3ff; }
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
       <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcourse">Change course</button><button id="restartcancel" class="ghost">Cancel</button></div>
       <div id="help">
-        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q hyzer · E anhyzer<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
+        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q left · E right<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
         <span class="touch"><b>Pull back</b> anywhere to throw<br />Arrow = aim &amp; power · let go<br />Slide back to start to cancel</span>
       </div>
     </div>
     <div id="controls">
       <div id="curvebtns" role="group" aria-label="Curve">
-        <button data-curve="-0.5" id="hyzerbtn">↰ Hyzer</button>
+        <button data-curve="-1" id="hyzerbtn">↰ Left Curve</button>
         <button data-curve="0" id="straightbtn">Straight</button>
-        <button data-curve="0.5" id="anhyzerbtn">Anhyzer ↱</button>
+        <button data-curve="1" id="anhyzerbtn">Right Curve ↱</button>
       </div>
       <div id="discbtns" role="group" aria-label="Disc">
         <button data-disc="driver" id="disc-driver" title="Driver (1): longest range"><i style="background:#ff7a1a"></i><span>Driver</span><kbd>1</kbd></button>
@@ -227,12 +227,12 @@ import * as THREE from 'three';
 //   rocks   { x, z, s } decorative boulders;  greenR  radius of the putting green (default 7)
 //
 // A world is the look shared by its courses: sky, light, ground colours, tree style and scenery.
-// windMax is the strongest wind (mph) a hole in that world can roll; each hole gets a seeded random wind.
+// windMin..windMax is the range (mph) a hole in that world can roll (hole 1 of a round is capped gentler); each hole gets a seeded random wind.
 const WORLDS = {
   park: { id: 'park', sky: [0x3d8be0, 0xcdeeff], fog: 0x8fd0ff, hemi: [0xdff3ff, 0x3f7a2a, 1.1], sun: [0xfff1d0, 2.2],
-    ground: { ob: 0x3d7a2c, rough: 0x55a23d, fairway: 0x6cc04a, green: 0x80d95b }, trees: 'pine', borderMix: 0, windMax: 11, leaf: 0x6f9a34 },
+    ground: { ob: 0x3d7a2c, rough: 0x55a23d, fairway: 0x6cc04a, green: 0x80d95b }, trees: 'pine', borderMix: 0, windMin: 3, windMax: 14, leaf: 0x6f9a34 },
   river: { id: 'river', sky: [0x3b86c4, 0xffe1b5], fog: 0xd6e4d4, hemi: [0xfff2dc, 0x50803c, 1.05], sun: [0xffd8a0, 2.3],
-    ground: { ob: 0x4c8035, rough: 0x67a646, fairway: 0x84c457, green: 0x9be36c }, trees: 'willow', borderMix: 0.45, windMax: 15, leaf: 0xc9b458,
+    ground: { ob: 0x4c8035, rough: 0x67a646, fairway: 0x84c457, green: 0x9be36c }, trees: 'willow', borderMix: 0.45, windMin: 5, windMax: 18, leaf: 0xc9b458,
     water: 0x2f8fba, sand: 0xdcc88f, reeds: 0x7f9640, rock: 0x8f8d84 },
 };
 
@@ -324,7 +324,7 @@ const RIVER_COURSE = {
       name: 'Island Green', par: 3, tip: 'Basket on an island! Miss and re-throw from the drop zone.',
       tee: [0, 0], basket: [0, -52], width: 12, ob: 14, greenR: 5,
       path: [[0, 0], [0, -52]],
-      ponds: [{ x: 0, z: -54, r: 17 }], islands: [{ x: 0, z: -53, r: 8 }], drop: [0, -33],
+      ponds: [{ x: 0, z: -54, r: 17 }], islands: [{ x: 0, z: -53, r: 9.5 }], drop: [0, -33],
       rivers: [{ pts: [[-80, -82], [-30, -64], [0, -54], [30, -46], [80, -30]], w: 9 }],
       trees: [{ x: 3.5, z: -58.5, s: 0.6 }, { x: -12, z: -22, s: 1 }, { x: 13, z: -25, s: 1 }],
       rocks: [{ x: -4, z: -49, s: 0.7 }, { x: 9, z: -38, s: 1.1 }],
@@ -367,7 +367,7 @@ const RIVER_COURSE = {
       name: 'Rapids', par: 4, tip: 'Two crossings. Lay up between them, then carry home.',
       tee: [0, 0], basket: [-4, -108], width: 13, ob: 13,
       path: [[0, 0], [6, -50], [-4, -108]],
-      rivers: [{ pts: [[-70, -22], [0, -26], [70, -18]], w: 8 }, { pts: [[-70, -90], [-20, -84], [20, -88], [70, -80]], w: 14 }],
+      rivers: [{ pts: [[-70, -22], [0, -26], [70, -18]], w: 8 }, { pts: [[-70, -94], [-20, -88], [20, -92], [70, -84]], w: 12 }],
       trees: [{ x: 14, z: -45, s: 1.1 }, { x: -6, z: -55, s: 1 }, { x: 5, z: -116, s: 1 }],
       rocks: [{ x: -3, z: -85, s: 1.3 }, { x: 6, z: -89, s: 1 }, { x: 2, z: -25, s: 0.8 }],
     },
@@ -413,18 +413,18 @@ const DISC_RANGE = { driver: 97, mid: 62, putter: 33 };
 // Basket geometry used for both visuals and catch detection (heights above the ground at the basket)
 const BK = { trayY: 0.62, trayR: 0.55, poleR: 0.05, bandY: 1.45 };
 // Wind: airborne discs are pushed along the wind (accel = push * windK * wind m/s); a headwind lifts a little, a tailwind sinks a little.
-// Only in the air: rolling on the ground ignores wind. Tuned so a 15 mph crosswind moves a full Driver drive ~12 m.
-const WIND = { push: 0.26, lift: 0.11, mph: 0.447, firstHoleMax: 4 };
+// Only in the air: rolling on the ground ignores wind. Tuned so a 15 mph crosswind moves a full Driver drive ~22 m.
+const WIND = { push: 0.44, lift: 0.19, mph: 0.447, firstHoleMax: 5 };
 const WIND_BANDS = [{ max: 1.5, name: 'Calm', color: '#dfe8e2' }, { max: 5.5, name: 'Light', color: '#7de38f' }, { max: 9.5, name: 'Breezy', color: '#ffe066' }, { max: 99, name: 'Strong', color: '#ff7a5c' }];
 const windBand = mph => WIND_BANDS.find(b => mph <= b.max);
 function makeWind(mph, deg) { const r = THREE.MathUtils.degToRad(deg), ms = mph * WIND.mph; return { mph, deg: ((deg % 360) + 360) % 360, ms, x: Math.sin(r) * ms, z: -Math.cos(r) * ms, band: windBand(mph).name }; }
 const CALM = makeWind(0, 0);
 // deg is the bearing the wind blows TOWARD in hole space (0 = down the usual tee direction, -z; 90 = +x)
-function windFor(courseId, holeIdx, seed, maxMph) {
+function windFor(courseId, holeIdx, seed, maxMph, minMph = 0) {
   let h = 2166136261; for (const ch of `${courseId}|${holeIdx}|${seed}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   const r = seeded((Math.abs(h) % 2147483646) + 1); r(); r();
-  let mph = Math.round(Math.pow(r(), 0.85) * maxMph);
-  if (holeIdx === 0) mph = Math.min(mph, WIND.firstHoleMax); // ease new players in
+  let mph = Math.round(minMph + Math.pow(r(), 0.85) * (maxMph - minMph));
+  if (holeIdx === 0) mph = Math.min(mph, WIND.firstHoleMax); // ease new players in (hole 1 is always gentle)
   return makeWind(mph, Math.floor(r() * 360));
 }
 
@@ -833,6 +833,24 @@ const aimArrow = new THREE.Group();
   const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.0, 3), m); head.rotation.x = -Math.PI / 2; head.position.set(0, 0.05, -14.6); aimArrow.add(head);
 }
 scene.add(aimArrow);
+// Curve preview: dots along the no-wind flight + roll path when Left/Right Curve is picked (wind is for the player to read)
+const CURVE_DOTS = 26;
+const curveDots = new THREE.InstancedMesh(new THREE.CircleGeometry(0.32, 10).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, depthWrite: false }), CURVE_DOTS);
+curveDots.frustumCulled = false; curveDots.visible = false; scene.add(curveDots);
+const curvePreview = { key: '', pts: [], end: null };
+function updateCurvePreview(power) {
+  const key = [S.lie.x.toFixed(2), S.lie.z.toFixed(2), S.yaw.toFixed(3), S.disc, S.curve, power.toFixed(2), COURSE.id, H.name].join('|');
+  if (key !== curvePreview.key) {
+    const w = S.wind; S.wind = CALM; const pts = []; simulateThrow({ power, curve: S.curve, path: pts }); S.wind = w;
+    let len = 0; const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z));
+    const m = new THREE.Matrix4(), out = [];
+    for (let j = 0; j < CURVE_DOTS; j++) { const d = len * (j + 1) / CURVE_DOTS; let i = 1; while (i < cum.length - 1 && cum[i] < d) i++;
+      const a = pts[i - 1], b = pts[i] || a, t = cum[i] > cum[i - 1] ? (d - cum[i - 1]) / (cum[i] - cum[i - 1]) : 0;
+      const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t; out.push({ x, z }); m.makeTranslation(x, H.groundY(x, z) + 0.06, z); curveDots.setMatrixAt(j, m); }
+    curveDots.instanceMatrix.needsUpdate = true; Object.assign(curvePreview, { key, pts: out, end: out[out.length - 1] });
+  }
+  return curvePreview.end;
+}
 // Pull-back power arrow: grows out the front of the disc along the aim, green → yellow → red.
 const powerArrow = new THREE.Group();
 // opaque + no depth test: always visible over trees and hills, drawn in renderOrder before the disc
@@ -937,7 +955,8 @@ const ui = {
   banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn'), next: $('nextbtn'),
   card: $('scorecard'), cardBody: $('cardbody'), cardTitle: $('cardtitle'), cardSub: $('cardsub'), cardAgain: $('cardagain'), menu: $('restartmenu'),
 };
-const CURVE_NAMES = { '-1': 'Big hyzer', '-0.5': 'Hyzer', '0': 'Straight', '0.5': 'Anhyzer', '1': 'Big anhyzer' };
+// Curve -1 bends the disc LEFT on screen, +1 bends it RIGHT (the buttons/keys only use -1, 0, +1; halves are for bots)
+const CURVE_NAMES = { '-1': 'Left curve', '-0.5': 'Slight left', '0': 'Straight', '0.5': 'Slight right', '1': 'Right curve' };
 let COURSE = COURSES[0];
 
 const S = {
@@ -993,7 +1012,7 @@ function loadHole(idx, { practice = false } = {}) {
   scene.userData.sky.position.set(H.mid.x, 0, H.mid.z);
   S.throws = 0; S.penalties = 0; S.curve = 0; S.result = null; S.lastThrow = null; S.events = [];
   S.leavesInit = false;
-  S.wind = practice || S.windMode === 'calm' ? CALM : windFor(COURSE.id, idx, S.roundSeed, (WORLDS[COURSE.world] || WORLDS.park).windMax);
+  S.wind = practice || S.windMode === 'calm' ? CALM : windFor(COURSE.id, idx, S.roundSeed, (WORLDS[COURSE.world] || WORLDS.park).windMax, (WORLDS[COURSE.world] || WORLDS.park).windMin);
   setFlagWind();
   clearConfetti(); hideBanner(); hideCard();
   S.lie.copy(H.tee); S.prevLie.copy(H.tee);
@@ -1267,7 +1286,7 @@ function endRound() {
 
 // Predict a throw without changing the game (used by tests and the practice bot).
 // Same physics and step size as a real throw; restores all flight state afterwards.
-function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw }) {
+function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = null }) {
   const keep = { knocked: S.knocked, pos: S.pos.clone(), vel: S.vel.clone(), v0: S.v0, dir0: S.dir0.clone(), right0: S.right0.clone(), curveUsed: S.curveUsed, D: S.D, flightTime: S.flightTime, maxY: S.maxY };
   const D = S.D = DISCS[disc], q = Math.sqrt(THREE.MathUtils.clamp(power, 0, 1));
   const speed = D.vmin + q * (D.vmax - D.vmin), launch = THREE.MathUtils.degToRad(D.l0 + q * D.l1);
@@ -1279,6 +1298,7 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw }) {
   const h = 1 / 480;
   for (let i = 0; i < 480 * 20; i++) {
     const r = stepPhysics(h);
+    if (path && i % 24 === 0) path.push(S.pos.clone());
     if (r === 'made') { outcome = 'made'; break; }
     if (r === 'water') { outcome = 'water'; break; }
     if (r === 'tree') trees++;
@@ -1290,6 +1310,7 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw }) {
     }
   }
   const end = { x: S.pos.x, z: S.pos.z };
+  if (path) path.push(S.pos.clone());
   if (outcome === 'landed' && H.isOB(end.x, end.z)) outcome = 'ob';
   const out = { outcome, end, trees, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
   Object.assign(S, { knocked: keep.knocked, v0: keep.v0, curveUsed: keep.curveUsed, D: keep.D, flightTime: keep.flightTime, maxY: keep.maxY });
@@ -1412,7 +1433,7 @@ function drawPullUI() {
     pullUI.band.classList.toggle('hidden', len < 2); pullUI.band.classList.toggle('bad', !valid);
   } else { pullUI.dot.classList.add('hidden'); pullUI.band.classList.add('hidden'); }
 }
-function cycleCurve(delta) { S.curve = THREE.MathUtils.clamp(S.curve + delta, -1, 1); }
+function cycleCurve(side) { S.curve = Math.sign(S.curve) === -side ? 0 : side; } // Q/E: step left/straight/right
 
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
@@ -1420,8 +1441,8 @@ addEventListener('keydown', e => {
   keys[k] = true;
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) startCharge(); }
   if (k === 'r' && !e.repeat) { e.shiftKey ? restartRound() : restartHole(); }
-  if (k === 'q' && !e.repeat) cycleCurve(-0.5);
-  if (k === 'e' && !e.repeat) cycleCurve(0.5);
+  if (k === 'q' && !e.repeat) cycleCurve(-1);
+  if (k === 'e' && !e.repeat) cycleCurve(1);
   if (k === 'c' && !e.repeat) toggleCard();
   if ((k === 'enter' || k === 'n') && !e.repeat) { if (S.phase === 'holed') nextHole(); else if (S.phase === 'done' && k === 'enter') restartRound(); }
   if (k === 'escape') { hideMenu(); if (S.phase !== 'done') hideCard(); }
@@ -1458,7 +1479,7 @@ function holdButton(el, down, up) {
 holdButton($('aimleft'), () => { keys['_touchleft'] = true; }, () => { keys['_touchleft'] = false; });
 holdButton($('aimright'), () => { keys['_touchright'] = true; }, () => { keys['_touchright'] = false; });
 for (const b of document.querySelectorAll('#curvebtns button')) {
-  b.addEventListener('pointerdown', e => { e.preventDefault(); const c = Number(b.dataset.curve); S.curve = c === 0 ? 0 : (Math.sign(S.curve) === Math.sign(c) ? THREE.MathUtils.clamp(S.curve + c, -1, 1) : c); });
+  b.addEventListener('pointerdown', e => { e.preventDefault(); S.curve = Number(b.dataset.curve); });
 }
 for (const b of document.querySelectorAll('#discbtns button')) {
   b.addEventListener('pointerdown', e => { e.preventDefault(); selectDisc(b.dataset.disc); });
@@ -1512,9 +1533,12 @@ function frame(now) {
   if (showPower) { powerArrow.position.set(S.lie.x, S.lie.y, S.lie.z); powerArrow.rotation.y = -S.yaw; layoutPowerArrow(S.power); }
   drawPullUI();
   rangeRing.visible = aiming;
+  curveDots.visible = aiming && S.curve !== 0;
   if (aiming) {
     // while charging the ring marks the rough straight carry at this power; otherwise this disc's full range
+    // with a curve picked, dots show the bend and the ring sits where the curved (no-wind) flight lands
     const rp = dirFromYaw(S.yaw).multiplyScalar(showPower ? Math.max(1.5, DISC_RANGE[S.disc] * S.power) : DISC_RANGE[S.disc]).add(S.lie);
+    if (S.curve !== 0) { const e = updateCurvePreview(showPower ? Math.max(0.05, S.power) : 1); if (e) { rp.x = e.x; rp.z = e.z; } }
     rangeRing.position.set(rp.x, H.groundY(rp.x, rp.z) + 0.07, rp.z); rangeRing.material.color.setHex(DISCS[S.disc].color);
   }
   const arr = trailGeom.attributes.position.array;
@@ -1566,6 +1590,7 @@ window.__game = {
     pull: S.pull && { valid: S.pull.valid, frac: S.pull.frac, power: S.pull.power, offset: S.pull.offset, baseYaw: S.pull.baseYaw },
     arrow: powerArrow.visible ? { length: PA.shaft.scale.y, color: '#' + PA.fill.color.getHexString(), yaw: S.yaw } : null,
     ring: rangeRing.visible ? { x: rangeRing.position.x, z: rangeRing.position.z } : null,
+    curvePreview: curveDots.visible && curvePreview.end ? { end: { ...curvePreview.end }, n: curvePreview.pts.length } : null,
     lie: { x: S.lie.x, y: S.lie.y, z: S.lie.z }, discPos: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
     distToBasket: distToBasket(), result: S.result, hole: S.holeIdx + 1, practice: S.practice,
     banner: ui.banner.classList.contains('hidden') ? null : ui.btext.textContent + ' | ' + ui.bsub.textContent,
@@ -1579,7 +1604,7 @@ window.__game = {
   loadCourse, showPicker,
   setWind(mph, deg) { S.wind = makeWind(mph, deg); setFlagWind(); },
   setSeed(seed) { S.roundSeed = seed; S.fixedSeed = true; },
-  windFor: (courseId, idx, seed) => windFor(courseId, idx, seed, (WORLDS[(COURSES.find(c => c.id === courseId) || COURSE).world] || WORLDS.park).windMax),
+  windFor: (courseId, idx, seed) => { const w = WORLDS[(COURSES.find(c => c.id === courseId) || COURSE).world] || WORLDS.park; return windFor(courseId, idx, seed, w.windMax, w.windMin); },
   windWords: () => windWords(S.wind, yawToward(H.tee, H.teeAim)), isWater: (x, z) => H.isWater(x, z), groundY: (x, z) => H.groundY(x, z),
   round: () => ({ ...roundStats(), scores: [...S.scores] }),
   isOB: (x, z) => H.isOB(x, z),
