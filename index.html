@@ -665,19 +665,19 @@ const MAX_OVER_PAR = 4; // pick up at par + 4 so a round can't get stuck
 // lift/drag shape the glide, fade pulls left late in the flight, turn scales the Q/E curve,
 // hot is the fastest the chains will hold, windK how much wind moves it (lighter/slower discs a bit more).
 const DISCS = {
-  driver: { key: 'driver', name: 'Driver', short: 'Driver', hotkey: '1', color: 0xff7a1a, css: '#ff7a1a', vmin: 4, vmax: 30.5, l0: 4, l1: 8, liftK: 0.0085, liftMax: 8.5, dragK: 0.0045, drag0: 0.45, fade: 20, turn: 4.5, hot: 9, windK: 1.0, look: { r: 1.65, rb: 1.25, h: 0.035 } },
-  mid:    { key: 'mid', name: 'Midrange', short: 'Mid', hotkey: '2', color: 0x3fb7ff, css: '#3fb7ff', vmin: 3, vmax: 23.5, l0: 5, l1: 9, liftK: 0.012, liftMax: 8.0, dragK: 0.0055, drag0: 0.4, fade: 7, turn: 3.5, hot: 10.5, windK: 1.1, look: { r: 1.55, rb: 1.4, h: 0.05 } },
-  putter: { key: 'putter', name: 'Putter', short: 'Putter', hotkey: '3', color: 0xc77dff, css: '#c77dff', vmin: 2.5, vmax: 15, l0: 6, l1: 12, liftK: 0.03, liftMax: 7.5, dragK: 0.008, drag0: 0.35, fade: 1.5, turn: 2, hot: 14, windK: 1.25, look: { r: 1.5, rb: 1.48, h: 0.07 } },
+  driver: { key: 'driver', name: 'Driver', short: 'Driver', hotkey: '1', color: 0xff7a1a, css: '#ff7a1a', vmin: 4, vmax: 30.5, l0: 4, l1: 8, liftK: 0.0085, liftMax: 8.5, dragK: 0.0045, drag0: 0.45, fade: 38, turn: 4.5, hst: 3.6, hsAt: 0.62, hot: 9, windK: 1.0, look: { r: 1.65, rb: 1.25, h: 0.035 } },
+  mid:    { key: 'mid', name: 'Midrange', short: 'Mid', hotkey: '2', color: 0x3fb7ff, css: '#3fb7ff', vmin: 3, vmax: 23.5, l0: 5, l1: 9, liftK: 0.012, liftMax: 8.0, dragK: 0.0055, drag0: 0.4, fade: 18, turn: 3.5, hst: 1.3, tailK: 1.3, hsAt: 0.65, hot: 10.5, windK: 1.1, look: { r: 1.55, rb: 1.4, h: 0.05 } },
+  putter: { key: 'putter', name: 'Putter', short: 'Putter', hotkey: '3', color: 0xc77dff, css: '#c77dff', vmin: 2.5, vmax: 15, l0: 6, l1: 12, liftK: 0.03, liftMax: 7.5, dragK: 0.008, drag0: 0.35, fade: 1.5, turn: 2, hst: 0.5, tailK: 2.6, hsAt: 0.7, hot: 14, windK: 1.25, look: { r: 1.5, rb: 1.48, h: 0.07 } },
 };
 const DISC_ORDER = ['driver', 'mid', 'putter'];
 function suggestDisc(dist) { return dist > 58 ? 'driver' : dist > 31 ? 'mid' : 'putter'; }
 // Straight full-power carry, measured by tests/play.mjs; drawn as the range ring
 const DISC_RANGE = { driver: 97, mid: 62, putter: 33 };
 // Basket geometry used for both visuals and catch detection (heights above the ground at the basket)
-const BK = { trayY: 0.62, trayR: 0.55, poleR: 0.05, bandY: 1.45 };
+const BK = { trayY: 0.62, trayR: 0.55, poleR: 0.05, bandY: 1.45, edgeHot: 0.8, centreHot: 1.35, poleHot: 1.1 };
 // Wind: airborne discs are pushed along the wind (accel = push * windK * wind m/s); a headwind lifts a little, a tailwind sinks a little.
 // Only in the air: rolling on the ground ignores wind. Tuned so a 15 mph crosswind moves a full Driver drive ~22 m.
-const WIND = { push: 0.44, lift: 0.19, mph: 0.447, firstHoleMax: 5 };
+const WIND = { push: 0.3, tail: 0.45, lift: 0.19, mph: 0.447, firstHoleMax: 5 };
 const WIND_BANDS = [{ max: 1.5, name: 'Calm', color: '#dfe8e2' }, { max: 5.5, name: 'Light', color: '#7de38f' }, { max: 9.5, name: 'Breezy', color: '#ffe066' }, { max: 99, name: 'Strong', color: '#ff7a5c' }];
 const windBand = mph => WIND_BANDS.find(b => mph <= b.max);
 function makeWind(mph, deg) { const r = THREE.MathUtils.degToRad(deg), ms = mph * WIND.mph; return { mph, deg: ((deg % 360) + 360) % 360, ms, x: Math.sin(r) * ms, z: -Math.cos(r) * ms, band: windBand(mph).name }; }
@@ -1323,6 +1323,8 @@ for (const d of Object.values(DISCS)) {
   stripe.rotation.x = Math.PI / 2; stripe.position.y = d.look.h / 2 + 0.002; g.add(stripe);
   discMeshes[d.key] = g; disc.add(g);
 }
+disc.rotation.order = 'YXZ'; // heading, then nose pitch, then bank around the flight line
+let discHeading = 0, discSpin = 0, discWob = 0;
 scene.add(disc);
 const rangeRing = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.5, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
 rangeRing.rotation.x = -Math.PI / 2; scene.add(rangeRing);
@@ -1577,7 +1579,7 @@ function stepCurve(side) { const l = curveLevel(S.curve); S.curve = curveFor(Mat
 let COURSE = COURSES[0];
 
 const S = {
-  ventT: 0, phase: 'aim', // menu | aim | charging | flying | splash | holed | done
+  fs: { bank: 0, roll: 0, canopy: false, spin: 1 }, ventT: 0, phase: 'aim', // menu | aim | charging | flying | splash | holed | done
   holeIdx: 0, scores: Array(COURSE.holes.length).fill(null), practice: false,
   lie: new THREE.Vector3(), prevLie: new THREE.Vector3(), yaw: 0, power: 0, chargeT: 0, pull: null, charge: null, curve: 0, throws: 0,
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), v0: 0, dir0: new THREE.Vector3(), right0: new THREE.Vector3(),
@@ -1738,7 +1740,7 @@ function throwDisc(power, curve = S.curve) {
   S.prevLie.copy(S.lie);
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
   S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
-  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.ventT = 0; S.vented = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y;
+  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.ventT = 0; S.vented = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y; S.acc = 0; S.fs = newFlightState(); S.fs.bank = curve * 0.3;
   document.body.classList.add('played');
   S.lastThrow = { disc: S.disc, power, curve, speed, from: S.lie.clone(), yaw: S.yaw };
   hideBanner(); hideMenu();
@@ -1747,9 +1749,22 @@ function throwDisc(power, curve = S.curve) {
 
 // ---------- Physics ----------
 const G = 9.8;
+// per-throw flight state beyond position/velocity: bank (visual tilt, + = right side down), rolling on edge, inside a canopy
+const newFlightState = () => ({ hold: false, bank: 0, roll: 0, rollT: 0, rolled: false, canopy: false, spin: 1, landBank: undefined, landSteep: 0 });
 // Ground contact per surface: friction = rolling slowdown (m/s²), keep = speed kept on a bounce, slope = downhill pull
 const VENT = { top: 14, maxT: 0.9, gain: 1.8 }; // updraft reaches 14 m up; at most 0.9 s of push per throw
-const SURFACE = { ground: { friction: 9, keep: 0.7, bounce: 0.25, slope: 3 }, ice: { friction: 1.6, keep: 0.93, bounce: 0.12, slope: 7 }, snow: { friction: 34, keep: 0.25, bounce: 0.05, slope: 1 } };
+// roll = friction factor while rolling on edge (0 = can't roll: deep snow just swallows an edge landing)
+const SURFACE = { ground: { friction: 9, keep: 0.7, bounce: 0.25, slope: 3, roll: 0.5 }, ice: { friction: 1.6, keep: 0.93, bounce: 0.12, slope: 7, roll: 1 }, snow: { friction: 34, keep: 0.25, bounce: 0.05, slope: 1, roll: 0 } };
+const ROLL = { bank: 0.88, steep: 0.45, minV: 4, keep: 0.65, stopV: 1.5, maxT: 4, turn: 1, turnSlow: 2.5 };
+// Collisions: N = share of the speed straight into the surface that bounces back, T = share of the sliding speed kept
+const PHYS = { trunkN: 0.2, trunkT: 0.5, rockN: 0.3, rockT: 0.65, leafDrag: 3.2, leafPush: 1.6, leafDown: 4 };
+function bounceOff(v, nx, nz, eN, eT) {
+  const dot = v.x * nx + v.z * nz;
+  if (dot >= 0) { v.x *= 0.35; v.z *= 0.35; v.y = Math.min(v.y, 0) * 0.5; return; } // came down on top / already inside: it just drops
+  const tx = v.x - dot * nx, tz = v.z - dot * nz;
+  v.x = tx * eT - dot * eN * nx; v.z = tz * eT - dot * eN * nz;
+  v.y = Math.min(v.y, 0) * 0.5;
+}
 function stepPhysics(dt) {
   const p = S.pos, v = S.vel, D = S.D;
   const prev = TMP.prev.copy(p); // reused scratch vectors: no allocations per physics step
@@ -1758,18 +1773,29 @@ function stepPhysics(dt) {
   const airborne = p.y > gy + DISC_R + 0.001;
   S.flightTime += dt;
   if (airborne) {
-    const lift = Math.min(D.liftMax, D.liftK * vh * vh);
+    // Aerodynamics work on airspeed (velocity relative to the wind): a headwind adds lift and turn (the disc rises and flips),
+    // a tailwind takes lift away and lets it fade early (it drops). Plus an arcade push along the wind so drift stays readable.
+    // slow putts sit low in the air and feel less of it (wa < 1), full throws feel all of it
+    const W = S.wind, wa = Math.min(1, S.v0 / 12), wx = W.x * wa, wz = W.z * wa, ax = v.x - wx, az = v.z - wz, va = Math.hypot(ax, az);
+    const lift = Math.min(D.liftMax, D.liftK * va * va);
     v.y += (lift - G) * dt;
-    const drag = D.dragK * vh * vh + D.drag0;
-    if (vh > 0.01) { const k = Math.max(0, vh - drag * dt) / vh; v.x *= k; v.z *= k; }
-    const slow = THREE.MathUtils.clamp(1 - vh / S.v0, 0, 1), fast = 1 - slow, scale = S.v0 / D.vmax;
-    const lat = (S.curveUsed * D.turn * fast * scale) - (D.fade * scale * slow * slow);
-    if (!S.knocked) v.addScaledVector(S.right0, lat * dt); // after hitting a tree the disc just drops
-    const W = S.wind;
+    const drag = D.dragK * va * va + D.drag0;
+    if (va > 0.01) { const k = Math.max(0, va - drag * dt) / va; v.x = wx + ax * k; v.z = wz + az * k; }
+    // Flight shape: turn right while the disc is really fast (powerful throws only, most on the Driver), glide,
+    // then fade left at the end as it slows (Driver fades most). Q/E curve adds a steady bank on top.
+    const slow = THREE.MathUtils.clamp(1 - va / S.v0, 0, 1), fast = 1 - slow, scale = S.v0 / D.vmax;
+    const hs = Math.max(0, va / D.vmax - D.hsAt) / (1 - D.hsAt);
+    const lat = (S.curveUsed * D.turn * fast * scale) + D.hst * hs * hs * (S.curveUsed ? 0.2 : 1) - (D.fade * scale * slow * slow);
+    if (!S.knocked) v.addScaledVector(S.right0, lat * dt); // after a hard hit the disc just drops
+    // the disc banks into its sideways force (visual tilt; also decides edge-roll vs flat skid on landing)
+    const fs = S.fs, tgt = THREE.MathUtils.clamp(Math.atan2(S.knocked ? 0 : lat, G) * 1.6, -1.15, 1.15);
+    if (!fs.roll && !fs.hold) fs.bank += (tgt - fs.bank) * Math.min(1, dt * 5);
     if (W.ms > 0) {
-      const k = WIND.push * D.windK * (0.3 + 0.7 * Math.min(1, vh / 22)); // fast discs catch more wind; slow putts barely drift
+      const k = WIND.push * D.windK * (0.3 + 0.7 * Math.min(1, va / 22)); // fast discs catch more wind; slow putts barely drift
       v.x += W.x * k * dt; v.z += W.z * k * dt;
-      if (vh > 0.5 && !S.knocked) v.y -= ((W.x * v.x + W.z * v.z) / vh) * WIND.lift * dt; // headwind (negative along) lifts
+      // arcade: a tailwind still carries the disc further overall even though it flies lower
+      const along = W.x * S.dir0.x + W.z * S.dir0.z;
+      if (along > 0) { v.x += S.dir0.x * along * k * WIND.tail * (D.tailK || 1) * dt; v.z += S.dir0.z * along * k * WIND.tail * (D.tailK || 1) * dt; }
     }
     // Steam vents: an updraft above the vent (strongest at the centre, fading with height). Capped per throw so a disc can never hover.
     if (!S.noVents && S.ventT < VENT.maxT) for (const o of H.vents) {
@@ -1785,24 +1811,36 @@ function stepPhysics(dt) {
   const res = basketCheck(prev, p);
   if (res) return res;
 
+  // Trees: the trunk is solid (bounces off, losing most of its speed); the canopy is leaves: it drags and deflects the
+  // disc while it is inside (a clipped canopy slows it down and knocks it off line, a full hit drops it), no dead stop.
+  let inCanopy = false;
   for (const t of H.trees) {
     const dx = p.x - t.x, dz = p.z - t.z;
     if (Math.abs(dx) > 3 || Math.abs(dz) > 3) continue;
     const d = Math.hypot(dx, dz), hy = p.y - t.y;
     const trunkR = 0.38 * t.s + DISC_R, canopyBase = 2.0 * t.s, canopyTop = 7.5 * t.s;
-    let r = 0;
-    if (hy < canopyBase) r = trunkR;
-    else if (hy < canopyTop) r = Math.max(trunkR, 2.2 * t.s * (1 - (hy - canopyBase) / (canopyTop - canopyBase)));
-    if (r > 0 && d < r) {
-      const nx = dx / (d || 1), nz = dz / (d || 1);
-      const dot = v.x * nx + v.z * nz;
-      if (dot < 0) { v.x -= 2 * dot * nx; v.z -= 2 * dot * nz; }
-      const isTrunk = r === trunkR;
-      v.x *= isTrunk ? 0.3 : 0.18; v.z *= isTrunk ? 0.3 : 0.18; v.y = Math.min(v.y, 0) * 0.3;
-      p.x = t.x + nx * (r + 0.02); p.z = t.z + nz * (r + 0.02);
-      S.knocked = true;
+    if (hy >= canopyTop) continue;
+    const nx = dx / (d || 1), nz = dz / (d || 1);
+    if (d < trunkR) {
+      bounceOff(v, nx, nz, PHYS.trunkN, PHYS.trunkT);
+      p.x = t.x + nx * (trunkR + 0.02); p.z = t.z + nz * (trunkR + 0.02);
+      S.knocked = true; S.fs.roll = 0; S.fs.bank *= 0.5;
       return 'tree';
     }
+    if (hy < canopyBase) continue;
+    const r = 2.2 * t.s * (1 - (hy - canopyBase) / (canopyTop - canopyBase));
+    if (d >= r) continue;
+    inCanopy = true;
+    // deeper in the canopy = thicker leaves; leaves push the disc out sideways and take away its lift
+    const depth = 1 - d / r, k = PHYS.leafDrag * (0.35 + depth), keep = Math.exp(-k * dt);
+    const hv = Math.hypot(v.x, v.z);
+    v.x *= keep; v.z *= keep;
+    v.x += nx * hv * PHYS.leafPush * dt; v.z += nz * hv * PHYS.leafPush * dt;
+    v.y = Math.min(v.y, v.y * keep) - PHYS.leafDown * dt;
+  }
+  if (inCanopy !== S.fs.canopy) {
+    S.fs.canopy = inCanopy;
+    if (inCanopy) { S.knocked = true; S.fs.bank *= 0.6; return 'tree'; } // counts once when it enters the leaves
   }
 
   // Ice obstacles: pillars / seracs / bergs / hut (solid cylinders), arches (half ring: the opening is clear), snow banks
@@ -1810,10 +1848,9 @@ function stepPhysics(dt) {
     const dx = p.x - o.x, dz = p.z - o.z, rr = o.r + DISC_R;
     if (Math.abs(dx) > rr || Math.abs(dz) > rr || p.y - o.y > o.h) continue;
     const d = Math.hypot(dx, dz); if (d >= rr) continue;
-    const nx = dx / (d || 1), nz = dz / (d || 1), dot = v.x * nx + v.z * nz;
-    if (dot < 0) { v.x -= 1.6 * dot * nx; v.z -= 1.6 * dot * nz; }
-    v.x *= 0.35; v.z *= 0.35; v.y = Math.min(v.y, 0) * 0.3;
-    p.x = o.x + nx * (rr + 0.02); p.z = o.z + nz * (rr + 0.02); S.knocked = true;
+    const nx = dx / (d || 1), nz = dz / (d || 1);
+    bounceOff(v, nx, nz, PHYS.rockN, PHYS.rockT); // rocks / pillars / ice: a real bounce that loses energy
+    p.x = o.x + nx * (rr + 0.02); p.z = o.z + nz * (rr + 0.02); S.knocked = true; S.fs.roll = 0; S.fs.bank *= 0.5;
     return 'tree';
   }
   for (const a of H.arches) {
@@ -1823,8 +1860,9 @@ function stepPhysics(dt) {
     const hit = hy > a.c ? Math.abs(Math.hypot(across, hy - a.c) - a.R) < lim : Math.abs(Math.abs(across) - a.R) < lim;
     if (!hit) continue;
     const va = v.x * a.dir.x + v.z * a.dir.y, side = Math.sign(along) || -Math.sign(va) || 1;
-    if (va * side < 0) { v.x -= 1.5 * va * a.dir.x; v.z -= 1.5 * va * a.dir.y; }
-    v.x *= 0.35; v.z *= 0.35; v.y = Math.min(v.y, 0) * 0.3;
+    if (va * side < 0) bounceOff(v, a.dir.x * side, a.dir.y * side, PHYS.rockN, PHYS.rockT);
+    else { v.x *= 0.35; v.z *= 0.35; v.y = Math.min(v.y, 0) * 0.5; } // clipped the side of a leg: knocked down
+    S.fs.roll = 0;
     p.x += a.dir.x * side * (lim - Math.abs(along) + 0.02); p.z += a.dir.y * side * (lim - Math.abs(along) + 0.02); S.knocked = true;
     return 'tree';
   }
@@ -1845,22 +1883,49 @@ function stepPhysics(dt) {
   const g2 = H.groundY(p.x, p.z);
   if (p.y <= g2 + DISC_R) {
     p.y = g2 + DISC_R;
+    if (S.fs.landBank === undefined) { S.fs.landBank = S.fs.bank; S.fs.landSteep = -v.y / (Math.hypot(v.x, v.z) + 0.01); }
     // Water: only touching down counts (flying over is fine). The disc sinks where it lands or rolls in.
     if (H.hasWater && H.isWater(p.x, p.z)) { v.set(0, 0, 0); return 'water'; }
     // Surface: ice skids on (low friction), deep snow swallows the disc (stops fast), everything else is normal ground
     const surf = H.surface(p.x, p.z), F = SURFACE[surf] || SURFACE.ground;
-    if (v.y < -2.5) {
+    const fs = S.fs, vh = Math.hypot(v.x, v.z);
+    if (v.y < -2.5 && !fs.roll) {
       if (surf === 'snow' && !S.sim && !S.puffed) { spawnPuff(p.x, p.z); S.puffed = true; }
-      v.y = -v.y * F.bounce; v.x *= F.keep; v.z *= F.keep;
+      const steep = -v.y / (vh + 0.01);
+      if (F.roll && Math.abs(fs.bank) > ROLL.bank && steep < ROLL.steep && vh > ROLL.minV) {
+        // came in hard on its edge at a shallow angle: it stands up and rolls (a rollaway)
+        fs.roll = Math.sign(fs.bank); fs.rolled = true; fs.rollT = 0;
+        v.y = 0; v.x *= ROLL.keep; v.z *= ROLL.keep;
+      } else {
+        // flat landing: a shallow one skips on low and keeps more speed, a steep one thuds
+        const t = Math.min(1, steep), keep = F.keep + (1 - F.keep) * 0.25 * (1 - t);
+        v.y = -v.y * F.bounce * (0.6 + 0.4 * t); v.x *= keep; v.z *= keep;
+        fs.bank *= 0.5;
+      }
     }
     else {
       v.y = 0;
-      // gentle roll down slopes (much more on ice), then friction
+      // gentle roll down slopes (much more on ice; a disc rolling on edge picks up slope much more), then friction
       const e = 0.3, gx = (H.groundY(p.x + e, p.z) - H.groundY(p.x - e, p.z)) / (2 * e), gz = (H.groundY(p.x, p.z + e) - H.groundY(p.x, p.z - e)) / (2 * e);
-      v.x -= gx * F.slope * dt; v.z -= gz * F.slope * dt;
-      const h = Math.hypot(v.x, v.z), nh = Math.max(0, h - F.friction * dt);
+      const sl = F.slope * (fs.roll ? 2.2 : 1);
+      v.x -= gx * sl * dt; v.z -= gz * sl * dt;
+      const h = Math.hypot(v.x, v.z);
+      if (fs.roll) {
+        // on edge: curves toward the side it leans (tighter as it slows), then spins out and falls flat
+        fs.rollT += dt;
+        if (h > 0.01) {
+          const a = fs.roll * (ROLL.turn + ROLL.turnSlow * (1 - Math.min(1, h / 8))) * dt / h;
+          const nx = v.x - v.z * a, nz = v.z + v.x * a, nn = Math.hypot(nx, nz);
+          v.x = nx * h / nn; v.z = nz * h / nn;
+        }
+        if (h < ROLL.stopV || fs.rollT > ROLL.maxT) fs.roll = 0;
+      }
+      const nh = Math.max(0, h - F.friction * (fs.roll ? F.roll : 1) * dt);
       if (h > 0) { v.x *= nh / h; v.z *= nh / h; }
     }
+    // visuals: up on edge while rolling, otherwise settles flat; spin dies away on the ground
+    fs.bank += ((fs.roll ? fs.roll * 1.35 : 0) - fs.bank) * Math.min(1, dt * 6);
+    fs.spin = Math.max(0, fs.spin - dt * 0.7);
   }
   return null;
 }
@@ -1871,16 +1936,27 @@ function basketCheck(a, b) {
     const q = TMP.q.copy(a).lerp(b, i / 4);
     const dx = q.x - B.x, dz = q.z - B.z, y = q.y - B.y, d = Math.hypot(dx, dz);
     const speed = S.vel.length(), HOT = S.D.hot;
-    if (d < BK.poleR + DISC_R && y < BK.bandY && speed > HOT) {
-      const nx = dx / (d || 1), nz = dz / (d || 1);
-      S.vel.set(nx * speed * 0.25, 1.5, nz * speed * 0.25);
+    const nx = dx / (d || 1), nz = dz / (d || 1);
+    // the pole: a fast disc glances off it (keeps some of its sideways speed), a slow one drops into the chains below
+    if (d < BK.poleR + DISC_R && y < BK.bandY && speed > HOT * BK.poleHot) {
+      bounceOff(S.vel, nx, nz, 0.3, 0.55); S.vel.y = 1.2;
       S.pos.set(B.x + nx * 0.3, q.y, B.z + nz * 0.3);
       return 'pole';
     }
-    if (d < BK.trayR * 1.12 && y > BK.trayY - 0.14 && y < BK.bandY + 0.05) { // a little generous: arcade chains
-      if (speed > HOT) {
-        S.vel.multiplyScalar(-0.15); S.vel.y = 1;
-        S.pos.set(B.x + (dx / (d || 1)) * 0.7, q.y, B.z + (dz / (d || 1)) * 0.7);
+    const zoneR = BK.trayR * 1.12; // a little generous: arcade chains
+    if (d < zoneR && y > BK.trayY - 0.14 && y < BK.bandY + 0.05) {
+      // chains soak up a disc that hits them square; a hard hit on the outer edge of the chains spits out
+      // how far off-centre its line is (sideways distance of the flight line from the pole), not where it first touched
+      const vx = S.vel.x, vz = S.vel.z, vh = Math.hypot(vx, vz), off = vh > 0.1 ? Math.abs(dx * vz - dz * vx) / vh : d;
+      const centre = THREE.MathUtils.clamp(1 - off / zoneR, 0, 1), limit = HOT * (BK.edgeHot + (BK.centreHot - BK.edgeHot) * centre);
+      if (speed > limit) {
+        if (centre > 0.6) { // dead centre but too hot: punches through the chains and clangs off the pole
+          bounceOff(S.vel, nx, nz, 0.3, 0.5); S.vel.y = 1.2;
+          S.pos.set(B.x + nx * 0.7, q.y, B.z + nz * 0.7);
+          return 'pole';
+        }
+        bounceOff(S.vel, nx, nz, 0.25, 0.45); S.vel.y = 1; // skips off the side it hit
+        S.pos.set(B.x + nx * 0.7, q.y, B.z + nz * 0.7);
         return 'spit';
       }
       S.pos.set(B.x + dx * 0.3, B.y + BK.trayY, B.z + dz * 0.3); S.vel.set(0, 0, 0);
@@ -1894,10 +1970,13 @@ function basketCheck(a, b) {
   return null;
 }
 
+// Fixed timestep: the real flight runs exactly the same 1/480 s steps as simulateThrow (the landing ring), so the ring is exact.
+const PHYS_DT = 1 / 480;
 function updateFlight(dt) {
-  const sub = 8, h = dt / sub;
-  for (let i = 0; i < sub; i++) {
-    const r = stepPhysics(h);
+  S.acc = (S.acc || 0) + dt; let n = 0;
+  while (S.acc >= PHYS_DT - 1e-9 && n++ < 60) {
+    S.acc -= PHYS_DT;
+    const r = stepPhysics(PHYS_DT);
     if (r && r !== 'tree' && r !== 'water') S.events.push({ type: r, disc: S.disc, throw: S.throws });
     if (r === 'made') { onMade(); return; }
     if (r === 'water') { onSplash(); return; }
@@ -1976,19 +2055,23 @@ function endRound() {
 
 // Predict a throw without changing the game (used by tests and the practice bot).
 // Same physics and step size as a real throw; restores all flight state afterwards.
-function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = null }) {
-  const keep = { knocked: S.knocked, pos: S.pos.clone(), vel: S.vel.clone(), v0: S.v0, dir0: S.dir0.clone(), right0: S.right0.clone(), curveUsed: S.curveUsed, D: S.D, flightTime: S.flightTime, maxY: S.maxY };
+function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = null, test = null }) {
+  const keep = { fs: S.fs, knocked: S.knocked, pos: S.pos.clone(), vel: S.vel.clone(), v0: S.v0, dir0: S.dir0.clone(), right0: S.right0.clone(), curveUsed: S.curveUsed, D: S.D, flightTime: S.flightTime, maxY: S.maxY };
   S.sim = true;
   const D = S.D = DISCS[disc], q = Math.sqrt(THREE.MathUtils.clamp(power, 0, 1));
-  const speed = D.vmin + q * (D.vmax - D.vmin), launch = THREE.MathUtils.degToRad(D.l0 + q * D.l1);
+  let speed = D.vmin + q * (D.vmax - D.vmin), launch = THREE.MathUtils.degToRad(D.l0 + q * D.l1);
   S.dir0.copy(dirFromYaw(yaw)); S.right0.set(Math.cos(yaw), 0, Math.sin(yaw));
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
   S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
+  if (test) { // tests only: an exact launch (height above ground, speed, flat) to hit things like the basket chains on purpose
+    S.pos.y = S.lie.y + test.height; S.vel.copy(S.dir0).multiplyScalar(test.speed); speed = test.speed;
+  }
+  S.fs = newFlightState(); S.fs.bank = test?.bank ?? curve * 0.3; if (test?.bank != null) S.fs.hold = true;
+  if (test?.vy != null) S.vel.y = test.vy;
   S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.flightTime = 0; S.maxY = S.pos.y; const keepVentT = S.ventT; S.ventT = 0;
   let outcome = 'landed', rest = 0, trees = 0, banks = 0, bounced = null;
-  const h = 1 / 480;
   for (let i = 0; i < 480 * 20; i++) {
-    const r = stepPhysics(h);
+    const r = stepPhysics(PHYS_DT);
     if (path && i % 24 === 0) path.push(S.pos.clone());
     if (r === 'made') { outcome = 'made'; break; }
     if (r === 'water') { outcome = 'water'; break; }
@@ -2004,8 +2087,8 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = nu
   const end = { x: S.pos.x, z: S.pos.z };
   if (path) path.push(S.pos.clone());
   if (outcome === 'landed' && H.isOB(end.x, end.z)) outcome = 'ob';
-  const out = { outcome, end, trees, banks, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
-  Object.assign(S, { knocked: keep.knocked, v0: keep.v0, curveUsed: keep.curveUsed, D: keep.D, flightTime: keep.flightTime, maxY: keep.maxY });
+  const out = { landBank: S.fs.landBank, landSteep: S.fs.landSteep, rolled: !!S.fs.rolled, outcome, end, trees, banks, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
+  Object.assign(S, { fs: keep.fs, knocked: keep.knocked, v0: keep.v0, curveUsed: keep.curveUsed, D: keep.D, flightTime: keep.flightTime, maxY: keep.maxY });
   S.pos.copy(keep.pos); S.vel.copy(keep.vel); S.dir0.copy(keep.dir0); S.right0.copy(keep.right0);
   S.sim = false; S.ventT = keepVentT;
   return out;
@@ -2414,8 +2497,18 @@ function frame(now) {
   if (aiming) disc.position.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z); else disc.position.copy(S.pos);
   for (const [k, m] of Object.entries(discMeshes)) m.visible = k === S.disc;
   disc.visible = S.phase !== 'splash' && S.phase !== 'menu';
-  disc.rotation.y += dt * (S.phase === 'flying' ? 25 : 1);
-  disc.rotation.z = S.phase === 'flying' ? -S.curveUsed * 0.35 + 0.1 : 0;
+  // Disc look: faces where it is going, banks with the real bank angle (up on edge while rolling, flat once settled),
+  // a slight nose-up in the air, spins fast in flight, and wobbles more as the spin dies when it lands (spin-out)
+  if (S.phase === 'flying') {
+    const h = Math.hypot(S.vel.x, S.vel.z), fs = S.fs, air = S.pos.y > H.groundY(S.pos.x, S.pos.z) + DISC_R + 0.02;
+    if (h > 0.5) discHeading = Math.atan2(-S.vel.x, -S.vel.z);
+    discSpin += dt * (4 + 26 * fs.spin); discWob += dt * (14 + 10 * (1 - fs.spin));
+    const amp = air ? 0.035 : fs.roll ? 0.05 : 0.16 * fs.spin * (1 - fs.spin) * 4 * Math.min(1, h + 0.3);
+    disc.rotation.set((air && !S.knocked ? 0.12 : 0) + amp * Math.sin(discWob), discHeading, -fs.bank + amp * Math.cos(discWob));
+  } else {
+    discHeading = -S.yaw; discSpin += dt; disc.rotation.set(0, discHeading, 0);
+  }
+  discSpin %= Math.PI * 2; discMeshes[S.disc].rotation.y = discSpin;
   const showPower = S.phase === 'charging' && (!S.pull || S.pull.valid);
   aimArrow.visible = aiming && !showPower;
   aimArrow.position.set(S.lie.x, S.lie.y, S.lie.z); aimArrow.rotation.y = -S.yaw;
@@ -2514,6 +2607,8 @@ window.__game = {
   mem: () => ({ geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, sharedDisposed: S.sharedDisposed || 0, previewSims: curvePreview.sims, previewLayers: scene.children.filter(o => o.isPoints && o.material.isShaderMaterial).length, aimDots: (() => { let n = 0; scene.traverse(o => { if (o.isPoints && o.visible && ![leaves, snowfall, embers].includes(o) && !H.group.children.includes(o) && o.parent === scene) n++; }); return n; })() }),
   loadHole: (i) => loadHole(i),
   loadPractice: () => loadHole(0, { practice: true }),
+  // tests only: invisible physics-only obstacles on the current hole (cleared by loading a hole)
+  testObstacles: (o) => { if (o.trees) H.trees = o.trees.map(t => ({ y: H.groundY(t.x, t.z), s: 1, ...t })); if (o.solids) H.solids = o.solids.map(q => ({ kind: 'test', y: H.groundY(q.x, q.z), ...q })); },
   nextHole, restartHole, restartRound, endRound,
   restart: restartHole,
   placeDisc(x, z) { S.lie.set(x, 0, z); resetToLie(); snapCamera(); },
