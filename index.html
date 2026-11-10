@@ -58,6 +58,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 
 #curvebtns { grid-area: curve; justify-self: center; display: flex; gap: 6px; }
 #curvebtns button { padding: 9px 12px; font-size: 14px; background: rgba(255,255,255,.85); box-shadow: 0 3px 0 #999; }
 #curvebtns button.on { background: #ffe066; box-shadow: 0 3px 0 #c9a800; }
+#curvebtns .lvl:empty { display: none; }
+#curvebtns .lvl { display: inline-block; min-width: 1.35em; margin-left: 4px; padding: 0 4px; border-radius: 9px; background: #1f5f33; color: #fff; font-size: .82em; font-weight: 900; line-height: 1.35em; text-align: center; vertical-align: 1px; }
 #discbtns { grid-area: disc; display: flex; gap: 6px; align-self: end; }
 #discbtns button { position: relative; display: flex; align-items: center; gap: 6px; padding: 9px 11px; font-size: 14px; background: rgba(255,255,255,.85); box-shadow: 0 3px 0 #999; }
 #discbtns button i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(0,0,0,.25); }
@@ -153,6 +155,8 @@ body[data-world="river"] #scorebox .title { color: #9fe3ff; }
   #windkey .dial { width: 36px; height: 36px; } #windarrow { width: 30px; height: 30px; }
   #windkey #windmph { font-size: 14px; } #windkey #windband { font-size: 11px; }
 }
+#curvebtns button { white-space: nowrap; }
+@media (max-width: 380px) { #curvebtns button { font-size: 12.5px; padding-left: 2px; padding-right: 2px; } #curvebtns .lvl { margin-left: 3px; } }
 </style>
   <script type="importmap">
     { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
@@ -181,15 +185,15 @@ body[data-world="river"] #scorebox .title { color: #9fe3ff; }
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
       <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcourse">Change course</button><button id="restartcancel" class="ghost">Cancel</button></div>
       <div id="help">
-        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q left · E right<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
+        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q left · E right (tap again: 2, 3)<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
         <span class="touch"><b>Pull back</b> anywhere to throw<br />Arrow = aim &amp; power · let go<br />Slide back to start to cancel</span>
       </div>
     </div>
     <div id="controls">
       <div id="curvebtns" role="group" aria-label="Curve">
-        <button data-curve="-1" id="hyzerbtn">↰ Left Curve</button>
+        <button data-curve="-1" id="hyzerbtn">↰ Left Curve<span class="lvl"></span></button>
         <button data-curve="0" id="straightbtn">Straight</button>
-        <button data-curve="1" id="anhyzerbtn">Right Curve ↱</button>
+        <button data-curve="1" id="anhyzerbtn">Right Curve<span class="lvl"></span> ↱</button>
       </div>
       <div id="discbtns" role="group" aria-label="Disc">
         <button data-disc="driver" id="disc-driver" title="Driver (1): longest range"><i style="background:#ff7a1a"></i><span>Driver</span><kbd>1</kbd></button>
@@ -955,8 +959,14 @@ const ui = {
   banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn'), next: $('nextbtn'),
   card: $('scorecard'), cardBody: $('cardbody'), cardTitle: $('cardtitle'), cardSub: $('cardsub'), cardAgain: $('cardagain'), menu: $('restartmenu'),
 };
-// Curve -1 bends the disc LEFT on screen, +1 bends it RIGHT (the buttons/keys only use -1, 0, +1; halves are for bots)
-const CURVE_NAMES = { '-1': 'Left curve', '-0.5': 'Slight left', '0': 'Straight', '0.5': 'Slight right', '1': 'Right curve' };
+// Curve: negative bends the disc LEFT on screen, positive bends it RIGHT. The buttons/keys step through 3 levels per side;
+// S.curve holds the physics multiplier. The bend grows faster than the multiplier, so these give ~30 / 45 / 60 m on a full Driver.
+const CURVE_LEVELS = [0, 1, 1.37, 1.66];
+const curveFor = level => Math.sign(level) * CURVE_LEVELS[Math.min(3, Math.abs(level))];
+const curveLevel = c => { if (!c) return 0; let best = 1; for (let i = 1; i < 4; i++) if (Math.abs(Math.abs(c) - CURVE_LEVELS[i]) < Math.abs(Math.abs(c) - CURVE_LEVELS[best])) best = i; return Math.sign(c) * best; };
+const curveName = c => { const l = curveLevel(c); return l === 0 ? 'Straight' : `${l < 0 ? 'Left' : 'Right'} curve ${Math.abs(l)}`; };
+// Tap/keypress on a side: from straight or the other side → level 1; same side → one level more (stays at 3)
+function stepCurve(side) { const l = curveLevel(S.curve); S.curve = curveFor(Math.sign(l) === side ? Math.min(3, Math.abs(l) + 1) * side : side); }
 let COURSE = COURSES[0];
 
 const S = {
@@ -1433,7 +1443,7 @@ function drawPullUI() {
     pullUI.band.classList.toggle('hidden', len < 2); pullUI.band.classList.toggle('bad', !valid);
   } else { pullUI.dot.classList.add('hidden'); pullUI.band.classList.add('hidden'); }
 }
-function cycleCurve(side) { S.curve = Math.sign(S.curve) === -side ? 0 : side; } // Q/E: step left/straight/right
+function cycleCurve(side) { if (Math.sign(S.curve) === -side) S.curve = 0; else stepCurve(side); } // Q/E: Q steps left 1→2→3, E from a left curve goes back to straight (and vice versa)
 
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
@@ -1479,7 +1489,7 @@ function holdButton(el, down, up) {
 holdButton($('aimleft'), () => { keys['_touchleft'] = true; }, () => { keys['_touchleft'] = false; });
 holdButton($('aimright'), () => { keys['_touchright'] = true; }, () => { keys['_touchright'] = false; });
 for (const b of document.querySelectorAll('#curvebtns button')) {
-  b.addEventListener('pointerdown', e => { e.preventDefault(); S.curve = Number(b.dataset.curve); });
+  b.addEventListener('pointerdown', e => { e.preventDefault(); const c = Number(b.dataset.curve); if (c === 0) S.curve = 0; else stepCurve(c); });
 }
 for (const b of document.querySelectorAll('#discbtns button')) {
   b.addEventListener('pointerdown', e => { e.preventDefault(); selectDisc(b.dataset.disc); });
@@ -1560,8 +1570,9 @@ function frame(now) {
   ui.throws.textContent = S.penalties ? `${S.throws} (${S.penalties} pen)` : S.throws;
   ui.dist.textContent = `${(S.phase === 'flying' ? Math.hypot(S.pos.x - H.basket.x, S.pos.z - H.basket.z) : distToBasket()).toFixed(1)} m`;
   ui.total.textContent = r.played ? `${fmtToPar(r.toPar)} thru ${r.played}` : 'E';
-  ui.curve.textContent = CURVE_NAMES[String(S.curve)];
-  for (const b of curveBtns) { const c = Number(b.dataset.curve); b.classList.toggle('on', c === 0 ? S.curve === 0 : Math.sign(S.curve) === Math.sign(c)); }
+  ui.curve.textContent = curveName(S.curve);
+  { const lv = curveLevel(S.curve); for (const b of curveBtns) { const c = Number(b.dataset.curve), on = c === 0 ? lv === 0 : Math.sign(lv) === c; b.classList.toggle('on', on);
+    const pill = b.querySelector('.lvl'); if (pill) { const t = on ? String(Math.abs(lv)) : ''; if (pill.textContent !== t) pill.textContent = t; } } }
   const D = DISCS[S.disc];
   ui.disc.textContent = D.name; ui.disc.style.color = D.css;
   ui.discHint.textContent = !aiming ? '' : S.disc === S.suggested ? 'suggested' : `suggested: ${DISCS[S.suggested].short}`;
@@ -1585,8 +1596,8 @@ requestAnimationFrame(frame);
 // ---------- Test / debug hook ----------
 window.__game = {
   state: () => ({ disc: S.disc, suggested: S.suggested, events: S.events.slice(-10), phase: S.phase, throws: S.throws, penalties: S.penalties,
-    lastThrow: S.lastThrow && { disc: S.lastThrow.disc, power: S.lastThrow.power, speed: S.lastThrow.speed },
-    yaw: S.yaw, curve: S.curve, power: S.power, maxY: S.maxY,
+    lastThrow: S.lastThrow && { disc: S.lastThrow.disc, power: S.lastThrow.power, speed: S.lastThrow.speed, curve: S.lastThrow.curve },
+    yaw: S.yaw, curve: S.curve, curveLevel: curveLevel(S.curve), power: S.power, maxY: S.maxY,
     pull: S.pull && { valid: S.pull.valid, frac: S.pull.frac, power: S.pull.power, offset: S.pull.offset, baseYaw: S.pull.baseYaw },
     arrow: powerArrow.visible ? { length: PA.shaft.scale.y, color: '#' + PA.fill.color.getHexString(), yaw: S.yaw } : null,
     ring: rangeRing.visible ? { x: rangeRing.position.x, z: rangeRing.position.z } : null,
@@ -1617,6 +1628,7 @@ window.__game = {
   aimAtBasket() { S.yaw = yawToward(S.lie, H.basket); },
   aimAt(x, z) { S.yaw = yawToward(S.lie, new THREE.Vector3(x, 0, z)); },
   setCurve(c) { S.curve = c; },
+  curveLevels: CURVE_LEVELS,
   throwWith(power, curve) { return throwDisc(power, curve ?? S.curve); },
   discs: DISC_ORDER, selectDisc, discRange: DISC_RANGE,
   pullMetrics, easePower, PULL, CHARGE_FULL_S,
