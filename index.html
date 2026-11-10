@@ -163,6 +163,18 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
 }
 #curvebtns button { white-space: nowrap; }
 @media (max-width: 380px) { #curvebtns button { font-size: 12.5px; padding-left: 2px; padding-right: 2px; } #curvebtns .lvl { margin-left: 3px; } }
+
+/* Course stories: a small spooky caption per hole, and the big reveal title */
+#storycap { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); transform: translateX(-50%); width: max-content; max-width: min(88vw, 520px);
+  white-space: pre-line; text-align: center; font-size: 15px; font-style: italic; line-height: 1.35; color: #e8f4ff; background: rgba(8,18,34,.72);
+  border: 1px solid rgba(160,210,255,.35); padding: 8px 14px; border-radius: 14px; pointer-events: none; transition: opacity .8s; z-index: 4; }
+#storycap.fade { opacity: 0; }
+#storyreveal { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 6; animation: revealPop .45s cubic-bezier(.2,1.6,.4,1); }
+#storyreveal b { display: block; font-size: 54px; font-weight: 900; color: #fff; letter-spacing: 2px; text-shadow: 0 0 18px #8fd3ff, 0 4px 0 #1b3a5c, 0 6px 18px rgba(0,0,0,.6); }
+#storyreveal span { display: inline-block; margin-top: 6px; font-size: 17px; font-weight: 700; color: #dff1ff; background: rgba(8,18,34,.7); padding: 6px 12px; border-radius: 12px; }
+@keyframes revealPop { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+#banner.veil { opacity: 0; } /* during the reveal the hole banner is invisible; tapping Next still skips to the scorecard */
+@media (orientation: landscape) and (max-height: 500px) { #storycap { bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); font-size: 13px; } #storyreveal b { font-size: 40px; } #storyreveal { bottom: 96px; } }
 </style>
 </head>
 <body>
@@ -210,6 +222,8 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
     </div>
     <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a course</div><div id="picklist"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
     <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
+    <div id="storycap" class="hidden"></div>
+    <div id="storyreveal" class="hidden"><b></b><span></span></div>
     <div id="banner" class="hidden"><div id="bannertext"></div><div id="bannersub"></div><button id="nextbtn" class="hidden">Next hole ▶</button><button id="againbtn" class="hidden">Play again</button></div>
     <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardcourse" class="ghost">Courses</button><button id="cardclose" class="ghost">Close</button></div></div></div>
   </div>
@@ -435,6 +449,23 @@ const RIVER_COURSE = {
 const ICE_COURSE = {
   id: 'antarctica',
   name: 'Antarctica', world: 'ice', blurb: 'Frostbite Shelf · ice, snow & sea',
+  // Story: one clue per hole (props are decoration only: no collision, placed off the line of play), a caption each, and a reveal after hole 9.
+  // clue kinds are built in game.js (buildClue); at = [x, z] anchor, face = yaw the prop faces (0 = toward the tee, i.e. +z)
+  story: {
+    intro: 'Something big has been raiding the research camp… follow the clues.',
+    holes: [
+      { clue: 'camp', at: [-13, -46], face: 0.35, scale: 1.5, caption: 'Base camp. Cozy tents, a crackling fire… and one tent ripped wide open.' },
+      { clue: 'crates', at: [8, -40], face: -0.3, scale: 1.6, caption: 'The supply crates are smashed. Fish everywhere. Who eats this much fish?' },
+      { clue: 'claws', at: [-11, -34.75], face: 0, caption: 'Giant claw marks in the ice wall — and someone\'s disc is stuck deep in one.' },
+      { clue: 'prints', at: [-3, -6], to: [-10, -46], caption: 'Fresh paw prints. Huge ones. Heading the same way you\'re throwing…' },
+      { clue: 'hut', at: [10, -27], face: -0.4, scale: 1.3, caption: 'The halfway hut is wrecked. The flag is torn and the radio only crackles static.' },
+      { clue: 'roar', ledges: [[-14, -64], [19, -67]], caption: 'Shh. Listen… did the ice just growl?' },
+      { clue: 'eyes', at: [-13, -44], face: 0.35, scale: 1.6, caption: 'Something is watching from the dark ice tunnel…' },
+      { clue: 'shadow', at: [-22, -58], to: [-22, -106], caption: 'A huge shadow on the ridge. It\'s heading for the station…' },
+      { clue: 'cave', at: [-57, -146], face: 0.75, caption: 'The station cave. Sink this putt… if you dare.' },
+    ],
+    reveal: { creature: 'polarBear', title: 'POLAR BEAR!', sub: 'The camp raider! It just wanted the fish.' },
+  },
   holes: [
     {
       name: 'Penguin Landing', par: 3, tip: 'Glossy blue ice slides, white snow stops. Land short of the ice and let it skid in.',
@@ -520,7 +551,7 @@ const ICE_COURSE = {
       arches: [{ x: -7, z: -86, yaw: -0.36, span: 9, h: 5.5 }],
       ponds: [{ x: -62, z: -116, r: 10 }],
       icePatches: [{ x: -34, z: -128, r: 7 }], snowDrifts: [{ x: -52, z: -142, r: 5 }, { x: 6, z: -70, r: 6 }],
-      station: { x: -58, z: -150, yaw: 0.6 }, penguins: [{ x: -26, z: -148, n: 6, r: 3.5 }],
+      station: { x: -33, z: -151, yaw: 0.3 }, penguins: [{ x: -24, z: -146, n: 6, r: 3.5 }], // station moved for the story cave
       rocks: [{ x: 10, z: -30, s: 1.2 }],
     },
   ],
@@ -1270,7 +1301,7 @@ function sharedSets() {
   const walk = v => { if (!v) return; if (v.isBufferGeometry) geo.add(v); else if (Array.isArray(v)) v.forEach(walk); else if (typeof v === 'object') Object.values(v).forEach(walk); };
   walk(GEO); geo.add(DROP_GEO);
   for (const g of geo) g.addEventListener('dispose', () => { S.sharedDisposed = (S.sharedDisposed || 0) + 1; }); // must never fire (tests)
-  for (const m of [...Object.values(MAT), ...Object.values(PA), PUFF_MAT, SPARK_MAT, DROP_MAT]) { mat.add(m); for (const k of ['map', 'emissiveMap']) if (m[k]) tex.add(m[k]); }
+  for (const m of [...Object.values(MAT), ...Object.values(PA), ...Object.values(SM), PUFF_MAT, SPARK_MAT, DROP_MAT]) { mat.add(m); for (const k of ['map', 'emissiveMap']) if (m[k]) tex.add(m[k]); }
   return (SHARED = { geo, mat, tex });
 }
 function disposeGroup(g) {
@@ -1425,7 +1456,7 @@ function updateSplashes(dt) {
     if (u.drop) { u.v.y -= 9.8 * dt; m.position.addScaledVector(u.v, dt); if (m.position.y < (u.floor ?? 0.05)) m.visible = false; }
     if (u.ring && u.t > 0) { const k = 1 + u.t * 5; m.scale.set(k, 1, k); m.material.opacity = Math.max(0, 0.85 - u.t * 0.6); }
     if (u.smoke && u.t > 0) { m.position.y += u.rise * dt; m.position.x += u.dx * dt; m.position.z += u.dz * dt; m.scale.setScalar(0.35 + u.t * 0.9); m.material.opacity = Math.max(0, 0.7 - u.t * 0.42); }
-    if (u.t > (u.smoke ? 1.7 : 1.6)) { scene.remove(m); if (u.ring) m.geometry.dispose(); if (u.ring || u.smoke) m.material.dispose(); splashes.splice(i, 1); }
+    if (u.t > (u.life ?? (u.smoke ? 1.7 : 1.6))) { scene.remove(m); if (u.ring) m.geometry.dispose(); if (u.ring || u.smoke) m.material.dispose(); splashes.splice(i, 1); }
   }
 }
 function clearConfetti() { for (const c of confetti) { scene.remove(c); c.geometry.dispose(); c.material.dispose(); } confetti.length = 0; }
@@ -1618,7 +1649,7 @@ function loadHole(idx, { practice = false } = {}) {
   setFlagWind();
   clearConfetti(); hideBanner(); hideCard();
   S.lie.copy(H.tee); S.prevLie.copy(H.tee);
-  resetToLie(true); snapCamera();
+  resetToLie(true); buildStory(idx); snapCamera();
   ui.title.textContent = practice ? 'PRACTICE' : `HOLE ${idx + 1}/${COURSE.holes.length} · PAR ${H.par}`;
   if (!practice) flashBanner(`Hole ${idx + 1} · Par ${H.par} · ${Math.round(H.length)} m`, `${H.name} — ${H.tip}\n${windWords(S.wind, yawToward(H.tee, H.teeAim))}`, 3200, true);
 }
@@ -1941,6 +1972,7 @@ function finishHole(score, made) {
   S.result = { throws: score, name: scoreName(score, par), diff, made, hole: S.holeIdx + 1 };
   showHoledBanner();
   if (made) burstConfetti();
+  if (!S.practice && S.holeIdx === COURSE.holes.length - 1 && COURSE.story?.reveal) startReveal(); // story payoff, then the scorecard
 }
 function showHoledBanner() {
   const { throws: score, diff, made } = S.result, r = roundStats();
@@ -1953,6 +1985,7 @@ function onMade() { finishHole(S.throws, true); }
 function pickUp() { S.pos.copy(S.lie); finishHole(cap(), false); }
 
 function endRound() {
+  finishReveal();
   S.phase = 'done'; hideBanner();
   const r = roundStats(); if (r.finished) saveBest(COURSE.id, r.strokes);
   showCard(true);
@@ -2043,6 +2076,8 @@ function updateCamera(dt) {
     target = { pos: p.setY(Math.max(S.pos.y + 2.2, H.groundY(p.x, p.z) + 2)), look: S.pos.clone() };
   } else if (S.phase === 'splash') {
     target = { pos: camPos.clone(), look: camLook.clone() }; // watch the splash
+  } else if (S.reveal && !S.reveal.done) {
+    target = revealCam(); // the reveal cinematic
   } else if (S.phase === 'holed' || S.phase === 'done') {
     const t = performance.now() / 1000, B = H.basket;
     target = { pos: new THREE.Vector3(B.x + Math.sin(t * 0.4) * 5, B.y + 2.4, B.z + Math.cos(t * 0.4) * 5), look: new THREE.Vector3(B.x, B.y + 1.0, B.z) };
@@ -2050,6 +2085,7 @@ function updateCamera(dt) {
   const k = 1 - Math.exp(-dt * (S.phase === 'flying' ? 5 : 4));
   camPos.lerp(target.pos, k); camLook.lerp(target.look, k);
   camera.position.copy(camPos); camera.lookAt(camLook);
+  if (S.shake) { const a = S.shake.amp * (1 - S.shake.t / S.shake.dur); camera.position.x += (Math.random() - 0.5) * a; camera.position.y += (Math.random() - 0.5) * a; camera.position.z += (Math.random() - 0.5) * a * 0.5; }
 }
 
 // ---------- Input ----------
@@ -2186,6 +2222,198 @@ addEventListener('resize', fitView); addEventListener('orientationchange', fitVi
 const curveBtns = [...document.querySelectorAll('#curvebtns button')];
 const discBtns = [...document.querySelectorAll('#discbtns button')];
 let last = performance.now();
+// ---------- Course stories: one clue prop per hole, a caption, and a reveal after the last hole ----------
+// Story data lives in courses.js (course.story); the clue kinds are built here. Props are decoration only:
+// no physics, placed off the line of play, freed with the hole group. Shared materials are in SM.
+const SM = {
+  tentA: new THREE.MeshLambertMaterial({ color: 0xe2572b, flatShading: true }), tentB: new THREE.MeshLambertMaterial({ color: 0x2f7fd0, flatShading: true }),
+  tentC: new THREE.MeshLambertMaterial({ color: 0xf2c230, flatShading: true }), dark: new THREE.MeshBasicMaterial({ color: 0x0a0c10, side: THREE.DoubleSide }),
+  log: new THREE.MeshLambertMaterial({ color: 0x5a3a22 }), flame: new THREE.MeshBasicMaterial({ color: 0xffa23a, transparent: true, opacity: 0.92 }),
+  flameCore: new THREE.MeshBasicMaterial({ color: 0xfff0a0 }), crate: new THREE.MeshLambertMaterial({ color: 0xb08350, flatShading: true }),
+  fish: new THREE.MeshLambertMaterial({ color: 0xaec4d4 }), fishOrange: new THREE.MeshLambertMaterial({ color: 0xff9a50 }),
+  claw: new THREE.MeshBasicMaterial({ color: 0x0b2540 }), print: layered(new THREE.MeshBasicMaterial({ color: 0x86a3bd, transparent: true, opacity: 0.85, depthWrite: false }), 7),
+  flagTorn: new THREE.MeshLambertMaterial({ color: 0xd8462b, side: THREE.DoubleSide }), radio: new THREE.MeshLambertMaterial({ color: 0x353c44 }),
+  led: new THREE.MeshBasicMaterial({ color: 0x6cff6c }), eyes: new THREE.MeshBasicMaterial({ color: 0xfff27a, fog: false }),
+  bear: new THREE.MeshLambertMaterial({ color: 0xf3efe4, flatShading: true }), bearDark: new THREE.MeshLambertMaterial({ color: 0x1a1a1a }),
+  bearMouth: new THREE.MeshLambertMaterial({ color: 0x7a2434 }), silhouette: new THREE.MeshBasicMaterial({ color: 0x0d1117, fog: false, transparent: true, opacity: 1 }),
+  staticFx: new THREE.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 96; const x = c.getContext('2d');
+    x.fillStyle = 'rgba(20,30,40,0.75)'; x.beginPath(); x.roundRect(4, 4, 248, 70, 18); x.fill(); x.beginPath(); x.moveTo(40, 72); x.lineTo(60, 94); x.lineTo(76, 72); x.fill();
+    x.fillStyle = '#d8f3ff'; x.font = 'italic 900 40px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('kssshh…', 128, 52); return new THREE.CanvasTexture(c); })(), transparent: true, depthWrite: false }),
+};
+// A low-poly polar bear (≈3.4 m long, 2.3 m tall). torso pivots at the hips so it can rear up; jaw opens for the roar.
+function makeBear(mat = SM.bear, dark = SM.bearDark, mouth = SM.bearMouth) {
+  const g = new THREE.Group(), torso = new THREE.Group(); torso.position.set(0, 1.25, -0.9); g.add(torso);
+  const S_ = (r, sx, sy, sz, m, x, y, z) => { const o = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 9), m); o.scale.set(sx, sy, sz); o.position.set(x, y, z); return o; };
+  torso.add(S_(1, 0.95, 0.85, 1.45, mat, 0, 0.2, 1.0), S_(0.8, 0.95, 0.8, 1, mat, 0, 0.45, 1.8)); // body + shoulder hump
+  const head = new THREE.Group(); head.position.set(0, 0.55, 2.55); torso.add(head);
+  head.add(S_(0.55, 1, 0.9, 1.1, mat, 0, 0, 0), S_(0.32, 0.9, 0.75, 1.3, mat, 0, -0.1, 0.55), S_(0.09, 1.3, 1, 1, dark, 0, -0.02, 0.93),
+    S_(0.06, 1, 1, 1, dark, -0.24, 0.17, 0.42), S_(0.06, 1, 1, 1, dark, 0.24, 0.17, 0.42), S_(0.15, 1, 1, 0.6, mat, -0.36, 0.45, -0.05), S_(0.15, 1, 1, 0.6, mat, 0.36, 0.45, -0.05));
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.25, 0.25); head.add(jaw);
+  jaw.add(S_(0.24, 0.95, 0.4, 1.3, mat, 0, -0.04, 0.3)); const mouthIn = S_(0.2, 0.9, 0.5, 1.1, mouth, 0, 0.06, 0.3); jaw.add(mouthIn);
+  const leg = (x, z, parent, y0) => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 1.3, 8).translate(0, -0.65, 0), mat); l.position.set(x, y0, z); parent.add(l); return l; };
+  const front = [leg(-0.55, 1.75, torso, 0), leg(0.55, 1.75, torso, 0)], back = [leg(-0.55, -0.5, g, 1.3), leg(0.55, -0.5, g, 1.3)]; // hind legs under the hip pivot so they stay attached when it rears
+  g.traverse(o => { if (o.isMesh) o.castShadow = mat !== SM.silhouette; });
+  g.userData = { torso, head, jaw, front, back }; return g;
+}
+const STORY_CLUES = {
+  camp(g, c, rnd) {
+    const tent = (m, x, z, s, yaw) => { const t = new THREE.Mesh(new THREE.ConeGeometry(1.7 * s, 2.2 * s, 4).translate(0, 1.1 * s, 0), m); t.position.set(x, 0, z); t.rotation.y = Math.PI / 4 + yaw; g.add(t); return t; };
+    tent(SM.tentA, -3.4, -0.6, 1, 0.2); tent(SM.tentC, 0, -3, 1.1, -0.1);
+    const torn = tent(SM.tentB, 3.4, 0.2, 1, 0.1); torn.rotation.z = 0.12; // the ripped one: a dark gash and a flap on the ground
+    const gash = new THREE.Shape(); gash.moveTo(-0.55, 0); gash.lineTo(0.5, 0); gash.lineTo(0.2, 1.2); gash.lineTo(0.05, 0.7); gash.lineTo(-0.15, 1.5); gash.lineTo(-0.3, 0.6); gash.closePath();
+    const gm = new THREE.Mesh(new THREE.ShapeGeometry(gash), SM.dark); gm.position.set(3.4, 0.05, 1.45); gm.rotation.x = -0.55; g.add(gm);
+    const flap = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.9), SM.tentB); flap.rotation.x = -Math.PI / 2; flap.rotation.z = 0.6; flap.position.set(4.3, 0.04, 2.2); g.add(flap);
+    const fire = new THREE.Group(); fire.position.set(0, 0, 2.2); g.add(fire);
+    for (let i = 0; i < 7; i++) { const r = new THREE.Mesh(GEO.rock, MAT.rock); const a = i / 7 * 6.28; r.position.set(Math.cos(a) * 0.75, 0, Math.sin(a) * 0.75); r.scale.setScalar(0.38); fire.add(r); }
+    for (const a of [0.5, -0.5]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.3, 6), SM.log); l.rotation.z = Math.PI / 2; l.rotation.y = a; l.position.y = 0.12; fire.add(l); }
+    const f1 = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.1, 7).translate(0, 0.55, 0), SM.flame), f2 = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 6).translate(0, 0.3, 0), SM.flameCore);
+    f1.position.y = f2.position.y = 0.15; fire.add(f1, f2);
+    return { update: (dt, t) => { f1.scale.set(1 + Math.sin(t * 17) * 0.08, 0.85 + Math.abs(Math.sin(t * 11)) * 0.35, 1 + Math.cos(t * 13) * 0.08); f2.scale.y = 0.8 + Math.abs(Math.sin(t * 19)) * 0.4; } };
+  },
+  crates(g, c, rnd) {
+    const crate = (x, y, z, yaw) => { const b = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1).translate(0, 0.55, 0), SM.crate); b.position.set(x, y, z); b.rotation.y = yaw; b.castShadow = true; g.add(b); };
+    crate(-2.2, 0, -1.2, 0.2); crate(-1, 0, -1.6, -0.1); crate(-1.6, 1.1, -1.4, 0.5);
+    for (let i = 0; i < 16; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.06, 0.22), SM.crate); p.position.set(0.5 + rnd() * 3.4, 0.05 + rnd() * 0.12, -1 + rnd() * 2.6); p.rotation.set(rnd() * 0.5, rnd() * 6.28, rnd() * 0.5); g.add(p); }
+    for (let i = 0; i < 18; i++) { const f = new THREE.Group(); const m = i % 4 ? SM.fish : SM.fishOrange;
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), m); b.scale.set(0.7, 0.6, 2.4); const tl = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.2, 4).rotateX(-Math.PI / 2), m); tl.position.z = -0.38; f.add(b, tl);
+      const a = rnd() * 6.28, r = 0.8 + rnd() * 3.6; f.position.set(1.2 + Math.cos(a) * r, 0.07, 0.6 + Math.sin(a) * r * 0.8); f.rotation.set(0, rnd() * 6.28, Math.PI / 2 * (rnd() < 0.5 ? 1 : -1) * 0.9); g.add(f); }
+    return {};
+  },
+  claws(g) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(8.5, 5.4, 0.6).translate(0, 2.7, 0), MAT.iceSolid); wall.castShadow = true; g.add(wall);
+    const gash = (x, y, len, tilt) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.2, len, 0.06), SM.claw); m.position.set(x, y, 0.33); m.rotation.z = tilt; g.add(m); };
+    for (let i = 0; i < 4; i++) gash(0.6 + i * 0.55, 3.0 - Math.abs(i - 1.5) * 0.15, 2.8, 0.28); // big set on the fairway side, where you can see it
+    for (let i = 0; i < 4; i++) gash(-3.2 + i * 0.42, 2.2, 1.7, -0.22);
+    const d = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R * 1.6, DISC_R * 1.3, 0.035, 24), new THREE.MeshStandardMaterial({ color: 0xc77dff, roughness: 0.4 }));
+    d.rotation.set(0.25, 0, Math.PI / 2); d.position.set(1.35, 2.35, 0.36); g.add(d); // stuck deep in the third gash, half buried
+    return {};
+  },
+  prints(g, c) {
+    const [x0, z0] = c.at, [x1, z1] = c.to, len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len, n = Math.floor(len / 1.7);
+    const pad = new THREE.CircleGeometry(0.34, 14).rotateX(-Math.PI / 2).scale(1, 1, 1.3), toe = new THREE.CircleGeometry(0.11, 8).rotateX(-Math.PI / 2);
+    const out = [];
+    for (let i = 0; i < n; i++) { const side = i % 2 ? 1 : -1, x = x0 + ux * i * 1.7 - uz * side * 0.45, z = z0 + uz * i * 1.7 + ux * side * 0.45;
+      const p = new THREE.Group(); p.add(new THREE.Mesh(pad, SM.print)); for (let k = 0; k < 4; k++) { const tm = new THREE.Mesh(toe, SM.print); tm.position.set((k - 1.5) * 0.17, 0, -0.5 - Math.abs(k - 1.5) * -0.04); p.add(tm); }
+      p.position.set(x, H.groundY(x, z) + 0.03, z); p.rotation.y = Math.atan2(-ux, -uz); out.push(p); }
+    return { world: out, n };
+  },
+  hut(g, c, rnd) {
+    const box = (w, h, d, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.rotation.set(rx, ry, rz); b.castShadow = true; g.add(b); return b; };
+    box(3.2, 2.2, 0.15, MAT.hut, 0, 1.1, -1.5); box(0.15, 2.2, 3, MAT.hut, -1.6, 1.1, 0); box(0.15, 1.4, 3, MAT.hut, 1.6, 0.7, 0, 0, 0, -0.18); // walls, one buckled
+    box(3.2, 0.15, 2.2, MAT.hut, 0.4, 0.1, 2.3, 0.08, 0.3, 0); // the front wall lies flat on the snow
+    box(3.6, 0.12, 3.4, MAT.hutRoof, -0.6, 1.7, -0.2, 0.1, 0, 0.55); // roof slid half off
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 4.2, 6).translate(0, 2.1, 0), MAT.metal); pole.position.set(2.8, 0, -1.2); g.add(pole);
+    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(1.3, -0.05); sh.lineTo(1.0, -0.25); sh.lineTo(1.35, -0.4); sh.lineTo(0.7, -0.5); sh.lineTo(0.85, -0.7); sh.lineTo(0, -0.75); sh.closePath();
+    const flag = new THREE.Mesh(new THREE.ShapeGeometry(sh), SM.flagTorn); flag.position.set(2.8, 4.1, -1.2); g.add(flag);
+    box(0.9, 0.7, 0.9, SM.crate, -0.6, 0.35, 0.3); const radio = box(0.6, 0.35, 0.3, SM.radio, -0.6, 0.88, 0.3);
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.7, 4).translate(0, 0.35, 0), MAT.metal); ant.position.set(-0.4, 1.05, 0.3); ant.rotation.z = -0.3; g.add(ant);
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), SM.led); led.position.set(-0.75, 0.95, 0.46); g.add(led);
+    const fx = new THREE.Sprite(SM.staticFx); fx.scale.set(2.2, 0.82, 1); fx.position.set(-0.2, 2.0, 0.4); g.add(fx);
+    return { update: (dt, t) => { flag.rotation.y = Math.sin(t * 5) * 0.35 + Math.sin(t * 13) * 0.1; led.visible = Math.sin(t * 9) > -0.2;
+      const on = (Math.sin(t * 2.3) + Math.sin(t * 7.1)) > 0.2; fx.visible = on; fx.position.x = -0.2 + Math.sin(t * 31) * 0.03; } };
+  },
+  roar(g, c) {
+    const ledges = (c.ledges || []).map(([x, z], i) => { const l = new THREE.Group(), y = H.groundY(x, z); l.position.set(x, y, z);
+      const cliff = new THREE.Mesh(new THREE.BoxGeometry(6, 7, 4).translate(0, 3.5, 0), MAT.cliff); cliff.rotation.y = i * 0.5 - 0.2; cliff.castShadow = true;
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.9, 4.6).translate(0, 7.3, 0), MAT.snowCap); cap.rotation.y = cliff.rotation.y; l.add(cliff, cap); return l; });
+    return { world: ledges, ledges: c.ledges };
+  },
+  eyes(g) {
+    const mound = new THREE.Mesh(new THREE.SphereGeometry(3.4, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.2, 0.95, 0.9), MAT.serac); mound.castShadow = true; g.add(mound);
+    // the tunnel mouth sits just in front of the mound, framed by an ice arch; the eyes hang in the dark
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20, 0, Math.PI), SM.dark); hole.position.set(0, 0.02, 3.15); g.add(hole);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.32, 8, 18, Math.PI), MAT.iceSolid); rim.position.set(0, 0.02, 3.15); g.add(rim);
+    const eyes = new THREE.Group(); eyes.position.set(0, 0.8, 3.2); g.add(eyes);
+    for (const x of [-0.3, 0.3]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 6), SM.eyes); e.scale.set(1.6, 1.0, 0.5); e.position.x = x * 1.25; eyes.add(e); } // big enough to spot from the tee
+    const st = { eyes, everShown: false };
+    st.update = (dt, t) => { const k = t % 14; let vis = k > 1.5 && k < 7.5 && S.phase !== 'flying';
+      const blink = [3.1, 4.7, 6.0].some(b => k > b && k < b + 0.16); eyes.scale.y = blink ? 0.08 : 1; eyes.position.x = Math.sin(k * 0.7) * 0.15;
+      eyes.visible = vis; if (vis) st.everShown = true; };
+    return st;
+  },
+  shadow(g, c) {
+    const [x0, z0] = c.at, [x1, z1] = c.to, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, len = Math.hypot(x1 - x0, z1 - z0) + 14, gy = H.groundY(mx, mz);
+    const ridge = new THREE.Group(); ridge.position.set(mx, gy, mz); ridge.rotation.y = Math.atan2(x1 - x0, z1 - z0);
+    const rock = new THREE.Mesh(new THREE.BoxGeometry(9, 12, len).translate(0, 6, 0), MAT.cliff); rock.castShadow = true;
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.8, len + 0.6).translate(0, 12.2, 0), MAT.snowCap); ridge.add(rock, cap);
+    const bear = makeBear(SM.silhouette, SM.silhouette, SM.silhouette); bear.scale.setScalar(1.7); bear.visible = false;
+    const st = { world: [ridge, bear], bear, everShown: false };
+    st.update = (dt, t) => { const k = t % 30, f = (k - 2) / 12; const vis = f > 0 && f < 1; bear.visible = vis; if (!vis) return; st.everShown = true;
+      const x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; bear.position.set(x, gy + 12.6, z); bear.rotation.y = Math.atan2(x1 - x0, z1 - z0);
+      SM.silhouette.opacity = Math.min(1, f * 8, (1 - f) * 6); const sw = Math.sin(k * 6) * 0.35, u = bear.userData;
+      u.front[0].rotation.x = sw; u.front[1].rotation.x = -sw; u.back[0].rotation.x = -sw; u.back[1].rotation.x = sw; };
+    return st;
+  },
+  cave(g) {
+    const mound = new THREE.Mesh(new THREE.SphereGeometry(6, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.1, 0.8, 0.85), MAT.cliff); mound.castShadow = true; g.add(mound);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(4.2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.1, 0.5, 0.85).translate(0, 3.0, -0.5), MAT.snowCap); g.add(cap);
+    const mouth = new THREE.Mesh(new THREE.CircleGeometry(2.6, 24, 0, Math.PI), SM.dark); mouth.position.set(0, 0.02, 5.3); g.add(mouth);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(2.75, 0.45, 8, 20, Math.PI), MAT.iceSolid); rim.position.set(0, 0.02, 5.3); g.add(rim);
+    const bear = makeBear(); bear.scale.setScalar(1.35); bear.position.set(0, 0, 2.2); bear.visible = false; g.add(bear);
+    return { bear, mouthZ: 5.3 };
+  },
+};
+// spooky caption under the HUD; the course intro rides along on hole 1
+const storyCap = document.getElementById('storycap'), storyReveal = document.getElementById('storyreveal');
+let storyCapTimer = null;
+function showStoryCaption(text, ms = 8000) {
+  if (!storyCap) return; storyCap.textContent = text; storyCap.classList.remove('hidden', 'fade'); S.storyCaption = text;
+  clearTimeout(storyCapTimer); storyCapTimer = setTimeout(() => { storyCap.classList.add('fade'); storyCapTimer = setTimeout(() => storyCap.classList.add('hidden'), 900); }, ms);
+}
+function hideStoryCaption() { if (storyCap) storyCap.classList.add('hidden'); clearTimeout(storyCapTimer); }
+function buildStory(idx) {
+  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil');
+  const st = COURSE.story, c = !S.practice && st && st.holes[idx]; if (!c) { hideStoryCaption(); return; }
+  const g = new THREE.Group(), rnd = seeded(4242 + idx * 7);
+  if (c.at && !['prints', 'shadow'].includes(c.clue)) { g.position.set(c.at[0], H.groundY(c.at[0], c.at[1]), c.at[1]); g.rotation.y = c.face || 0; g.scale.setScalar(c.scale || 1); }
+  const built = STORY_CLUES[c.clue](g, c, rnd) || {};
+  H.group.add(g); for (const o of built.world || []) H.group.add(o);
+  let meshes = 0; g.traverse(o => { if (o.isMesh || o.isSprite) meshes++; }); for (const o of built.world || []) o.traverse(q => { if (q.isMesh) meshes++; });
+  H.story = { clue: c.clue, data: c, group: g, built, meshes };
+  showStoryCaption((idx === 0 && st.intro ? st.intro + '\n' : '') + c.caption, idx === 0 ? 11000 : 8000);
+}
+function shakeCamera(amp, dur) { if (!S.shake || S.shake.amp * (1 - S.shake.t / S.shake.dur) < amp) S.shake = { amp, dur, t: 0 }; }
+function dumpSnow(x, z, top) { // snow chunks sliding off a ledge
+  for (let i = 0; i < 26; i++) { const m = new THREE.Mesh(DROP_GEO, PUFF_MAT); const a = Math.random() * 6.28, r = Math.random() * 2.6;
+    m.position.set(x + Math.cos(a) * r, top + Math.random() * 0.6, z + Math.sin(a) * r); m.scale.setScalar(2.5 + Math.random() * 4);
+    m.userData = { v: new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 1.5, 1.2 + Math.random() * 2), t: -Math.random() * 0.5, drop: true, floor: H.groundY(x, z) + 0.1, life: 2.8 }; scene.add(m); splashes.push(m); }
+}
+function startReveal() {
+  const cave = H.story?.built; if (!cave || !cave.bear) return false;
+  S.reveal = { t: 0, stage: 'rumble', done: false }; ui.banner.classList.add('veil'); hideStoryCaption(); return true;
+}
+function finishReveal() {
+  if (!S.reveal || S.reveal.done) return; S.reveal.done = true; S.reveal.stage = 'done'; ui.banner.classList.remove('veil'); storyReveal?.classList.add('hidden');
+  const b = H.story?.built?.bear; if (b) { const u = b.userData; u.torso.rotation.x = -0.2; u.jaw.rotation.x = 0.3; b.position.z = H.story.built.mouthZ + 3.5; b.visible = true; }
+}
+function updateStory(dt) {
+  S.holeT = (S.holeT || 0) + dt;
+  if (S.shake) { S.shake.t += dt; if (S.shake.t >= S.shake.dur) S.shake = null; }
+  const st = H.story; if (!st) return;
+  st.built.update?.(dt, S.holeT);
+  if (st.clue === 'roar' && !S.roared && S.phase === 'flying' && S.flightTime > 0.6) { // a distant roar mid-throw
+    S.roared = true; shakeCamera(0.32, 1.6); for (const [x, z] of st.built.ledges || []) dumpSnow(x, z, H.groundY(x, z) + 7.6);
+    showStoryCaption('ROOOAARR… the ground shakes and snow crashes off the ledges!', 3500);
+  }
+  const R = S.reveal; if (!R || R.done) return;
+  R.t += dt; const t = R.t, b = st.built.bear, u = b.userData, Z0 = 2.2, Z1 = st.built.mouthZ + 3.5, g = st.group;
+  const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
+  if (t < 1.3) { R.stage = 'rumble'; shakeCamera(0.12, 0.3); if (!R.dust) { R.dust = true; const p = g.localToWorld(new THREE.Vector3(0, 0, 0)); dumpSnow(p.x, p.z, p.y + 4.4); } }
+  else if (t < 2.4) { R.stage = 'burst'; b.visible = true; b.position.z = Z0 + (Z1 - Z0) * ease((t - 1.3) / 0.7); shakeCamera(0.3, 0.3);
+    const sw = Math.sin(t * 22) * 0.5; u.front[0].rotation.x = sw; u.front[1].rotation.x = -sw; u.back[0].rotation.x = -sw; u.back[1].rotation.x = sw;
+    if (!R.puff) { R.puff = true; const p = g.localToWorld(new THREE.Vector3(0, 0, st.built.mouthZ)); spawnPuff(p.x, p.z); spawnPuff(p.x + 1, p.z + 0.5); } }
+  else if (t < 4.8) { R.stage = 'roar'; b.position.z = Z1; for (const l of [...u.front, ...u.back]) l.rotation.x *= 0.8; const k = ease((t - 2.4) / 0.5);
+    u.torso.rotation.x = -0.85 * k; u.jaw.rotation.x = 0.75 * k; u.head.rotation.x = -0.25 * k + Math.sin(t * 30) * 0.03 * k; u.front[0].rotation.x = u.front[1].rotation.x = -0.9 * k;
+    if (!R.roared) { R.roared = true; shakeCamera(0.55, 1.8); const rv = COURSE.story.reveal; if (storyReveal) { storyReveal.querySelector('b').textContent = rv.title; storyReveal.querySelector('span').textContent = rv.sub; storyReveal.classList.remove('hidden'); } } }
+  else if (t < 6.2) { R.stage = 'settle'; const k = ease((t - 4.8) / 0.8); u.torso.rotation.x = -0.85 * (1 - k) - 0.2 * k; u.jaw.rotation.x = 0.75 * (1 - k) + 0.3 * k; u.head.rotation.x = 0; u.front[0].rotation.x = u.front[1].rotation.x = -0.9 * (1 - k); }
+  else { finishReveal(); if (S.phase === 'holed') endRound(); }
+}
+function revealCam() {
+  const st = H.story, g = st.group, m = g.localToWorld(new THREE.Vector3(0, 0, st.built.mouthZ + 3));
+  const pos = g.localToWorld(new THREE.Vector3(13, 4.0, st.built.mouthZ + 17)), look = m.setY(m.y + 2.6); // three-quarter view so the rear-up reads
+  return { pos, look };
+}
+
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (S.phase === 'aim' || S.phase === 'charging') {
@@ -2196,7 +2424,7 @@ function frame(now) {
   if (S.phase === 'flying') updateFlight(dt);
   if (S.phase === 'splash' && (S.splashT -= dt) <= 0) finishSplash();
   updateSplashes(dt);
-  animateFlag(now / 1000); updateLeaves(dt, now / 1000); updateSnow(dt, now / 1000); updatePenguins(dt, now / 1000); updateEmbers(dt, now / 1000); updateVents(dt, now / 1000);
+  animateFlag(now / 1000); updateLeaves(dt, now / 1000); updateSnow(dt, now / 1000); updatePenguins(dt, now / 1000); updateStory(dt); updateEmbers(dt, now / 1000); updateVents(dt, now / 1000);
   rippleTex.offset.x = (rippleTex.offset.x + dt * 0.035) % 1; rippleTex.offset.y = (rippleTex.offset.y + dt * 0.012) % 1;
 
   const aiming = S.phase === 'aim' || S.phase === 'charging';
@@ -2297,6 +2525,12 @@ window.__game = {
   obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), banks: H.banks.length, vents: H.vents.map(v => ({ x: v.x, z: v.z, r: v.r, up: v.up, push: v.push })), penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
   fx: () => ({ penguinHops: S.penguinHops || 0, puffs: S.puffs || 0, snow: snowfall.visible, snowN: SNOW_N, sizzles: S.sizzles || 0, ventBoosts: S.ventBoosts || 0, embers: embers.visible, embersN: EMBER_N, plume: H.plume.length, lavaGlow: MAT.water.emissiveMap === lavaTex }),
   setVents(on) { S.noVents = !on; },
+  story: () => { const st = H.story, b = st?.built; return { hasStory: !!COURSE.story, intro: COURSE.story?.intro || null, clue: st?.clue || null, meshes: st?.meshes || 0, caption: S.storyCaption || null,
+    captionVisible: !!storyCap && !storyCap.classList.contains('hidden'), at: st?.data.at || null, roared: !!S.roared, shake: !!S.shake,
+    eyes: b?.eyes ? { visible: b.eyes.visible, everShown: b.everShown } : null, shadow: b?.bear && st.clue === 'shadow' ? { visible: b.bear.visible, everShown: b.everShown } : null,
+    prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible } : null,
+    revealShown: !!storyReveal && !storyReveal.classList.contains('hidden'), bannerVeiled: ui.banner.classList.contains('veil') }; },
+  holeTime: (t) => { S.holeT = t; },
   mem: () => ({ geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, sharedDisposed: S.sharedDisposed || 0, previewSims: curvePreview.sims }),
   loadHole: (i) => loadHole(i),
   loadPractice: () => loadHole(0, { practice: true }),
