@@ -139,7 +139,8 @@ body[data-world="river"] #scorebox .title { color: #9fe3ff; }
 .pickcourse .pblurb { font-size: 14px; font-weight: 600; opacity: .95; } .pickcourse .pbest { font-size: 13px; font-weight: 700; text-align: right; color: #ffe066; }
 #pickback { margin-top: 14px; padding: 11px 26px; font-size: 16px; }
 @media (max-height: 500px) { .picktitle { font-size: 24px; } .picksub { margin-bottom: 8px; } #picklist { flex-direction: row; } #hud button.pickcourse { flex: 1; min-height: 0; padding: 12px 14px; }
-  #picker .pickpanel { width: min(720px, 100%); } }
+  #picker .pickpanel { width: min(820px, 100%); }
+  #hud button.pickcourse { grid-template-columns: 1fr; gap: 3px; } .pickcourse .pname { font-size: 21px; } .pickcourse .pinfo, .pickcourse .pbest { text-align: left; align-self: start; } }
 
 /* Wind key: dial arrow = which way the wind pushes the disc on screen; colour = strength */
 #windkey { --wind: #dfe8e2; display: flex; align-items: center; gap: 8px; background: rgba(10,40,20,.55); border-radius: 14px; padding: 6px 12px 6px 6px; }
@@ -222,6 +223,13 @@ import * as THREE from 'three';
 //   trees   hand-placed obstacles { x, z, s } (s = size); a border forest is generated around the path
 //   hills   optional bumps { x, z, r, h } (h = height at the centre); the basket sits on the ground
 //   rows    optional tree lines { from: [x, z], to: [x, z], step, s, gap: [x0, x1] } expanded into trees
+// Ice world (any course may use these):
+//   icePatches { x, z, r } or { pts, w }  glossy ice: a disc that lands on it skids much farther
+//   snowDrifts { x, z, r } or { pts, w }  deep snow: a disc stops almost dead (puff of snow)
+//   pillars   { x, z, r, h, kind: 'pillar'|'serac' }  solid ice columns;  bergs { x, z, r, h }  giant icebergs (solid)
+//   arches    { x, z, yaw, span, h }  ice arch: throw through the opening (span wide, h high); the ring itself is solid
+//   banks     { from, to, h, w }  low snow banks that stop a rolling disc
+//   penguins  { x, z, n, r }  a colony (decoration);  station { x, z, yaw }  research hut (solid)
 // Water (river world, but any course may use it). Landing or stopping in water = Splash: +1 throw.
 //   rivers  { pts: [[x, z], ...], w, open: [extendStart, extendEnd] } a smooth band of water w metres wide;
 //           ends are extended 120 m (default) so rivers run off into the distance
@@ -238,6 +246,10 @@ const WORLDS = {
   river: { id: 'river', sky: [0x3b86c4, 0xffe1b5], fog: 0xd6e4d4, hemi: [0xfff2dc, 0x50803c, 1.05], sun: [0xffd8a0, 2.3],
     ground: { ob: 0x4c8035, rough: 0x67a646, fairway: 0x84c457, green: 0x9be36c }, trees: 'willow', borderMix: 0.45, windMin: 5, windMax: 18, leaf: 0xc9b458,
     water: 0x2f8fba, sand: 0xdcc88f, reeds: 0x7f9640, rock: 0x8f8d84 },
+  // Antarctica: snowfields, glossy ice, dark sea leads, low polar sun, falling snow, no trees (border is ice formations)
+  ice: { id: 'ice', sky: [0x6f9cc6, 0xf6e7d6], fog: 0xdde8f1, fogRange: [150, 520], hemi: [0xf4f9ff, 0xd5e4f0, 1.45], sun: [0xffe6c8, 1.9], sunLow: true,
+    ground: { ob: 0xcadbe8, rough: 0xe2edf5, fairway: 0xf7fafc, green: 0xd9eefc }, trees: 'none', borderMix: 0, windMin: 8, windMax: 22, leaf: null, snow: true,
+    water: 0x153a57, sand: 0xd3e9f6, reeds: null, rock: 0x5d636c, snowCaps: true, scenery: 'polar', obPost: 0xff7a3d, pick: [0x8fc6ea, 0x1d4a6b] },
 };
 
 const PARK_COURSE = {
@@ -387,7 +399,101 @@ const RIVER_COURSE = {
   ],
 };
 
-const COURSES = [PARK_COURSE, RIVER_COURSE];
+const ICE_COURSE = {
+  id: 'antarctica',
+  name: 'Antarctica', world: 'ice', blurb: 'Frostbite Shelf · ice, snow & sea',
+  holes: [
+    {
+      name: 'Penguin Landing', par: 3, tip: 'Glossy blue ice slides, white snow stops. Land short of the ice and let it skid in.',
+      tee: [0, 0], basket: [3, -62], width: 16, ob: 13,
+      path: [[0, 0], [0, -30], [3, -62]],
+      icePatches: [{ x: 2, z: -49, r: 7 }], snowDrifts: [{ x: -9, z: -70, r: 6 }, { x: 12, z: -72, r: 5 }],
+      pillars: [{ x: 9, z: -24, r: 0.9, h: 4 }],
+      penguins: [{ x: -15, z: -32, n: 7, r: 3.5 }], station: { x: 13, z: 7, yaw: -0.5 },
+      rocks: [{ x: -12, z: -12, s: 1.3 }, { x: 15, z: -50, s: 1 }],
+    },
+    {
+      name: 'The Rink', par: 3, tip: 'An ice rink to the basket and the sea behind it. Land short and let it slide — too hot and it skates into the water.',
+      tee: [0, 0], basket: [0, -82], width: 12, ob: 10,
+      path: [[0, 0], [0, -80]],
+      icePatches: [{ pts: [[0, -40], [0, -84]], w: 13 }],
+      snowDrifts: [{ pts: [[-12, -34], [-12, -88]], w: 8 }, { pts: [[12, -34], [12, -88]], w: 8 }],
+      rivers: [{ pts: [[-70, -94], [0, -91], [70, -96]], w: 7 }],
+      penguins: [{ x: 22, z: -60, n: 5, r: 3 }],
+      rocks: [{ x: -8, z: -18, s: 1.1 }],
+    },
+    {
+      name: 'Ice Arch', par: 3, tip: 'A wall of seracs with an arch in the middle. Thread it low, or loft it over the top.',
+      tee: [0, 0], basket: [0, -72], width: 14, ob: 11,
+      path: [[0, 0], [0, -72]],
+      arches: [{ x: 0, z: -36, yaw: 0, span: 8, h: 5 }],
+      pillars: [{ x: -26, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: -22, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: -19, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: -15, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: -12, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: -8, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: 8, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: 12, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: 15, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: 19, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: 22, z: -36, r: 1.5, h: 7.5, kind: 'serac' }, { x: 26, z: -36, r: 1.5, h: 7.5, kind: 'serac' }],
+      snowDrifts: [{ x: 8, z: -76, r: 4 }], icePatches: [{ x: -4, z: -60, r: 5 }], ponds: [{ x: -2, z: -86, r: 6 }],
+      penguins: [{ x: -14, z: -52, n: 4, r: 2.5 }],
+    },
+    {
+      name: 'Berg Bend', par: 4, tip: 'A giant iceberg blocks the corner. Bend a big Right Curve around it, or lay up left.',
+      tee: [0, 0], basket: [44, -128], width: 14, ob: 11,
+      path: [[0, 0], [-8, -50], [10, -104], [44, -128]],
+      bergs: [{ x: 16, z: -56, r: 12, h: 15 }],
+      rivers: [{ pts: [[-30, -10], [-33, -60], [-22, -150]], w: 9 }],
+      icePatches: [{ x: 32, z: -121, r: 7 }], snowDrifts: [{ x: 54, z: -136, r: 5 }, { x: 4, z: -96, r: 6 }],
+      pillars: [{ x: -2, z: -78, r: 1, h: 5, kind: 'serac' }],
+      penguins: [{ x: 4, z: -26, n: 5, r: 3 }],
+    },
+    {
+      name: 'Crevasse', par: 4, tip: 'Two open-water crevasses: a wide one off the tee, a narrow one before the green. Ice between them skids.',
+      tee: [0, 0], basket: [-8, -136], width: 14, ob: 11,
+      path: [[0, 0], [0, -70], [-8, -136]],
+      rivers: [{ pts: [[-70, -48], [0, -43], [70, -51]], w: 13 }, { pts: [[-60, -114], [0, -110], [60, -116]], w: 5 }],
+      icePatches: [{ x: -2, z: -72, r: 9 }], snowDrifts: [{ x: 10, z: -96, r: 6 }, { x: -12, z: -92, r: 5 }],
+      banks: [{ from: [-18, -146], to: [2, -148], h: 0.9, w: 2 }],
+      penguins: [{ x: 22, z: -60, n: 6, r: 3.5 }],
+      rocks: [{ x: -14, z: -30, s: 1.2 }, { x: 12, z: -64, s: 0.9 }],
+    },
+    {
+      name: 'Snow Ledge', par: 3, tip: 'The basket sits up on a ledge. The icy front face slides short shots back down.',
+      tee: [0, 0], basket: [4, -60], width: 13, ob: 11, greenR: 3.5,
+      path: [[0, 0], [4, -60]],
+      hills: [{ x: 4, z: -60, r: 11, h: 4.5 }],
+      icePatches: [{ x: 4, z: -51, r: 6.5 }], ponds: [{ x: 4, z: -77, r: 6 }],
+      rocks: [{ x: -6, z: -56, s: 1.2 }, { x: 14, z: -60, s: 1.4 }, { x: 10, z: -50, s: 0.8 }],
+      penguins: [{ x: -12, z: -40, n: 4, r: 2.5 }],
+    },
+    {
+      name: 'Pillar Garden', par: 3, tip: 'Putter hole. Ice pillars ring the basket — find the gap at the front, and mind the ice.',
+      tee: [0, 0], basket: [0, -34], width: 12, ob: 12, greenR: 5,
+      path: [[0, 0], [0, -34]],
+      pillars: [{ x: 0.0, z: -38.3, r: 0.7, h: 3.4 }, { x: 3.3, z: -36.8, r: 0.7, h: 3.4 }, { x: 4.2, z: -33.3, r: 0.7, h: 3.4 }, { x: 2.1, z: -30.3, r: 0.7, h: 3.4 }, { x: -2.2, z: -30.3, r: 0.7, h: 3.4 }, { x: -4.2, z: -33.3, r: 0.7, h: 3.4 }, { x: -3.3, z: -36.8, r: 0.7, h: 3.4 }, { x: -2.2, z: -17, r: 0.8, h: 3.4 }, { x: 2.6, z: -23, r: 0.8, h: 3.4 }],
+      icePatches: [{ x: 0, z: -34, r: 6.5 }],
+      penguins: [{ x: 9, z: -12, n: 3, r: 2 }],
+    },
+    {
+      name: 'Katabatic Run', par: 5, tip: 'Long and windy with the sea along the left. Ice in the fairway gives you free metres.',
+      tee: [0, 0], basket: [12, -215], width: 16, ob: 12,
+      path: [[0, 0], [-6, -70], [4, -145], [12, -215]],
+      rivers: [{ pts: [[-36, 10], [-38, -90], [-26, -250]], w: 10 }],
+      icePatches: [{ pts: [[-6, -78], [1, -128]], w: 10 }, { x: 9, z: -188, r: 7 }],
+      snowDrifts: [{ x: 16, z: -104, r: 8 }, { x: -2, z: -160, r: 7 }],
+      pillars: [{ x: 9, z: -45, r: 1.2, h: 6, kind: 'serac' }, { x: -12, z: -150, r: 1.2, h: 6, kind: 'serac' }, { x: 22, z: -170, r: 1.2, h: 6, kind: 'serac' }],
+      banks: [{ from: [-2, -227], to: [26, -229], h: 1, w: 2.2 }],
+      penguins: [{ x: 26, z: -150, n: 5, r: 3 }],
+    },
+    {
+      name: 'Station Finish', par: 4, tip: 'Dogleg left to the research station. Thread the arch, or curve over the snow bank.',
+      tee: [0, 0], basket: [-44, -132], width: 14, ob: 11,
+      path: [[0, 0], [2, -62], [-16, -110], [-44, -132]],
+      banks: [{ from: [-8, -40], to: [-24, -92], h: 1.1, w: 2.4 }],
+      arches: [{ x: -7, z: -86, yaw: -0.36, span: 9, h: 5.5 }],
+      ponds: [{ x: -62, z: -116, r: 10 }],
+      icePatches: [{ x: -34, z: -128, r: 7 }], snowDrifts: [{ x: -52, z: -142, r: 5 }, { x: 6, z: -70, r: 6 }],
+      station: { x: -58, z: -150, yaw: 0.6 }, penguins: [{ x: -26, z: -148, n: 6, r: 3.5 }],
+      rocks: [{ x: 10, z: -30, s: 1.2 }],
+    },
+  ],
+};
+
+const COURSES = [PARK_COURSE, RIVER_COURSE, ICE_COURSE];
 
 // Open practice field used by tests (and handy for tuning discs). Not part of the round.
 const PRACTICE_HOLE = {
@@ -501,6 +607,33 @@ Object.assign(MAT, {
   islandGrass: layered(new THREE.MeshLambertMaterial({ color: 0x9be36c }), 9),
 });
 layered(MAT.green, 3);
+// Ice world: glossy ice patches (slide), deep snow (stops dead), ice obstacles, penguins, research hut
+const iceTex = (() => { // faint cracks and streaks so ice reads as glossy and different from snow
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, 128, 128); const r = seeded(777);
+  for (let i = 0; i < 26; i++) { x.strokeStyle = `rgba(255,255,255,${0.5 + r() * 0.5})`; x.lineWidth = 0.6 + r() * 1.4; let px = r() * 128, py = r() * 128; x.beginPath(); x.moveTo(px, py);
+    for (let k = 0; k < 4; k++) { px += (r() - 0.5) * 40; py += (r() - 0.5) * 40; x.lineTo(px, py); } x.stroke(); }
+  for (let i = 0; i < 18; i++) { x.fillStyle = `rgba(150,200,235,${0.15 + r() * 0.25})`; x.beginPath(); x.ellipse(r() * 128, r() * 128, 8 + r() * 20, 2 + r() * 4, r() * 3, 0, Math.PI * 2); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const snowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, 64, 64); const r = seeded(99);
+  for (let i = 0; i < 160; i++) { x.fillStyle = `rgba(190,210,230,${0.15 + r() * 0.3})`; x.fillRect(r() * 64, r() * 64, 1 + r() * 2, 1 + r() * 2); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; })();
+Object.assign(MAT, {
+  ice: layered(new THREE.MeshPhongMaterial({ color: 0x8fcdf0, map: iceTex, specular: 0xffffff, shininess: 110 }), 4),
+  deepSnow: layered(new THREE.MeshLambertMaterial({ color: 0xffffff, map: snowTex }), 5),
+  iceSolid: new THREE.MeshPhongMaterial({ color: 0xa9dcf5, specular: 0xffffff, shininess: 80, flatShading: true }),
+  serac: new THREE.MeshPhongMaterial({ color: 0xd4eefb, specular: 0xffffff, shininess: 50, flatShading: true }),
+  berg: new THREE.MeshPhongMaterial({ color: 0xe6f6ff, specular: 0xbfe8ff, shininess: 40, flatShading: true }),
+  bank: new THREE.MeshLambertMaterial({ color: 0xf7fbff, map: snowTex }),
+  snowCap: new THREE.MeshLambertMaterial({ color: 0xf6faff, flatShading: true }),
+  mountain: new THREE.MeshLambertMaterial({ color: 0xe8f0f7, flatShading: true }),
+  mountainRock: new THREE.MeshLambertMaterial({ color: 0x6c7480, flatShading: true }),
+  cliff: new THREE.MeshPhongMaterial({ color: 0xb9e2f6, specular: 0xffffff, shininess: 30, flatShading: true }),
+  hut: new THREE.MeshLambertMaterial({ color: 0xd8462b }), hutRoof: new THREE.MeshLambertMaterial({ color: 0x3a3f47 }), hutWin: new THREE.MeshLambertMaterial({ color: 0x9fd7ff, emissive: 0x335566 }),
+  penguinBlack: new THREE.MeshLambertMaterial({ color: 0x1c2330 }), penguinWhite: new THREE.MeshLambertMaterial({ color: 0xf4f6f8 }),
+  penguinOrange: new THREE.MeshLambertMaterial({ color: 0xff9a2e }), penguinYellow: new THREE.MeshLambertMaterial({ color: 0xffd34d }),
+});
 const GEO = {
   trunk: new THREE.CylinderGeometry(0.3, 0.42, 3, 8).translate(0, 1.5, 0),
   cones: [0, 1, 2].map(k => new THREE.ConeGeometry(2.4 - k * 0.6, 2.6, 10).translate(0, 3.2 + k * 1.3, 0)),
@@ -508,7 +641,33 @@ const GEO = {
   willow: [new THREE.SphereGeometry(2.3, 12, 8).scale(1, 0.8, 1).translate(0, 4.6, 0), new THREE.ConeGeometry(2.7, 3.4, 12, 1, true).translate(0, 3.0, 0)],
   reed: new THREE.ConeGeometry(0.06, 1.2, 4).translate(0, 0.6, 0),
   rock: new THREE.DodecahedronGeometry(0.55, 0).scale(1, 0.62, 1),
+  snowCap: new THREE.DodecahedronGeometry(0.5, 0).scale(1.02, 0.3, 1.02).translate(0, 0.2, 0),
+  pillar: new THREE.CylinderGeometry(0.82, 1, 1, 7).translate(0, 0.5, 0),
+  serac: new THREE.DodecahedronGeometry(1, 0).scale(1, 1.6, 0.9).translate(0, 1.2, 0),
+  berg: new THREE.IcosahedronGeometry(1, 1).scale(1, 0.62, 1).translate(0, 0.35, 0),
+  iceBlock: new THREE.DodecahedronGeometry(1, 0).scale(1.3, 0.8, 1).translate(0, 0.5, 0),
+  mound: new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.6, 0.55, 1.2),
+  mountain: new THREE.ConeGeometry(1, 1, 6, 1).translate(0, 0.5, 0),
+  peng: {
+    body: new THREE.SphereGeometry(0.3, 10, 8).scale(1, 1.5, 0.92).translate(0, 0.5, 0),
+    belly: new THREE.SphereGeometry(0.25, 10, 8).scale(0.9, 1.4, 0.62).translate(0, 0.46, 0.11),
+    head: new THREE.SphereGeometry(0.19, 10, 8).translate(0, 0.97, 0.02),
+    cheek: new THREE.SphereGeometry(0.08, 6, 4).scale(1, 1.2, 0.6).translate(0, 0.84, 0.16),
+    beak: new THREE.ConeGeometry(0.045, 0.17, 6).rotateX(Math.PI / 2).translate(0, 0.95, 0.24),
+    foot: new THREE.BoxGeometry(0.11, 0.035, 0.16).translate(0, 0.02, 0.07),
+    flipper: new THREE.BoxGeometry(0.05, 0.38, 0.13).translate(0, -0.17, 0),
+  },
 };
+// One low-poly penguin (≈1 m tall). Flippers are kept so they can flap.
+function makePenguin() {
+  const g = new THREE.Group(), P = GEO.peng, M = MAT;
+  g.add(new THREE.Mesh(P.body, M.penguinBlack), new THREE.Mesh(P.belly, M.penguinWhite), new THREE.Mesh(P.head, M.penguinBlack), new THREE.Mesh(P.cheek, M.penguinYellow), new THREE.Mesh(P.beak, M.penguinOrange));
+  for (const sx of [-1, 1]) { const f = new THREE.Mesh(P.foot, M.penguinOrange); f.position.x = sx * 0.1; g.add(f); }
+  const flips = [-1, 1].map(sx => { const f = new THREE.Mesh(P.flipper, M.penguinBlack); f.position.set(sx * 0.3, 0.72, 0); f.rotation.z = sx * 0.25; g.add(f); return f; });
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData.flips = flips; return g;
+}
+
 let WORLD = WORLDS.park;
 let flagRef = null;
 
@@ -556,6 +715,21 @@ function makeHole(data, index) {
     return rivers.some(r => x > r.box[0] && x < r.box[1] && z > r.box[2] && z < r.box[3] && segDist2(r.samples, x, z) < r.w / 2);
   };
   const physY = (x, z) => { const b = bridges.length ? onBridge(x, z) : null; return groundY(x, z) + (b ? b.deck : 0); };
+  // ----- Ice world surfaces: ice patches (low friction) and deep snow (stops fast). Circles { x, z, r } or bands { pts, w } -----
+  const mkZone = zd => { if (!zd.pts) return { ...zd, circle: true };
+    const c = new THREE.CatmullRomCurve3(zd.pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
+    const sm = c.getSpacedPoints(Math.max(4, Math.ceil(c.getLength() / 1.5))).map(p => new THREE.Vector2(p.x, p.z)); return { w: zd.w, samples: sm }; };
+  const inZone = (zn, x, z) => zn.circle ? Math.hypot(x - zn.x, z - zn.z) < zn.r : segDist2(zn.samples, x, z) < zn.w / 2;
+  const iceZones = (data.icePatches || []).map(mkZone), snowZones = (data.snowDrifts || []).map(mkZone);
+  const surface = (x, z) => snowZones.some(zn => inZone(zn, x, z)) ? 'snow' : iceZones.some(zn => inZone(zn, x, z)) ? 'ice' : null;
+  // ----- Solid ice obstacles: pillars/seracs/bergs are cylinders for physics; arches are a half ring you can throw through;
+  // snow banks are low mounds that stop a rolling disc -----
+  const solids = [...(data.pillars || []).map(o => ({ kind: o.kind || 'pillar', h: 4, r: 0.9, ...o })), ...(data.bergs || []).map(o => ({ kind: 'berg', ...o }))];
+  if (data.station) solids.push({ kind: 'station', x: data.station.x, z: data.station.z, r: 2.3, h: 3.2, yaw: data.station.yaw || 0 });
+  for (const o of solids) o.y = groundY(o.x, o.z);
+  const arches = (data.arches || []).map(a => { const tube = a.tube || 0.9, R = a.span / 2 + tube, yaw = a.yaw || 0;
+    return { x: a.x, z: a.z, y: groundY(a.x, a.z), tube, R, c: a.h - R + tube, h: a.h, span: a.span, dir: new THREE.Vector2(Math.sin(yaw), -Math.cos(yaw)), right: new THREE.Vector2(Math.cos(yaw), Math.sin(yaw)), yaw }; });
+  const banks = (data.banks || []).map(b => { const a = v2(b.from), c = v2(b.to); return { a, c, w: b.w || 2, h: b.h || 1, samples: [a, c] }; });
   // Smooth centreline through the path points, sampled every ~1 m
   const curve = new THREE.CatmullRomCurve3(data.path.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
   const length = curve.getLength();
@@ -612,6 +786,8 @@ function makeHole(data, index) {
       }
     }
   }
+  const decor = []; // ice world: border formations are scenery only
+  if (WORLD.trees === 'none') { for (const t of trees) if (t.border) decor.push(t); for (let i = trees.length - 1; i >= 0; i--) if (trees[i].border) trees.splice(i, 1); }
   for (const t of trees) t.y = physY(t.x, t.z);
 
   const tee = new THREE.Vector3(data.tee[0], 0, data.tee[1]); tee.y = physY(tee.x, tee.z);
@@ -706,6 +882,7 @@ function makeHole(data, index) {
     for (const m of [trunk, ...crowns]) { m.castShadow = true; m.receiveShadow = false; group.add(m); }
   }
   // Water, banks, islands, bridges, reeds and rocks
+  const rockList = (data.rocks || []).map(r => ({ ...r }));
   if (rivers.length || ponds.length) {
     const band = (pts, halfW, y, mat) => {
       const pos = [], uv = [], idx = [];
@@ -739,7 +916,7 @@ function makeHole(data, index) {
       g.position.set(b.a.x, 0, b.a.y); g.rotation.y = yaw; group.add(g);
     }
     // reeds and rocks along the banks, only near the hole (phone-friendly instance counts)
-    const rnd = seeded(500 + index * 31), reeds = [], rocks = (data.rocks || []).map(r => ({ ...r }));
+    const rnd = seeded(500 + index * 31), reeds = [], rocks = rockList;
     const near = (x, z) => distToPlay(x, z) < inBoundsR + 30;
     const bankSpot = (cx, cz, nx, nz, off) => { const x = cx + nx * off, z = cz + nz * off; return isWater(x, z) || !near(x, z) || onBridge(x, z) || Math.hypot(x - basket.x, z - basket.z) < 3 || Math.hypot(x - tee.x, z - tee.z) < 3 ? null : [x, z]; };
     for (const r of rivers) for (let i = 1; i < r.samples.length - 1; i += 2) {
@@ -751,12 +928,92 @@ function makeHole(data, index) {
     }
     for (const p of ponds) for (let a = 0; a < Math.PI * 2; a += 0.12) if (rnd() < 0.55) { const sp = bankSpot(p.x, p.z, Math.cos(a), Math.sin(a), p.r + 0.2 + rnd() * 1.3); if (sp) reeds.push(sp); }
     for (const i of islands) for (let a = 0; a < Math.PI * 2; a += 0.35) if (rnd() < 0.4) { const x = i.x + Math.cos(a) * (i.r - 0.5), z = i.z + Math.sin(a) * (i.r - 0.5); if (Math.hypot(x - basket.x, z - basket.z) > 3) reeds.push([x, z]); }
-    const rm = new THREE.InstancedMesh(GEO.reed, MAT.reeds, Math.min(reeds.length, 1600)), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
-    reeds.slice(0, 1600).forEach(([x, z], i) => { e.set((rnd() - 0.5) * 0.3, rnd() * 6, (rnd() - 0.5) * 0.3); q.setFromEuler(e); mtx.compose(new THREE.Vector3(x, groundY(x, z), z), q, new THREE.Vector3(1, 0.7 + rnd() * 0.7, 1)); rm.setMatrixAt(i, mtx); });
-    group.add(rm);
-    const km = new THREE.InstancedMesh(GEO.rock, MAT.rock, Math.max(1, rocks.length));
-    rocks.forEach((r, i) => { e.set(0, rnd() * 6, 0); q.setFromEuler(e); mtx.compose(new THREE.Vector3(r.x, groundY(r.x, r.z) + 0.05, r.z), q, new THREE.Vector3(r.s, r.s, r.s)); km.setMatrixAt(i, mtx); });
-    km.count = rocks.length; km.castShadow = true; group.add(km);
+    if (WORLD.reeds !== null) {
+      const rm = new THREE.InstancedMesh(GEO.reed, MAT.reeds, Math.max(1, Math.min(reeds.length, 1600))), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+      reeds.slice(0, 1600).forEach(([x, z], i) => { e.set((rnd() - 0.5) * 0.3, rnd() * 6, (rnd() - 0.5) * 0.3); q.setFromEuler(e); mtx.compose(new THREE.Vector3(x, groundY(x, z), z), q, new THREE.Vector3(1, 0.7 + rnd() * 0.7, 1)); rm.setMatrixAt(i, mtx); });
+      rm.count = Math.min(reeds.length, 1600); group.add(rm);
+    }
+  }
+  if (rockList.length) { // boulders (snow-capped in the ice world)
+    const rnd = seeded(900 + index * 13), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+    const km = new THREE.InstancedMesh(GEO.rock, MAT.rock, rockList.length), caps = WORLD.snowCaps ? new THREE.InstancedMesh(GEO.snowCap, MAT.snowCap, rockList.length) : null;
+    rockList.forEach((r, i) => { e.set(0, rnd() * 6, 0); q.setFromEuler(e); mtx.compose(new THREE.Vector3(r.x, groundY(r.x, r.z) + 0.05, r.z), q, new THREE.Vector3(r.s, r.s, r.s)); km.setMatrixAt(i, mtx); if (caps) caps.setMatrixAt(i, mtx); });
+    km.castShadow = true; group.add(km); if (caps) group.add(caps);
+  }
+  // Ice patches and deep snow drawn as thin layers that follow the terrain
+  const conform = (g, off) => { const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, groundY(p.getX(i), p.getZ(i)) + off); g.computeVertexNormals(); return g; };
+  const zoneMesh = (zn, mat, off) => {
+    let g;
+    if (zn.circle) { g = new THREE.RingGeometry(0.001, zn.r, 40, 6).rotateX(-Math.PI / 2); g.translate(zn.x, 0, zn.z); }
+    else { const pos = [], idx = [], pts = zn.samples;
+      for (let i = 0; i < pts.length; i++) { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], d = b.clone().sub(a).normalize(), n = new THREE.Vector2(-d.y, d.x);
+        for (let j = 0; j < 5; j++) { const sgn = j / 4 * 2 - 1; pos.push(pts[i].x + n.x * zn.w / 2 * sgn, 0, pts[i].y + n.y * zn.w / 2 * sgn); }
+        if (i > 0) for (let j = 0; j < 4; j++) { const k = (i - 1) * 5 + j; idx.push(k, k + 5, k + 1, k + 1, k + 5, k + 6); } }
+      g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+      const uv = []; for (let i = 0; i < pos.length; i += 3) uv.push(0, 0); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); }
+    const p = g.attributes.position, uv = g.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / 7, p.getZ(i) / 7);
+    const m = new THREE.Mesh(conform(g, off), mat); m.material.side = THREE.DoubleSide; m.receiveShadow = true; return m; };
+  for (const zn of iceZones) group.add(zoneMesh(zn, MAT.ice, 0.05));
+  for (const zn of snowZones) group.add(zoneMesh(zn, MAT.deepSnow, 0.06));
+  { // solid obstacles
+    const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    for (const [kind, geo, mat] of [['pillar', GEO.pillar, MAT.iceSolid], ['serac', GEO.serac, MAT.serac], ['berg', GEO.berg, MAT.berg]]) {
+      const list = solids.filter(o => o.kind === kind); if (!list.length) continue;
+      const im = new THREE.InstancedMesh(geo, mat, list.length);
+      list.forEach((o, i) => { q.setFromAxisAngle(up, (i * 2.1 + o.x) % 6.28);
+        if (kind === 'pillar') sc.set(o.r, o.h, o.r); else if (kind === 'serac') sc.set(o.r, o.h / 2.8, o.r); else sc.set(o.r * 1.12, o.h / 0.97, o.r * 1.12);
+        mtx.compose(ps.set(o.x, o.y, o.z), q, sc); im.setMatrixAt(i, mtx); });
+      im.castShadow = true; im.receiveShadow = true; group.add(im);
+    }
+    for (const a of arches) { // half ring + legs down to the ground
+      const g = new THREE.Group();
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube, 8, 20, Math.PI), MAT.iceSolid); ring.position.y = a.c; g.add(ring);
+      if (a.c > 0.01) for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(a.tube, a.tube * 1.15, a.c, 8).translate(0, a.c / 2, 0), MAT.iceSolid); leg.position.x = sx * a.R; g.add(leg); }
+      const cap = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube * 0.55, 6, 20, Math.PI * 0.6), MAT.snowCap); cap.position.y = a.c + a.tube * 0.55; cap.rotation.z = Math.PI * 0.2; g.add(cap);
+      g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      g.position.set(a.x, a.y, a.z); g.rotation.y = -a.yaw; group.add(g);
+    }
+    for (const b of banks) { const d = b.c.clone().sub(b.a), len = d.length();
+      const m = new THREE.Mesh(new THREE.CapsuleGeometry(b.w / 2, len, 4, 10).rotateZ(Math.PI / 2).scale(1, b.h / (b.w / 2), 1), MAT.bank);
+      m.position.set((b.a.x + b.c.x) / 2, groundY((b.a.x + b.c.x) / 2, (b.a.y + b.c.y) / 2), (b.a.y + b.c.y) / 2); m.rotation.y = -Math.atan2(d.y, d.x); m.castShadow = m.receiveShadow = true; group.add(m); }
+    const st = solids.find(o => o.kind === 'station');
+    if (st) { // research hut: red cabin, dark roof, windows, antenna mast and flag
+      const g = new THREE.Group();
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.4, 3).translate(0, 1.5, 0), MAT.hut); g.add(cab);
+      const stilts = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.3, 2.6).translate(0, 0.15, 0), MAT.hutRoof); g.add(stilts);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.25, 3.3).translate(0, 2.85, 0), MAT.hutRoof); g.add(roof);
+      for (const wx of [-1.2, 1.2]) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.05).translate(wx, 1.8, 1.52), MAT.hutWin); g.add(w); }
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.05).translate(0, 1.05, 1.52), MAT.hutRoof); g.add(door);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 6).translate(2.6, 3, -1), MAT.metal); g.add(mast);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.7, 4, 1).translate(0.6, -0.35, 0), new THREE.MeshLambertMaterial({ color: 0x2a6fdb, side: THREE.DoubleSide })); flag.position.set(2.6, 5.9, -1); g.add(flag);
+      const dish = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.5).rotateX(-1.1), MAT.obPost); dish.position.set(-1.4, 3.3, -0.6); g.add(dish);
+      g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+      g.position.set(st.x, st.y, st.z); g.rotation.y = st.yaw; g.userData.flag = flag; group.add(g);
+    }
+  }
+  // Penguins (decoration): colonies { x, z, n, r }
+  const penguins = [];
+  { const rnd = seeded(4000 + index * 19);
+    for (const c of data.penguins || []) for (let i = 0; i < c.n; i++) {
+      const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * c.r, x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d, g = makePenguin(), s = 0.8 + rnd() * 0.35;
+      g.scale.setScalar(s); g.position.set(x, groundY(x, z), z); g.rotation.y = rnd() * 6.28; group.add(g);
+      penguins.push({ g, x, z, yaw: g.rotation.y, ph: rnd() * 10, hop: null, s }); } }
+  // Polar scenery: border ice formations, distant ice cliffs and mountains (scenery only, no physics)
+  if (WORLD.scenery === 'polar') {
+    const rnd = seeded(7000 + index * 23), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    if (decor.length) { const blocks = new THREE.InstancedMesh(GEO.iceBlock, MAT.serac, decor.length), mounds = new THREE.InstancedMesh(GEO.mound, MAT.bank, decor.length); let nb = 0, nm = 0;
+      for (const t of decor) { q.setFromAxisAngle(up, rnd() * 6.28); const k = t.s * (0.8 + rnd() * 0.9);
+        if (rnd() < 0.45) { mtx.compose(ps.set(t.x, groundY(t.x, t.z) - 0.2, t.z), q, sc.set(k * 1.4, k * (1 + rnd() * 1.4), k * 1.2)); blocks.setMatrixAt(nb++, mtx); }
+        else { mtx.compose(ps.set(t.x, groundY(t.x, t.z) - 0.05, t.z), q, sc.set(k * 1.8, k * 1.5, k * 1.8)); mounds.setMatrixAt(nm++, mtx); } }
+      blocks.count = nb; mounds.count = nm; blocks.castShadow = true; group.add(blocks, mounds); }
+    const cx = (samples[0].x + samples[samples.length - 1].x) / 2, cz = (samples[0].y + samples[samples.length - 1].y) / 2;
+    const mtn = new THREE.InstancedMesh(GEO.mountain, MAT.mountain, 22), rockM = new THREE.InstancedMesh(GEO.mountain, MAT.mountainRock, 22), cliffs = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), MAT.cliff, 12);
+    for (let i = 0; i < 22; i++) { const a = (i / 22) * Math.PI * 2 + rnd() * 0.2, d = 270 + rnd() * 70, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, r = 35 + rnd() * 45, h = 45 + rnd() * 85;
+      q.setFromAxisAngle(up, rnd() * 6.28); mtx.compose(ps.set(x, -2, z), q, sc.set(r, h, r)); mtn.setMatrixAt(i, mtx);
+      mtx.compose(ps.set(x + (rnd() - 0.5) * 10, -2, z + (rnd() - 0.5) * 10), q, sc.set(r * 0.9, h * 0.62, r * 0.9)); rockM.setMatrixAt(i, mtx); }
+    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2 + 0.13, d = 215 + rnd() * 30, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
+      q.setFromAxisAngle(up, -a + Math.PI / 2); q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (rnd() - 0.5) * 0.25)); mtx.compose(ps.set(x, -3, z), q, sc.set(60 + rnd() * 40, 14 + rnd() * 20, 12 + rnd() * 10)); cliffs.setMatrixAt(i, mtx); }
+    group.add(mtn, rockM, cliffs);
   }
   const drop = data.drop ? new THREE.Vector3(data.drop[0], 0, data.drop[1]) : null;
   if (drop) {
@@ -791,7 +1048,7 @@ function makeHole(data, index) {
   // Sun follows the hole so shadows cover it
   const mid = curve.getPoint(0.5);
   const span = Math.max(70, length * 0.65 + 20);
-  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span };
+  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, banks, penguins };
 }
 
 function convexHull(pts) { // monotone chain, counter-clockwise in (x, z)
@@ -900,10 +1157,17 @@ function spawnSplash(x, z) {
   for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.55, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
     m.position.set(x, y, z); m.userData = { t: -k * 0.25, ring: true }; scene.add(m); splashes.push(m); }
 }
+const PUFF_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
+function spawnPuff(x, z) { // little burst of snow where the disc lands in deep snow or hits a bank
+  const y = H.groundY(x, z) + 0.1;
+  for (let i = 0; i < 22; i++) { const m = new THREE.Mesh(DROP_GEO, PUFF_MAT); m.position.set(x, y, z); const a = Math.random() * 6.28, sp = 0.4 + Math.random() * 1.3;
+    m.userData = { v: new THREE.Vector3(Math.cos(a) * sp, 1.5 + Math.random() * 2.2, Math.sin(a) * sp), t: 0, drop: true, floor: y - 0.05 }; m.scale.setScalar(0.7 + Math.random()); scene.add(m); splashes.push(m); }
+  S.puffs = (S.puffs || 0) + 1;
+}
 function updateSplashes(dt) {
   for (let i = splashes.length - 1; i >= 0; i--) {
     const m = splashes[i], u = m.userData; u.t += dt;
-    if (u.drop) { u.v.y -= 9.8 * dt; m.position.addScaledVector(u.v, dt); if (m.position.y < 0.05) m.visible = false; }
+    if (u.drop) { u.v.y -= 9.8 * dt; m.position.addScaledVector(u.v, dt); if (m.position.y < (u.floor ?? 0.05)) m.visible = false; }
     if (u.ring && u.t > 0) { const k = 1 + u.t * 5; m.scale.set(k, 1, k); m.material.opacity = Math.max(0, 0.85 - u.t * 0.6); }
     if (u.t > 1.6) { scene.remove(m); if (u.ring) { m.geometry.dispose(); m.material.dispose(); } splashes.splice(i, 1); }
   }
@@ -924,7 +1188,7 @@ leaves.frustumCulled = false; scene.add(leaves);
 const leafSeed = Array.from({ length: LEAF_N }, (_, i) => [((i * 7919) % 997) / 997, ((i * 104729) % 991) / 991, ((i * 1299709) % 983) / 983]);
 function updateLeaves(dt, t) {
   const w = S.wind, n = Math.round(LEAF_N * Math.min(1, w.mph / 12)), arr = leaves.geometry.attributes.position.array;
-  leaves.visible = w.mph >= 2 && S.phase !== 'menu'; leaves.geometry.setDrawRange(0, n);
+  leaves.visible = w.mph >= 2 && S.phase !== 'menu' && WORLD.leaf !== null; leaves.geometry.setDrawRange(0, n);
   if (!leaves.visible) return;
   leaves.material.color.setHex(WORLD.leaf || 0x6f9a34);
   const c = camLook, R = 22;
@@ -936,6 +1200,48 @@ function updateLeaves(dt, t) {
     arr[i * 3] = x; arr[i * 3 + 1] = y; arr[i * 3 + 2] = z;
   }
   S.leavesInit = true; leaves.geometry.attributes.position.needsUpdate = true;
+}
+// Falling snow (ice world): flakes fall and drift with the wind around the camera's focus
+const SNOW_N = 260;
+const snowfall = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(SNOW_N * 3), 3)),
+  new THREE.PointsMaterial({ color: 0xffffff, size: 0.09, transparent: true, opacity: 0.95, depthWrite: false, alphaTest: 0.05,
+    map: (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); const gr = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.8)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })() }));
+snowfall.frustumCulled = false; snowfall.visible = false; scene.add(snowfall);
+function updateSnow(dt, t) {
+  snowfall.visible = !!WORLD.snow && S.phase !== 'menu'; if (!snowfall.visible) return;
+  const w = S.wind, arr = snowfall.geometry.attributes.position.array, c = camLook, R = 26;
+  for (let i = 0; i < SNOW_N; i++) {
+    const s = leafSeed[i % LEAF_N], k = 0.6 + ((i * 37) % 17) / 17; let x = arr[i * 3], y = arr[i * 3 + 1], z = arr[i * 3 + 2];
+    if (!S.snowInit) { x = c.x + (((i * 7919) % 1009) / 1009 * 2 - 1) * R; z = c.z + (((i * 3571) % 1013) / 1013 * 2 - 1) * R; y = ((i * 104729) % 997) / 997 * 12; }
+    x += (w.x * 0.9 + Math.sin(t * 1.3 + i) * 0.35) * dt; z += (w.z * 0.9 + Math.cos(t * 1.1 + i) * 0.35) * dt; y -= (0.9 + k * 0.6) * dt;
+    if (x - c.x > R) x -= 2 * R; if (x - c.x < -R) x += 2 * R; if (z - c.z > R) z -= 2 * R; if (z - c.z < -R) z += 2 * R; if (y < 0) y += 12;
+    arr[i * 3] = x; arr[i * 3 + 1] = y; arr[i * 3 + 2] = z; void s;
+  }
+  S.snowInit = true; snowfall.geometry.attributes.position.needsUpdate = true;
+}
+// Penguins bob and waddle; when a disc comes down near one it hops out of the way
+function updatePenguins(dt, t) {
+  if (!H || !H.penguins.length) return;
+  for (const pg of H.penguins) {
+    const g = pg.g;
+    if (!pg.hop && S.phase === 'flying') {
+      const dx = pg.x - S.pos.x, dz = pg.z - S.pos.z, d = Math.hypot(dx, dz);
+      if (d < 3.2 && S.pos.y - H.groundY(S.pos.x, S.pos.z) < 1.4) { const k = 2.6 / (d || 1); pg.hop = { t: 0, fx: pg.x, fz: pg.z, tx: pg.x + dx * k, tz: pg.z + dz * k }; S.penguinHops = (S.penguinHops || 0) + 1; }
+    }
+    if (pg.hop) {
+      const h = pg.hop; h.t += dt; const u = Math.min(1, h.t / 0.45);
+      pg.x = h.fx + (h.tx - h.fx) * u; pg.z = h.fz + (h.tz - h.fz) * u;
+      g.position.set(pg.x, H.groundY(pg.x, pg.z) + Math.sin(Math.PI * u) * 0.55 * pg.s, pg.z); g.rotation.y = Math.atan2(h.tx - h.fx, h.tz - h.fz);
+      g.userData.flips.forEach((f, i) => { f.rotation.z = (i ? 1 : -1) * (0.25 + Math.sin(t * 30) * 0.8); });
+      if (u >= 1) { pg.hop = null; pg.yaw = g.rotation.y; }
+      continue;
+    }
+    const ph = t * 2.2 + pg.ph;
+    g.position.y = H.groundY(pg.x, pg.z) + Math.abs(Math.sin(ph * 2)) * 0.03 * pg.s;
+    g.rotation.z = Math.sin(ph * 2) * 0.07; g.rotation.y = pg.yaw + Math.sin(ph * 0.31) * 0.5;
+    g.userData.flips.forEach((f, i) => { f.rotation.z = (i ? 1 : -1) * (0.25 + Math.max(0, Math.sin(ph * 0.7)) * 0.35); });
+  }
 }
 const windUI = { box: document.getElementById('windkey'), arrow: document.getElementById('windarrow'), mph: document.getElementById('windmph'), band: document.getElementById('windband') };
 const camDir = new THREE.Vector3();
@@ -1017,11 +1323,11 @@ function loadHole(idx, { practice = false } = {}) {
   S.holeIdx = practice ? -1 : idx;
   H = makeHole(practice ? PRACTICE_HOLE : COURSE.holes[idx], practice ? 99 : idx);
   scene.add(H.group);
-  sun.position.set(H.mid.x - 30, 70, H.mid.z + 25); sun.target.position.set(H.mid.x, 0, H.mid.z);
+  if (WORLD.sunLow) sun.position.set(H.mid.x - 75, 34, H.mid.z + 55); else sun.position.set(H.mid.x - 30, 70, H.mid.z + 25); sun.target.position.set(H.mid.x, 0, H.mid.z);
   Object.assign(sun.shadow.camera, { left: -H.span, right: H.span, top: H.span, bottom: -H.span }); sun.shadow.camera.updateProjectionMatrix();
   scene.userData.sky.position.set(H.mid.x, 0, H.mid.z);
   S.throws = 0; S.penalties = 0; S.curve = 0; S.result = null; S.lastThrow = null; S.events = [];
-  S.leavesInit = false;
+  S.leavesInit = false; S.snowInit = false; S.penguinHops = 0; S.puffs = 0;
   S.wind = practice || S.windMode === 'calm' ? CALM : windFor(COURSE.id, idx, S.roundSeed, (WORLDS[COURSE.world] || WORLDS.park).windMax, (WORLDS[COURSE.world] || WORLDS.park).windMin);
   setFlagWind();
   clearConfetti(); hideBanner(); hideCard();
@@ -1054,12 +1360,13 @@ function selectDisc(key) {
 // ---------- Worlds, courses and the course picker ----------
 function applyWorld(w) {
   WORLD = w;
-  scene.background.setHex(w.fog); scene.fog.color.setHex(w.fog);
+  scene.background.setHex(w.fog); scene.fog.color.setHex(w.fog); [scene.fog.near, scene.fog.far] = w.fogRange || [90, 230];
+  MAT.obPost.color.setHex(w.obPost || 0xffffff);
   scene.userData.sky.material.uniforms.top.value.setHex(w.sky[0]); scene.userData.sky.material.uniforms.bottom.value.setHex(w.sky[1]);
   hemi.color.setHex(w.hemi[0]); hemi.groundColor.setHex(w.hemi[1]); hemi.intensity = w.hemi[2];
   sun.color.setHex(w.sun[0]); sun.intensity = w.sun[1];
   for (const k of ['ob', 'rough', 'fairway', 'green']) MAT[k].color.setHex(w.ground[k]);
-  if (w.water) { MAT.water.color.setHex(w.water); MAT.sand.color.setHex(w.sand); MAT.islandSand.color.setHex(w.sand); MAT.reeds.color.setHex(w.reeds); MAT.rock.color.setHex(w.rock); MAT.islandGrass.color.setHex(w.ground.green); }
+  if (w.water) { MAT.water.color.setHex(w.water); MAT.sand.color.setHex(w.sand); MAT.islandSand.color.setHex(w.sand); if (w.reeds !== null) MAT.reeds.color.setHex(w.reeds); MAT.rock.color.setHex(w.rock); MAT.islandGrass.color.setHex(w.ground.green); }
   document.body.dataset.world = w.id;
 }
 const bestKey = id => `discgolflab.best.${id}`;
@@ -1077,7 +1384,7 @@ function loadCourse(id) {
 const picker = { el: document.getElementById('picker'), list: document.getElementById('picklist'), back: document.getElementById('pickback'), resume: null };
 function renderPicker() {
   picker.list.innerHTML = COURSES.map(c => { const par = coursePar(c), b = loadBest(c.id), w = WORLDS[c.world] || WORLDS.park;
-    return `<button class="pickcourse" id="pick-${c.id}" data-course="${c.id}" style="--tint:#${new THREE.Color(w.ground.fairway).getHexString()};--tint2:#${new THREE.Color(w.water || w.ground.ob).getHexString()}">
+    return `<button class="pickcourse" id="pick-${c.id}" data-course="${c.id}" style="--tint:#${new THREE.Color(w.pick ? w.pick[0] : w.ground.fairway).getHexString()};--tint2:#${new THREE.Color(w.pick ? w.pick[1] : w.water || w.ground.ob).getHexString()}">
       <span class="pname">${c.name}</span><span class="pinfo">${c.holes.length} holes · Par ${par}</span><span class="pblurb">${c.blurb || ''}</span>
       <span class="pbest">${b ? `Best ${b} (${fmtToPar(b - par)})` : 'Not played yet'}</span></button>`; }).join('');
   for (const b of picker.list.querySelectorAll('button')) b.addEventListener('click', () => loadCourse(b.dataset.course));
@@ -1120,7 +1427,7 @@ function throwDisc(power, curve = S.curve) {
   S.prevLie.copy(S.lie);
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
   S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
-  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y;
+  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y;
   document.body.classList.add('played');
   S.lastThrow = { disc: S.disc, power, curve, speed, from: S.lie.clone(), yaw: S.yaw };
   hideBanner(); hideMenu();
@@ -1129,6 +1436,8 @@ function throwDisc(power, curve = S.curve) {
 
 // ---------- Physics ----------
 const G = 9.8;
+// Ground contact per surface: friction = rolling slowdown (m/s²), keep = speed kept on a bounce, slope = downhill pull
+const SURFACE = { ground: { friction: 9, keep: 0.7, bounce: 0.25, slope: 3 }, ice: { friction: 1.6, keep: 0.93, bounce: 0.12, slope: 7 }, snow: { friction: 34, keep: 0.25, bounce: 0.05, slope: 1 } };
 function stepPhysics(dt) {
   const p = S.pos, v = S.vel, D = S.D;
   const prev = p.clone();
@@ -1177,18 +1486,60 @@ function stepPhysics(dt) {
     }
   }
 
+  // Ice obstacles: pillars / seracs / bergs / hut (solid cylinders), arches (half ring: the opening is clear), snow banks
+  for (const o of H.solids) {
+    const dx = p.x - o.x, dz = p.z - o.z, rr = o.r + DISC_R;
+    if (Math.abs(dx) > rr || Math.abs(dz) > rr || p.y - o.y > o.h) continue;
+    const d = Math.hypot(dx, dz); if (d >= rr) continue;
+    const nx = dx / (d || 1), nz = dz / (d || 1), dot = v.x * nx + v.z * nz;
+    if (dot < 0) { v.x -= 1.6 * dot * nx; v.z -= 1.6 * dot * nz; }
+    v.x *= 0.35; v.z *= 0.35; v.y = Math.min(v.y, 0) * 0.3;
+    p.x = o.x + nx * (rr + 0.02); p.z = o.z + nz * (rr + 0.02); S.knocked = true;
+    return 'tree';
+  }
+  for (const a of H.arches) {
+    const rx = p.x - a.x, rz = p.z - a.z, along = rx * a.dir.x + rz * a.dir.y;
+    const lim = a.tube + DISC_R; if (Math.abs(along) > lim) continue;
+    const across = rx * a.right.x + rz * a.right.y, hy = p.y - a.y;
+    const hit = hy > a.c ? Math.abs(Math.hypot(across, hy - a.c) - a.R) < lim : Math.abs(Math.abs(across) - a.R) < lim;
+    if (!hit) continue;
+    const va = v.x * a.dir.x + v.z * a.dir.y, side = Math.sign(along) || -Math.sign(va) || 1;
+    if (va * side < 0) { v.x -= 1.5 * va * a.dir.x; v.z -= 1.5 * va * a.dir.y; }
+    v.x *= 0.35; v.z *= 0.35; v.y = Math.min(v.y, 0) * 0.3;
+    p.x += a.dir.x * side * (lim - Math.abs(along) + 0.02); p.z += a.dir.y * side * (lim - Math.abs(along) + 0.02); S.knocked = true;
+    return 'tree';
+  }
+  for (const b of H.banks) {
+    const abx = b.c.x - b.a.x, abz = b.c.y - b.a.y, t = THREE.MathUtils.clamp(((p.x - b.a.x) * abx + (p.z - b.a.y) * abz) / (abx * abx + abz * abz || 1), 0, 1);
+    const qx = b.a.x + abx * t, qz = b.a.y + abz * t, dx = p.x - qx, dz = p.z - qz, d = Math.hypot(dx, dz), half = b.w / 2;
+    if (d > half + DISC_R) continue;
+    const top = b.h * Math.max(0, 1 - (d / (half + DISC_R)) ** 2);
+    if (p.y - H.groundY(p.x, p.z) > top + DISC_R * 0.5) continue;
+    const nx = dx / (d || 1), nz = dz / (d || 1), dot = v.x * nx + v.z * nz;
+    if (dot < 0) { v.x -= 1.1 * dot * nx; v.z -= 1.1 * dot * nz; }
+    v.x *= 0.12; v.z *= 0.12; v.y = Math.min(v.y, 0) * 0.2;
+    p.x = qx + nx * (half + DISC_R + 0.03); p.z = qz + nz * (half + DISC_R + 0.03); S.knocked = true;
+    if (!S.sim) spawnPuff(p.x, p.z);
+    return 'bank';
+  }
+
   const g2 = H.groundY(p.x, p.z);
   if (p.y <= g2 + DISC_R) {
     p.y = g2 + DISC_R;
     // Water: only touching down counts (flying over is fine). The disc sinks where it lands or rolls in.
     if (H.hasWater && H.isWater(p.x, p.z)) { v.set(0, 0, 0); return 'water'; }
-    if (v.y < -2.5) { v.y = -v.y * 0.25; v.x *= 0.7; v.z *= 0.7; }
+    // Surface: ice skids on (low friction), deep snow swallows the disc (stops fast), everything else is normal ground
+    const surf = H.surface(p.x, p.z), F = SURFACE[surf] || SURFACE.ground;
+    if (v.y < -2.5) {
+      if (surf === 'snow' && !S.sim && !S.puffed) { spawnPuff(p.x, p.z); S.puffed = true; }
+      v.y = -v.y * F.bounce; v.x *= F.keep; v.z *= F.keep;
+    }
     else {
       v.y = 0;
-      // gentle roll down slopes, then friction
+      // gentle roll down slopes (much more on ice), then friction
       const e = 0.3, gx = (H.groundY(p.x + e, p.z) - H.groundY(p.x - e, p.z)) / (2 * e), gz = (H.groundY(p.x, p.z + e) - H.groundY(p.x, p.z - e)) / (2 * e);
-      v.x -= gx * 3 * dt; v.z -= gz * 3 * dt;
-      const h = Math.hypot(v.x, v.z), nh = Math.max(0, h - 9 * dt);
+      v.x -= gx * F.slope * dt; v.z -= gz * F.slope * dt;
+      const h = Math.hypot(v.x, v.z), nh = Math.max(0, h - F.friction * dt);
       if (h > 0) { v.x *= nh / h; v.z *= nh / h; }
     }
   }
@@ -1298,13 +1649,14 @@ function endRound() {
 // Same physics and step size as a real throw; restores all flight state afterwards.
 function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = null }) {
   const keep = { knocked: S.knocked, pos: S.pos.clone(), vel: S.vel.clone(), v0: S.v0, dir0: S.dir0.clone(), right0: S.right0.clone(), curveUsed: S.curveUsed, D: S.D, flightTime: S.flightTime, maxY: S.maxY };
+  S.sim = true;
   const D = S.D = DISCS[disc], q = Math.sqrt(THREE.MathUtils.clamp(power, 0, 1));
   const speed = D.vmin + q * (D.vmax - D.vmin), launch = THREE.MathUtils.degToRad(D.l0 + q * D.l1);
   S.dir0.copy(dirFromYaw(yaw)); S.right0.set(Math.cos(yaw), 0, Math.sin(yaw));
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
   S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
   S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.flightTime = 0; S.maxY = S.pos.y;
-  let outcome = 'landed', rest = 0, trees = 0, bounced = null;
+  let outcome = 'landed', rest = 0, trees = 0, banks = 0, bounced = null;
   const h = 1 / 480;
   for (let i = 0; i < 480 * 20; i++) {
     const r = stepPhysics(h);
@@ -1312,6 +1664,7 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = nu
     if (r === 'made') { outcome = 'made'; break; }
     if (r === 'water') { outcome = 'water'; break; }
     if (r === 'tree') trees++;
+    if (r === 'bank') { trees++; banks++; }
     if (r === 'spit' || r === 'pole') bounced = r;
     if (i % 8 === 7) {
       if (H.distToPath(S.pos.x, S.pos.z) > H.inBoundsR + 45) break;
@@ -1322,9 +1675,10 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = nu
   const end = { x: S.pos.x, z: S.pos.z };
   if (path) path.push(S.pos.clone());
   if (outcome === 'landed' && H.isOB(end.x, end.z)) outcome = 'ob';
-  const out = { outcome, end, trees, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
+  const out = { outcome, end, trees, banks, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
   Object.assign(S, { knocked: keep.knocked, v0: keep.v0, curveUsed: keep.curveUsed, D: keep.D, flightTime: keep.flightTime, maxY: keep.maxY });
   S.pos.copy(keep.pos); S.vel.copy(keep.vel); S.dir0.copy(keep.dir0); S.right0.copy(keep.right0);
+  S.sim = false;
   return out;
 }
 
@@ -1527,7 +1881,7 @@ function frame(now) {
   if (S.phase === 'flying') updateFlight(dt);
   if (S.phase === 'splash' && (S.splashT -= dt) <= 0) finishSplash();
   updateSplashes(dt);
-  animateFlag(now / 1000); updateLeaves(dt, now / 1000);
+  animateFlag(now / 1000); updateLeaves(dt, now / 1000); updateSnow(dt, now / 1000); updatePenguins(dt, now / 1000);
   rippleTex.offset.x = (rippleTex.offset.x + dt * 0.035) % 1; rippleTex.offset.y = (rippleTex.offset.y + dt * 0.012) % 1;
 
   const aiming = S.phase === 'aim' || S.phase === 'charging';
@@ -1619,6 +1973,9 @@ window.__game = {
   windWords: () => windWords(S.wind, yawToward(H.tee, H.teeAim)), isWater: (x, z) => H.isWater(x, z), groundY: (x, z) => H.groundY(x, z),
   round: () => ({ ...roundStats(), scores: [...S.scores] }),
   isOB: (x, z) => H.isOB(x, z),
+  surface: (x, z) => H.surface(x, z) || 'ground',
+  obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), banks: H.banks.length, penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
+  fx: () => ({ penguinHops: S.penguinHops || 0, puffs: S.puffs || 0, snow: snowfall.visible, snowN: SNOW_N }),
   loadHole: (i) => loadHole(i),
   loadPractice: () => loadHole(0, { practice: true }),
   nextHole, restartHole, restartRound, endRound,
