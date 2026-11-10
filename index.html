@@ -127,8 +127,9 @@ body.charging #help { visibility: hidden; }
 /* Course name above the hole title */
 #scorebox .coursename { font-size: 11px; font-weight: 800; letter-spacing: .06em; opacity: .85; text-transform: uppercase; margin-bottom: 1px; }
 body[data-world="river"] #scorebox .title { color: #9fe3ff; }
+body[data-world="lava"] #scorebox .title { color: #ffb066; }
 /* Course picker */
-#picker { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: auto; z-index: 8; background: linear-gradient(180deg, rgba(10,50,40,.55), rgba(0,20,10,.75)); padding: 16px; }
+#picker { position: absolute; inset: 0; display: grid; place-items: center; overflow-y: auto; pointer-events: auto; z-index: 8; background: linear-gradient(180deg, rgba(10,50,40,.55), rgba(0,20,10,.75)); padding: 16px; }
 #picker .pickpanel { width: min(440px, 100%); text-align: center; }
 .picktitle { font-size: 34px; font-weight: 900; color: #ffe066; }
 .picksub { font-size: 16px; margin: 2px 0 14px; }
@@ -140,7 +141,11 @@ body[data-world="river"] #scorebox .title { color: #9fe3ff; }
 #pickback { margin-top: 14px; padding: 11px 26px; font-size: 16px; }
 @media (max-height: 500px) { .picktitle { font-size: 24px; } .picksub { margin-bottom: 8px; } #picklist { flex-direction: row; } #hud button.pickcourse { flex: 1; min-height: 0; padding: 12px 14px; }
   #picker .pickpanel { width: min(820px, 100%); }
-  #hud button.pickcourse { grid-template-columns: 1fr; gap: 3px; } .pickcourse .pname { font-size: 21px; } .pickcourse .pinfo, .pickcourse .pbest { text-align: left; align-self: start; } }
+  #hud button.pickcourse { grid-template-columns: 1fr; gap: 3px; } .pickcourse .pname { font-size: 21px; } .pickcourse .pinfo, .pickcourse .pbest { text-align: left; align-self: start; }
+  #picklist { gap: 10px; } #hud button.pickcourse { padding: 11px 12px; } .pickcourse .pname { font-size: 19px; } .pickcourse .pblurb { font-size: 13px; } }
+/* Four courses on a portrait phone: tighter cards so the whole list and Back fit */
+@media (max-width: 600px) and (min-height: 501px) { #picklist { gap: 10px; } #hud button.pickcourse { min-height: 0; padding: 13px 16px; } .picksub { margin-bottom: 10px; } }
+@media (max-width: 600px) and (min-height: 501px) and (max-height: 720px) { .picktitle { font-size: 28px; } #hud button.pickcourse { padding: 10px 14px; } .pickcourse .pname { font-size: 21px; } #picklist { gap: 8px; } }
 
 /* Wind key: dial arrow = which way the wind pushes the disc on screen; colour = strength */
 #windkey { --wind: #dfe8e2; display: flex; align-items: center; gap: 8px; background: rgba(10,40,20,.55); border-radius: 14px; padding: 6px 12px 6px 6px; }
@@ -238,6 +243,13 @@ import * as THREE from 'three';
 //   drop    [x, z] drop zone used after a splash (default: back to where you threw from)
 //   rocks   { x, z, s } decorative boulders;  greenR  radius of the putting green (default 7)
 //
+// Volcano world (any course may use these): rivers/ponds are drawn as glowing lava when the world has lava: true
+//   (landing in it = Lava! +1, back to where you threw from, same as a splash). Ice/snow zones reuse the same physics:
+//   icePatches become slick black obsidian (slides), snowDrifts become deep ash (stops dead); banks are ash ridges;
+//   pillars { kind: 'basalt' } are basalt columns; arches are lava-rock arches.
+//   vents   { x, z, r, up, push: [x, z] }  steam vents: an airborne disc above one (within r, below 14 m) is pushed up
+//           (and sideways by push, m/s²), strongest at the centre
+//
 // A world is the look shared by its courses: sky, light, ground colours, tree style and scenery.
 // windMin..windMax is the range (mph) a hole in that world can roll (hole 1 of a round is capped gentler); each hole gets a seeded random wind.
 const WORLDS = {
@@ -250,6 +262,10 @@ const WORLDS = {
   ice: { id: 'ice', sky: [0x6f9cc6, 0xf6e7d6], fog: 0xdde8f1, fogRange: [150, 520], hemi: [0xf4f9ff, 0xd5e4f0, 1.45], sun: [0xffe6c8, 1.9], sunLow: true,
     ground: { ob: 0xcadbe8, rough: 0xe2edf5, fairway: 0xf7fafc, green: 0xd9eefc }, trees: 'none', borderMix: 0, windMin: 8, windMax: 22, leaf: null, snow: true,
     water: 0x153a57, sand: 0xd3e9f6, reeds: null, rock: 0x5d636c, snowCaps: true, scenery: 'polar', obPost: 0xff7a3d, pick: [0x8fc6ea, 0x1d4a6b] },
+  // Volcano: basalt and ash, glowing lava rivers, a smoking volcano cone, steam vents, floating embers
+  lava: { id: 'lava', sky: [0x2a1420, 0xff9150], fog: 0x6b4038, fogRange: [160, 720], hemi: [0xffd2b0, 0x4a2a22, 1.3], sun: [0xffb878, 2.1], sunLow: true,
+    ground: { ob: 0x1f1a19, rough: 0x3a3230, fairway: 0x6e6661, green: 0x9a5c3c }, trees: 'none', borderMix: 0, windMin: 9, windMax: 24, leaf: null, embers: true,
+    water: 0xff6a1c, sand: 0x1e1614, reeds: null, rock: 0x302b2b, scenery: 'volcanic', lava: true, obPost: 0xffd23d, pick: [0xff7a2a, 0x3a1010] },
 };
 
 const PARK_COURSE = {
@@ -493,7 +509,96 @@ const ICE_COURSE = {
   ],
 };
 
-const COURSES = [PARK_COURSE, RIVER_COURSE, ICE_COURSE];
+const LAVA_COURSE = {
+  id: 'volcano',
+  name: 'Volcano', world: 'lava', blurb: 'Mount Ember · lava = +1',
+  holes: [
+    {
+      name: 'Ash Landing', par: 3, tip: 'Welcome to the volcano. Carry the little lava creek; touch the glow and it costs +1.',
+      tee: [0, 0], basket: [2, -60], width: 17, ob: 14,
+      path: [[0, 0], [0, -30], [2, -60]],
+      rivers: [{ pts: [[-70, -24], [0, -27], [70, -22]], w: 4 }],
+      snowDrifts: [{ x: -10, z: -67, r: 5 }], pillars: [{ x: 9, z: -42, r: 1, h: 4.5, kind: 'basalt' }],
+      rocks: [{ x: -11, z: -14, s: 1.3 }, { x: 13, z: -55, s: 1 }],
+    },
+    {
+      name: 'Lava Tube', par: 4, tip: 'A narrow basalt corridor between two lava flows. Straight and controlled beats long.',
+      tee: [0, 0], basket: [-4, -132], width: 10, ob: 6,
+      path: [[0, 0], [2, -65], [-4, -132]],
+      rivers: [{ pts: [[-12, 25], [-11, -60], [-18, -165]], w: 8 }, { pts: [[13, 25], [15, -70], [9, -165]], w: 8 }],
+      ponds: [{ x: -4, z: -144, r: 5 }],
+      pillars: [{ x: 3, z: -80, r: 1.1, h: 5, kind: 'basalt' }, { x: -4, z: -45, r: 0.9, h: 4, kind: 'basalt' }],
+      snowDrifts: [{ x: 2, z: -108, r: 3.5 }],
+    },
+    {
+      name: 'Obsidian Arch', par: 3, tip: 'A basalt wall with a lava-rock arch, lava right behind it. Thread the arch, or loft it over the wall.',
+      tee: [0, 0], basket: [0, -70], width: 14, ob: 11,
+      path: [[0, 0], [0, -70]],
+      arches: [{ x: 0, z: -34, yaw: 0, span: 8, h: 5 }],
+      pillars: [-26, -22, -18, -14, -10, -7, 7, 10, 14, 18, 22, 26].map(x => ({ x, z: -34, r: 1.6, h: 7, kind: 'basalt' })),
+      rivers: [{ pts: [[-70, -42], [0, -41], [70, -43]], w: 5 }],
+      icePatches: [{ x: -3, z: -64, r: 5.5 }], ponds: [{ x: 0, z: -83, r: 6 }],
+    },
+    {
+      name: 'Magma Moat', par: 3, tip: 'Island green in a lake of lava! Miss and re-throw from the drop zone.',
+      tee: [0, 0], basket: [0, -54], width: 12, ob: 13, greenR: 5,
+      path: [[0, 0], [0, -54]],
+      ponds: [{ x: 0, z: -55, r: 17 }], islands: [{ x: 0, z: -54, r: 8 }], drop: [0, -33],
+      pillars: [{ x: 4.5, z: -58, r: 0.7, h: 3.5, kind: 'basalt' }],
+      rocks: [{ x: -9, z: -30, s: 1.2 }, { x: 10, z: -24, s: 1 }],
+    },
+    {
+      name: 'Steam Vents', par: 4, tip: 'Hot vents blast the disc up and sideways. Use them for extra carry, and mind the lava on the left.',
+      tee: [0, 0], basket: [12, -142], width: 13, ob: 10,
+      path: [[0, 0], [0, -65], [12, -142]],
+      vents: [{ x: -1, z: -46, r: 5, up: 22, push: [7, 0] }, { x: 8, z: -102, r: 5, up: 22, push: [-8, 0] }],
+      rivers: [{ pts: [[-22, 15], [-23, -70], [-12, -185]], w: 9 }],
+      snowDrifts: [{ x: 15, z: -76, r: 5 }, { x: 22, z: -148, r: 4 }], ponds: [{ x: 14, z: -155, r: 5.5 }],
+      pillars: [{ x: -4, z: -120, r: 1, h: 4.5, kind: 'basalt' }],
+    },
+    {
+      name: 'Twin Flows', par: 4, tip: 'Two lava flows cross the fairway. Obsidian between them slides, so lay up short of it.',
+      tee: [0, 0], basket: [-6, -140], width: 14, ob: 11,
+      path: [[0, 0], [4, -70], [-6, -140]],
+      rivers: [{ pts: [[-70, -26], [0, -42], [70, -60]], w: 10 }, { pts: [[-70, -122], [0, -110], [70, -100]], w: 7 }],
+      icePatches: [{ x: 4, z: -86, r: 9 }], snowDrifts: [{ x: -10, z: -70, r: 5 }],
+      banks: [{ from: [-16, -151], to: [4, -152], h: 1, w: 2.2 }],
+      rocks: [{ x: 12, z: -20, s: 1.2 }],
+    },
+    {
+      name: 'Crater Rim', par: 3, tip: 'The basket sits on a ledge at the crater rim, with lava on three sides. Deep ash on the front slope stops short throws dead; too long and you are in the lava.',
+      tee: [0, 0], basket: [3, -62], width: 13, ob: 11, greenR: 3.5,
+      path: [[0, 0], [3, -62]],
+      hills: [{ x: 3, z: -62, r: 12, h: 6 }],
+      snowDrifts: [{ x: 3, z: -52.5, r: 5.5 }], ponds: [{ x: 3, z: -80, r: 7 }, { x: -13, z: -64, r: 4.5 }, { x: 19, z: -64, r: 4.5 }],
+      vents: [{ x: 3, z: -36, r: 3.5, up: 18, push: [0, 0] }],
+      rocks: [{ x: -6, z: -46, s: 1.2 }, { x: 12, z: -48, s: 1 }],
+    },
+    {
+      name: 'Pyroclastic Run', par: 5, tip: 'Long, windy and hot: lava all down the right and a flow across the middle. Steam vent on the second leg.',
+      tee: [0, 0], basket: [-10, -248], width: 15, ob: 11,
+      path: [[0, 0], [6, -80], [-4, -165], [-10, -248]],
+      rivers: [{ pts: [[30, 15], [31, -100], [20, -300]], w: 10 }, { pts: [[-70, -118], [0, -126], [60, -118]], w: 7 }],
+      vents: [{ x: -2, z: -176, r: 5, up: 20, push: [-5, 0] }],
+      pillars: [{ x: 12, z: -50, r: 1.2, h: 6, kind: 'basalt' }, { x: -11, z: -152, r: 1.2, h: 6, kind: 'basalt' }, { x: 3, z: -216, r: 1.2, h: 6, kind: 'basalt' }],
+      snowDrifts: [{ x: -2, z: -94, r: 7 }, { x: -19, z: -222, r: 6 }], icePatches: [{ x: -6, z: -235, r: 6 }],
+      banks: [{ from: [-22, -261], to: [2, -262], h: 1, w: 2.2 }],
+    },
+    {
+      name: 'Caldera Finish', par: 4, tip: 'Dogleg right around a lava lake. Thread the lava-rock arch, go around it, or cut the corner over the lava.',
+      tee: [0, 0], basket: [46, -120], width: 14, ob: 11,
+      path: [[0, 0], [-4, -60], [14, -106], [46, -120]],
+      ponds: [{ x: 28, z: -64, r: 15 }, { x: 60, z: -128, r: 6 }],
+      arches: [{ x: 8, z: -91, yaw: 0.37, span: 9, h: 5.5 }],
+      pillars: [{ x: -12, z: -112, r: 1.3, h: 6, kind: 'basalt' }],
+      icePatches: [{ x: 36, z: -116, r: 6 }], snowDrifts: [{ x: 50, z: -134, r: 4 }],
+      vents: [{ x: -8, z: -36, r: 4, up: 20, push: [6, 0] }],
+      rocks: [{ x: -14, z: -20, s: 1.2 }],
+    },
+  ],
+};
+
+const COURSES = [PARK_COURSE, RIVER_COURSE, ICE_COURSE, LAVA_COURSE];
 
 // Open practice field used by tests (and handy for tuning discs). Not part of the round.
 const PRACTICE_HOLE = {
@@ -634,7 +739,32 @@ Object.assign(MAT, {
   penguinBlack: new THREE.MeshLambertMaterial({ color: 0x1c2330 }), penguinWhite: new THREE.MeshLambertMaterial({ color: 0xf4f6f8 }),
   penguinOrange: new THREE.MeshLambertMaterial({ color: 0xff9a2e }), penguinYellow: new THREE.MeshLambertMaterial({ color: 0xffd34d }),
 });
+// Volcano world: glowing lava (rivers/ponds swap to this look), basalt columns, lava-rock arches, steam vents, volcano cone
+const lavaTex = (() => { // molten orange with dark crust plates; also its own glow map
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); const r = seeded(1717);
+  x.fillStyle = '#ff7a1a'; x.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 50; i++) { x.fillStyle = `rgba(255,${200 + r() * 55 | 0},80,${0.35 + r() * 0.4})`; x.beginPath(); x.ellipse(r() * 128, r() * 128, 4 + r() * 12, 2 + r() * 5, r() * 3, 0, Math.PI * 2); x.fill(); }
+  for (let i = 0; i < 26; i++) { const px = r() * 128, py = r() * 128, rx = 5 + r() * 11, ry = 3 + r() * 7, a = r() * 3;
+    for (const ox of [-128, 0, 128]) for (const oy of [-128, 0, 128]) { x.fillStyle = `rgba(60,14,6,${0.55 + r() * 0.35})`; x.beginPath(); x.ellipse(px + ox, py + oy, rx, ry, a, 0, Math.PI * 2); x.fill(); } }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+Object.assign(MAT, {
+  basalt: new THREE.MeshLambertMaterial({ color: 0x3a3434, flatShading: true }),
+  lavaRock: new THREE.MeshLambertMaterial({ color: 0x4a3c38, flatShading: true }),
+  lavaVein: new THREE.MeshBasicMaterial({ color: 0xff7a22 }),
+  volcano: new THREE.MeshLambertMaterial({ color: 0x1e1716, flatShading: true }),
+  volcanoTop: new THREE.MeshLambertMaterial({ color: 0x2a2220, flatShading: true }),
+  craterGlow: new THREE.MeshBasicMaterial({ color: 0xffa040, fog: false }),
+  lavaStreak: new THREE.MeshBasicMaterial({ color: 0xff6a1a, fog: false }),
+  ventRim: new THREE.MeshLambertMaterial({ color: 0x1c1816, flatShading: true }),
+  ventGlow: new THREE.MeshBasicMaterial({ color: 0xffb347 }),
+  ventZone: new THREE.MeshBasicMaterial({ color: 0xffc070, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }),
+  ashMound: new THREE.MeshLambertMaterial({ color: 0x4d4542, flatShading: true }),
+});
+const DOT_TEX = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); const gr = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.8)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })();
 const GEO = {
+  basalt: new THREE.CylinderGeometry(0.92, 1, 1, 6).translate(0, 0.5, 0),
   trunk: new THREE.CylinderGeometry(0.3, 0.42, 3, 8).translate(0, 1.5, 0),
   cones: [0, 1, 2].map(k => new THREE.ConeGeometry(2.4 - k * 0.6, 2.6, 10).translate(0, 3.2 + k * 1.3, 0)),
   // willow: round crown plus a drooping open skirt
@@ -646,6 +776,7 @@ const GEO = {
   serac: new THREE.DodecahedronGeometry(1, 0).scale(1, 1.6, 0.9).translate(0, 1.2, 0),
   berg: new THREE.IcosahedronGeometry(1, 1).scale(1, 0.62, 1).translate(0, 0.35, 0),
   iceBlock: new THREE.DodecahedronGeometry(1, 0).scale(1.3, 0.8, 1).translate(0, 0.5, 0),
+  plume: new THREE.IcosahedronGeometry(1, 1),
   mound: new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.6, 0.55, 1.2),
   mountain: new THREE.ConeGeometry(1, 1, 6, 1).translate(0, 0.5, 0),
   peng: {
@@ -729,6 +860,7 @@ function makeHole(data, index) {
   for (const o of solids) o.y = groundY(o.x, o.z);
   const arches = (data.arches || []).map(a => { const tube = a.tube || 0.9, R = a.span / 2 + tube, yaw = a.yaw || 0;
     return { x: a.x, z: a.z, y: groundY(a.x, a.z), tube, R, c: a.h - R + tube, h: a.h, span: a.span, dir: new THREE.Vector2(Math.sin(yaw), -Math.cos(yaw)), right: new THREE.Vector2(Math.cos(yaw), Math.sin(yaw)), yaw }; });
+  const vents = (data.vents || []).map(v => ({ x: v.x, z: v.z, r: v.r || 4, up: v.up || 18, push: v.push || [0, 0], y: groundY(v.x, v.z) }));
   const banks = (data.banks || []).map(b => { const a = v2(b.from), c = v2(b.to); return { a, c, w: b.w || 2, h: b.h || 1, samples: [a, c] }; });
   // Smooth centreline through the path points, sampled every ~1 m
   const curve = new THREE.CatmullRomCurve3(data.path.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
@@ -957,19 +1089,20 @@ function makeHole(data, index) {
   for (const zn of snowZones) group.add(zoneMesh(zn, MAT.deepSnow, 0.06));
   { // solid obstacles
     const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
-    for (const [kind, geo, mat] of [['pillar', GEO.pillar, MAT.iceSolid], ['serac', GEO.serac, MAT.serac], ['berg', GEO.berg, MAT.berg]]) {
+    for (const [kind, geo, mat] of [['pillar', GEO.pillar, MAT.iceSolid], ['serac', GEO.serac, MAT.serac], ['berg', GEO.berg, MAT.berg], ['basalt', GEO.basalt, MAT.basalt]]) {
       const list = solids.filter(o => o.kind === kind); if (!list.length) continue;
       const im = new THREE.InstancedMesh(geo, mat, list.length);
       list.forEach((o, i) => { q.setFromAxisAngle(up, (i * 2.1 + o.x) % 6.28);
-        if (kind === 'pillar') sc.set(o.r, o.h, o.r); else if (kind === 'serac') sc.set(o.r, o.h / 2.8, o.r); else sc.set(o.r * 1.12, o.h / 0.97, o.r * 1.12);
+        if (kind === 'pillar' || kind === 'basalt') sc.set(o.r, o.h, o.r); else if (kind === 'serac') sc.set(o.r, o.h / 2.8, o.r); else sc.set(o.r * 1.12, o.h / 0.97, o.r * 1.12);
         mtx.compose(ps.set(o.x, o.y, o.z), q, sc); im.setMatrixAt(i, mtx); });
       im.castShadow = true; im.receiveShadow = true; group.add(im);
     }
     for (const a of arches) { // half ring + legs down to the ground
       const g = new THREE.Group();
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube, 8, 20, Math.PI), MAT.iceSolid); ring.position.y = a.c; g.add(ring);
-      if (a.c > 0.01) for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(a.tube, a.tube * 1.15, a.c, 8).translate(0, a.c / 2, 0), MAT.iceSolid); leg.position.x = sx * a.R; g.add(leg); }
-      const cap = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube * 0.55, 6, 20, Math.PI * 0.6), MAT.snowCap); cap.position.y = a.c + a.tube * 0.55; cap.rotation.z = Math.PI * 0.2; g.add(cap);
+      const am = WORLD.lava ? MAT.lavaRock : MAT.iceSolid;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube, 8, 20, Math.PI), am); ring.position.y = a.c; g.add(ring);
+      if (a.c > 0.01) for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(a.tube, a.tube * 1.15, a.c, 8).translate(0, a.c / 2, 0), am); leg.position.x = sx * a.R; g.add(leg); }
+      const cap = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube * (WORLD.lava ? 0.18 : 0.55), 6, 20, Math.PI * 0.6), WORLD.lava ? MAT.lavaVein : MAT.snowCap); cap.position.y = a.c + a.tube * (WORLD.lava ? 0.9 : 0.55); cap.rotation.z = Math.PI * 0.2; g.add(cap);
       g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       g.position.set(a.x, a.y, a.z); g.rotation.y = -a.yaw; group.add(g);
     }
@@ -1015,6 +1148,44 @@ function makeHole(data, index) {
       q.setFromAxisAngle(up, -a + Math.PI / 2); q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (rnd() - 0.5) * 0.25)); mtx.compose(ps.set(x, -3, z), q, sc.set(60 + rnd() * 40, 14 + rnd() * 20, 12 + rnd() * 10)); cliffs.setMatrixAt(i, mtx); }
     group.add(mtn, rockM, cliffs);
   }
+  // Steam vents: dark rim, glowing core, a faint ring showing the updraft zone, and a rising steam column (animated in updateVents)
+  const ventFx = [];
+  for (const v of vents) {
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(v.r * 0.42, v.r * 0.55, 0.5, 9, 1, true), MAT.ventRim); rim.position.set(v.x, v.y + 0.1, v.z); rim.castShadow = true; group.add(rim);
+    const core = new THREE.Mesh(new THREE.CircleGeometry(v.r * 0.4, 18).rotateX(-Math.PI / 2), MAT.ventGlow); core.position.set(v.x, v.y + 0.08, v.z); group.add(core);
+    const zone = new THREE.Mesh(new THREE.RingGeometry(v.r - 0.2, v.r, 40).rotateX(-Math.PI / 2), MAT.ventZone); zone.position.set(v.x, v.y + 0.07, v.z); group.add(zone);
+    const N = 46, geo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xf2ebe6, size: 1.1, map: DOT_TEX, transparent: true, opacity: 0.42, depthWrite: false }));
+    pts.frustumCulled = false; group.add(pts); ventFx.push({ v, pts, N, seed: Array.from({ length: N }, (_, i) => [((i * 7919) % 997) / 997, ((i * 3571) % 991) / 991]) });
+  }
+  // Volcanic scenery: basalt boulders and ash mounds at the border, dark peaks, and a big smoking volcano behind the basket (scenery only)
+  const plume = [];
+  if (WORLD.scenery === 'volcanic') {
+    const rnd = seeded(8100 + index * 29), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    if (decor.length) { const blocks = new THREE.InstancedMesh(GEO.iceBlock, MAT.basalt, decor.length), mounds = new THREE.InstancedMesh(GEO.mound, MAT.ashMound, decor.length); let nb = 0, nm = 0;
+      for (const t of decor) { q.setFromAxisAngle(up, rnd() * 6.28); const k = t.s * (0.8 + rnd() * 0.9);
+        if (rnd() < 0.55) { mtx.compose(ps.set(t.x, groundY(t.x, t.z) - 0.2, t.z), q, sc.set(k * 1.3, k * (0.8 + rnd() * 1.6), k * 1.2)); blocks.setMatrixAt(nb++, mtx); }
+        else { mtx.compose(ps.set(t.x, groundY(t.x, t.z) - 0.05, t.z), q, sc.set(k * 1.8, k * 1.2, k * 1.8)); mounds.setMatrixAt(nm++, mtx); } }
+      blocks.count = nb; mounds.count = nm; blocks.castShadow = true; group.add(blocks, mounds); }
+    const cx = (samples[0].x + samples[samples.length - 1].x) / 2, cz = (samples[0].y + samples[samples.length - 1].y) / 2;
+    const mtn = new THREE.InstancedMesh(GEO.mountain, MAT.volcanoTop, 18);
+    for (let i = 0; i < 18; i++) { const a = (i / 18) * Math.PI * 2 + rnd() * 0.25, d = 300 + rnd() * 70, r = 45 + rnd() * 35, h = 16 + rnd() * 26;
+      q.setFromAxisAngle(up, rnd() * 6.28); mtx.compose(ps.set(cx + Math.cos(a) * d, -2, cz + Math.sin(a) * d), q, sc.set(r, h, r)); mtn.setMatrixAt(i, mtx); }
+    group.add(mtn);
+    const dir = new THREE.Vector2(data.basket[0] - data.tee[0], data.basket[1] - data.tee[1]).normalize(), vc = new THREE.Vector2(data.basket[0], data.basket[1]).addScaledVector(dir, 235).add(new THREE.Vector2(-dir.y, dir.x).multiplyScalar(-70));
+    const H0 = 78, R0 = 105, R1 = 18, prof = [];
+    for (let i = 0; i <= 12; i++) { const k = i / 12; prof.push(new THREE.Vector2(R0 - (R0 - R1) * Math.pow(k, 0.75), H0 * k)); }
+    prof.push(new THREE.Vector2(R1 - 6, H0 - 6));
+    const cone = new THREE.Mesh(new THREE.LatheGeometry(prof, 28), MAT.volcano); cone.position.set(vc.x, -3, vc.y); group.add(cone);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(R1 - 5, 24).rotateX(-Math.PI / 2), MAT.craterGlow); glow.position.set(vc.x, H0 - 7, vc.y); group.add(glow);
+    for (let i = 0; i < 5; i++) { const a = Math.atan2(-dir.y, -dir.x) + (i - 2) * 0.32 + (rnd() - 0.5) * 0.1, len = 30 + rnd() * 30; // lava streaks down the front face
+      const k0 = 0.02, k1 = len / 95, pa = new THREE.Vector3(Math.cos(a) * (R1 + 2), H0 - 4, Math.sin(a) * (R1 + 2)), r1 = R1 + (R0 - R1) * Math.pow(k1, 1 / 0.75), pb = new THREE.Vector3(Math.cos(a) * r1, H0 * (1 - k1), Math.sin(a) * r1); void k0;
+      const seg = pb.clone().sub(pa), m = new THREE.Mesh(new THREE.CylinderGeometry(0.9 + rnd() * 0.6, 1.6 + rnd(), seg.length(), 5), MAT.lavaStreak);
+      m.position.copy(pa).add(pb).multiplyScalar(0.5).add(new THREE.Vector3(vc.x, -2.4, vc.y)); m.quaternion.setFromUnitVectors(up, seg.normalize()); group.add(m); }
+    for (let i = 0; i < 16; i++) { // smoke plume: big soft puffs that rise, drift and loop
+      const m = new THREE.Mesh(GEO.plume, new THREE.MeshLambertMaterial({ color: i % 3 ? 0x6e6462 : 0x857a76, transparent: true, opacity: 0.55, depthWrite: false })); group.add(m);
+      plume.push({ m, base: new THREE.Vector3(vc.x, H0 - 6, vc.y), ph: i / 16, sx: (rnd() - 0.5) * 18, sz: (rnd() - 0.5) * 18 }); }
+  }
   const drop = data.drop ? new THREE.Vector3(data.drop[0], 0, data.drop[1]) : null;
   if (drop) {
     drop.y = physY(drop.x, drop.z);
@@ -1048,7 +1219,7 @@ function makeHole(data, index) {
   // Sun follows the hole so shadows cover it
   const mid = curve.getPoint(0.5);
   const span = Math.max(70, length * 0.65 + 20);
-  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, banks, penguins };
+  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, banks, penguins, vents, ventFx, plume };
 }
 
 function convexHull(pts) { // monotone chain, counter-clockwise in (x, z)
@@ -1158,6 +1329,19 @@ function spawnSplash(x, z) {
     m.position.set(x, y, z); m.userData = { t: -k * 0.25, ring: true }; scene.add(m); splashes.push(m); }
 }
 const PUFF_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
+// Lava: a sizzle instead of a splash: sparks fly up, a flame ring spreads and grey smoke rises
+const SPARK_MAT = new THREE.MeshBasicMaterial({ color: 0xffc04a, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+function spawnSizzle(x, z) {
+  const y = 0.15;
+  for (let i = 0; i < 30; i++) { const m = new THREE.Mesh(DROP_GEO, SPARK_MAT); m.position.set(x, y, z); const a = Math.random() * 6.28, sp = 0.5 + Math.random() * 2.2;
+    m.userData = { v: new THREE.Vector3(Math.cos(a) * sp, 2.5 + Math.random() * 4, Math.sin(a) * sp), t: 0, drop: true }; m.scale.setScalar(0.6 + Math.random() * 0.8); scene.add(m); splashes.push(m); }
+  for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: k ? 0xffd060 : 0xff5a10, transparent: true, opacity: 0.9, depthWrite: false }));
+    m.position.set(x, y, z); m.userData = { t: -k * 0.2, ring: true }; scene.add(m); splashes.push(m); }
+  for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(GEO.plume, new THREE.MeshLambertMaterial({ color: 0x8a817d, transparent: true, opacity: 0.7, depthWrite: false }));
+    m.position.set(x + (Math.random() - 0.5) * 0.8, y + 0.3, z + (Math.random() - 0.5) * 0.8); m.scale.setScalar(0.35);
+    m.userData = { t: -i * 0.07, smoke: true, rise: 1.2 + Math.random() * 1.2, dx: (Math.random() - 0.5) * 0.6, dz: (Math.random() - 0.5) * 0.6 }; scene.add(m); splashes.push(m); }
+  S.sizzles = (S.sizzles || 0) + 1;
+}
 function spawnPuff(x, z) { // little burst of snow where the disc lands in deep snow or hits a bank
   const y = H.groundY(x, z) + 0.1;
   for (let i = 0; i < 22; i++) { const m = new THREE.Mesh(DROP_GEO, PUFF_MAT); m.position.set(x, y, z); const a = Math.random() * 6.28, sp = 0.4 + Math.random() * 1.3;
@@ -1169,7 +1353,8 @@ function updateSplashes(dt) {
     const m = splashes[i], u = m.userData; u.t += dt;
     if (u.drop) { u.v.y -= 9.8 * dt; m.position.addScaledVector(u.v, dt); if (m.position.y < (u.floor ?? 0.05)) m.visible = false; }
     if (u.ring && u.t > 0) { const k = 1 + u.t * 5; m.scale.set(k, 1, k); m.material.opacity = Math.max(0, 0.85 - u.t * 0.6); }
-    if (u.t > 1.6) { scene.remove(m); if (u.ring) { m.geometry.dispose(); m.material.dispose(); } splashes.splice(i, 1); }
+    if (u.smoke && u.t > 0) { m.position.y += u.rise * dt; m.position.x += u.dx * dt; m.position.z += u.dz * dt; m.scale.setScalar(0.35 + u.t * 0.9); m.material.opacity = Math.max(0, 0.7 - u.t * 0.42); }
+    if (u.t > (u.smoke ? 1.7 : 1.6)) { scene.remove(m); if (u.ring) m.geometry.dispose(); if (u.ring || u.smoke) m.material.dispose(); splashes.splice(i, 1); }
   }
 }
 function clearConfetti() { for (const c of confetti) { scene.remove(c); c.geometry.dispose(); c.material.dispose(); } confetti.length = 0; }
@@ -1219,6 +1404,34 @@ function updateSnow(dt, t) {
     arr[i * 3] = x; arr[i * 3 + 1] = y; arr[i * 3 + 2] = z; void s;
   }
   S.snowInit = true; snowfall.geometry.attributes.position.needsUpdate = true;
+}
+// Floating embers (volcano world): glowing specks drift up and with the wind around the camera's focus
+const EMBER_N = 150;
+const embers = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(EMBER_N * 3), 3)),
+  new THREE.PointsMaterial({ color: 0xffa040, size: 0.14, map: DOT_TEX, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }));
+embers.frustumCulled = false; embers.visible = false; scene.add(embers);
+function updateEmbers(dt, t) {
+  embers.visible = !!WORLD.embers && S.phase !== 'menu'; if (!embers.visible) { S.embersInit = false; return; }
+  const w = S.wind, arr = embers.geometry.attributes.position.array, c = camLook, R = 24;
+  for (let i = 0; i < EMBER_N; i++) { const k = 0.5 + ((i * 37) % 17) / 17; let x = arr[i * 3], y = arr[i * 3 + 1], z = arr[i * 3 + 2];
+    if (!S.embersInit) { x = c.x + (((i * 7919) % 1009) / 1009 * 2 - 1) * R; z = c.z + (((i * 3571) % 1013) / 1013 * 2 - 1) * R; y = ((i * 104729) % 997) / 997 * 10; }
+    x += (w.x * 0.7 + Math.sin(t * 1.7 + i) * 0.5) * dt; z += (w.z * 0.7 + Math.cos(t * 1.3 + i) * 0.5) * dt; y += (0.5 + k * 0.5) * dt;
+    if (x - c.x > R) x -= 2 * R; if (x - c.x < -R) x += 2 * R; if (z - c.z > R) z -= 2 * R; if (z - c.z < -R) z += 2 * R; if (y > 10) y -= 10;
+    arr[i * 3] = x; arr[i * 3 + 1] = y; arr[i * 3 + 2] = z; }
+  S.embersInit = true; embers.geometry.attributes.position.needsUpdate = true;
+  embers.material.opacity = 0.75 + Math.sin(t * 5) * 0.2;
+}
+// Steam columns over the vents and the volcano's smoke plume
+function updateVents(dt, t) {
+  if (!H) return;
+  for (const f of H.ventFx) { const a = f.pts.geometry.attributes.position.array, v = f.v;
+    for (let i = 0; i < f.N; i++) { const [s0, s1] = f.seed[i], life = (t * 0.45 + s0) % 1, h = life * 9, sp = v.r * 0.25 + life * v.r * 0.45, ang = s1 * 6.28 + t * 0.4;
+      a[i * 3] = v.x + Math.cos(ang) * sp * s1 + v.push[0] * life * 0.25; a[i * 3 + 1] = v.y + 0.3 + h; a[i * 3 + 2] = v.z + Math.sin(ang) * sp * s1 + v.push[1] * life * 0.25; }
+    f.pts.geometry.attributes.position.needsUpdate = true; f.pts.material.opacity = 0.32 + Math.sin(t * 3 + v.x) * 0.08; }
+  for (const p of H.plume) { const life = (t * 0.03 + p.ph) % 1, s = 6 + life * 24;
+    p.m.position.set(p.base.x + p.sx * life + life * 90 * (S.wind.x / 10), p.base.y + life * 110, p.base.z + p.sz * life + life * 90 * (S.wind.z / 10));
+    p.m.scale.setScalar(s); p.m.material.opacity = 0.6 * Math.min(1, life * 6) * (1 - life * 0.75); }
+  if (WORLD.lava) { MAT.water.emissiveIntensity = 0.85 + Math.sin(t * 2.2) * 0.12; lavaTex.offset.x = (lavaTex.offset.x + dt * 0.012) % 1; lavaTex.offset.y = (lavaTex.offset.y + dt * 0.006) % 1; }
 }
 // Penguins bob and waddle; when a disc comes down near one it hops out of the way
 function updatePenguins(dt, t) {
@@ -1276,7 +1489,7 @@ function stepCurve(side) { const l = curveLevel(S.curve); S.curve = curveFor(Mat
 let COURSE = COURSES[0];
 
 const S = {
-  phase: 'aim', // menu | aim | charging | flying | splash | holed | done
+  ventT: 0, phase: 'aim', // menu | aim | charging | flying | splash | holed | done
   holeIdx: 0, scores: Array(COURSE.holes.length).fill(null), practice: false,
   lie: new THREE.Vector3(), prevLie: new THREE.Vector3(), yaw: 0, power: 0, chargeT: 0, pull: null, charge: null, curve: 0, throws: 0,
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), v0: 0, dir0: new THREE.Vector3(), right0: new THREE.Vector3(),
@@ -1327,7 +1540,7 @@ function loadHole(idx, { practice = false } = {}) {
   Object.assign(sun.shadow.camera, { left: -H.span, right: H.span, top: H.span, bottom: -H.span }); sun.shadow.camera.updateProjectionMatrix();
   scene.userData.sky.position.set(H.mid.x, 0, H.mid.z);
   S.throws = 0; S.penalties = 0; S.curve = 0; S.result = null; S.lastThrow = null; S.events = [];
-  S.leavesInit = false; S.snowInit = false; S.penguinHops = 0; S.puffs = 0;
+  S.leavesInit = false; S.snowInit = false; S.penguinHops = 0; S.puffs = 0; S.sizzles = 0; S.ventBoosts = 0;
   S.wind = practice || S.windMode === 'calm' ? CALM : windFor(COURSE.id, idx, S.roundSeed, (WORLDS[COURSE.world] || WORLDS.park).windMax, (WORLDS[COURSE.world] || WORLDS.park).windMin);
   setFlagWind();
   clearConfetti(); hideBanner(); hideCard();
@@ -1367,6 +1580,13 @@ function applyWorld(w) {
   sun.color.setHex(w.sun[0]); sun.intensity = w.sun[1];
   for (const k of ['ob', 'rough', 'fairway', 'green']) MAT[k].color.setHex(w.ground[k]);
   if (w.water) { MAT.water.color.setHex(w.water); MAT.sand.color.setHex(w.sand); MAT.islandSand.color.setHex(w.sand); if (w.reeds !== null) MAT.reeds.color.setHex(w.reeds); MAT.rock.color.setHex(w.rock); MAT.islandGrass.color.setHex(w.ground.green); }
+  // Volcano: rivers/ponds glow as lava, ice becomes obsidian, deep snow becomes ash, banks become ash ridges
+  const L = !!w.lava;
+  Object.assign(MAT.water, { map: L ? lavaTex : rippleTex, emissiveMap: L ? lavaTex : null, shininess: L ? 15 : 70 }); MAT.water.emissive.setHex(L ? 0xffffff : 0x000000); MAT.water.emissiveIntensity = L ? 0.9 : 1;
+  MAT.water.specular.setHex(L ? 0x442211 : 0x9fd4ff); MAT.water.needsUpdate = true;
+  MAT.sand.emissive.setHex(L ? 0x3a0c00 : 0x000000);
+  MAT.ice.color.setHex(L ? 0x3c3650 : 0x8fcdf0); MAT.ice.specular.setHex(L ? 0xffb080 : 0xffffff);
+  MAT.deepSnow.color.setHex(L ? 0x7a726d : 0xffffff); MAT.bank.color.setHex(L ? 0x5a514c : 0xf7fbff); PUFF_MAT.color.setHex(L ? 0x8e8580 : 0xffffff);
   document.body.dataset.world = w.id;
 }
 const bestKey = id => `discgolflab.best.${id}`;
@@ -1427,7 +1647,7 @@ function throwDisc(power, curve = S.curve) {
   S.prevLie.copy(S.lie);
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
   S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
-  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y;
+  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.ventT = 0; S.vented = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y;
   document.body.classList.add('played');
   S.lastThrow = { disc: S.disc, power, curve, speed, from: S.lie.clone(), yaw: S.yaw };
   hideBanner(); hideMenu();
@@ -1437,6 +1657,7 @@ function throwDisc(power, curve = S.curve) {
 // ---------- Physics ----------
 const G = 9.8;
 // Ground contact per surface: friction = rolling slowdown (m/s²), keep = speed kept on a bounce, slope = downhill pull
+const VENT = { top: 14, maxT: 0.9, gain: 1.8 }; // updraft reaches 14 m up; at most 0.9 s of push per throw
 const SURFACE = { ground: { friction: 9, keep: 0.7, bounce: 0.25, slope: 3 }, ice: { friction: 1.6, keep: 0.93, bounce: 0.12, slope: 7 }, snow: { friction: 34, keep: 0.25, bounce: 0.05, slope: 1 } };
 function stepPhysics(dt) {
   const p = S.pos, v = S.vel, D = S.D;
@@ -1458,6 +1679,13 @@ function stepPhysics(dt) {
       const k = WIND.push * D.windK * (0.3 + 0.7 * Math.min(1, vh / 22)); // fast discs catch more wind; slow putts barely drift
       v.x += W.x * k * dt; v.z += W.z * k * dt;
       if (vh > 0.5 && !S.knocked) v.y -= ((W.x * v.x + W.z * v.z) / vh) * WIND.lift * dt; // headwind (negative along) lifts
+    }
+    // Steam vents: an updraft above the vent (strongest at the centre, fading with height). Capped per throw so a disc can never hover.
+    if (!S.noVents && S.ventT < VENT.maxT) for (const o of H.vents) {
+      const d = Math.hypot(p.x - o.x, p.z - o.z), hy = p.y - o.y; if (d >= o.r || hy > VENT.top) continue;
+      const k = VENT.gain * (1 - (d / o.r) ** 2) * (1 - Math.max(0, hy) / VENT.top);
+      v.y += o.up * k * dt; v.x += o.push[0] * k * dt; v.z += o.push[1] * k * dt; S.ventT += dt;
+      if (!S.sim && !S.vented) { S.vented = true; S.ventBoosts = (S.ventBoosts || 0) + 1; }
     }
   }
   p.addScaledVector(v, dt);
@@ -1611,12 +1839,13 @@ function onLanded() {
 
 // Splash: +1 throw, back to the drop zone if the hole has one, otherwise to where you threw from.
 function onSplash() {
-  S.restTimer = 0; spawnSplash(S.pos.x, S.pos.z);
+  const lava = !!WORLD.lava;
+  S.restTimer = 0; if (lava) spawnSizzle(S.pos.x, S.pos.z); else spawnSplash(S.pos.x, S.pos.z);
   S.throws++; S.penalties++;
-  S.events.push({ type: 'water', disc: S.disc, throw: S.throws, at: { x: S.pos.x, z: S.pos.z } });
+  S.events.push({ type: 'water', lava, disc: S.disc, throw: S.throws, at: { x: S.pos.x, z: S.pos.z } });
   S.lie.copy(H.drop || S.prevLie); S.lie.y = 0;
   S.phase = 'splash'; S.splashT = 1.4;
-  flashBanner('Splash! +1', H.drop ? `Penalty throw · re-throw from the drop zone (${S.throws} so far)` : `Penalty throw · back to your last spot (${S.throws} so far)`, 2400);
+  flashBanner(lava ? 'Lava! +1' : 'Splash! +1', (lava ? 'Sizzle! ' : '') + (H.drop ? `Penalty throw · re-throw from the drop zone (${S.throws} so far)` : `Penalty throw · back to your last spot (${S.throws} so far)`), 2400);
 }
 function finishSplash() {
   if (S.phase !== 'splash') return;
@@ -1655,7 +1884,7 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = nu
   S.dir0.copy(dirFromYaw(yaw)); S.right0.set(Math.cos(yaw), 0, Math.sin(yaw));
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
   S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
-  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.flightTime = 0; S.maxY = S.pos.y;
+  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.flightTime = 0; S.maxY = S.pos.y; const keepVentT = S.ventT; S.ventT = 0;
   let outcome = 'landed', rest = 0, trees = 0, banks = 0, bounced = null;
   const h = 1 / 480;
   for (let i = 0; i < 480 * 20; i++) {
@@ -1678,7 +1907,7 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = nu
   const out = { outcome, end, trees, banks, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
   Object.assign(S, { knocked: keep.knocked, v0: keep.v0, curveUsed: keep.curveUsed, D: keep.D, flightTime: keep.flightTime, maxY: keep.maxY });
   S.pos.copy(keep.pos); S.vel.copy(keep.vel); S.dir0.copy(keep.dir0); S.right0.copy(keep.right0);
-  S.sim = false;
+  S.sim = false; S.ventT = keepVentT;
   return out;
 }
 
@@ -1881,7 +2110,7 @@ function frame(now) {
   if (S.phase === 'flying') updateFlight(dt);
   if (S.phase === 'splash' && (S.splashT -= dt) <= 0) finishSplash();
   updateSplashes(dt);
-  animateFlag(now / 1000); updateLeaves(dt, now / 1000); updateSnow(dt, now / 1000); updatePenguins(dt, now / 1000);
+  animateFlag(now / 1000); updateLeaves(dt, now / 1000); updateSnow(dt, now / 1000); updatePenguins(dt, now / 1000); updateEmbers(dt, now / 1000); updateVents(dt, now / 1000);
   rippleTex.offset.x = (rippleTex.offset.x + dt * 0.035) % 1; rippleTex.offset.y = (rippleTex.offset.y + dt * 0.012) % 1;
 
   const aiming = S.phase === 'aim' || S.phase === 'charging';
@@ -1974,8 +2203,9 @@ window.__game = {
   round: () => ({ ...roundStats(), scores: [...S.scores] }),
   isOB: (x, z) => H.isOB(x, z),
   surface: (x, z) => H.surface(x, z) || 'ground',
-  obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), banks: H.banks.length, penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
-  fx: () => ({ penguinHops: S.penguinHops || 0, puffs: S.puffs || 0, snow: snowfall.visible, snowN: SNOW_N }),
+  obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), banks: H.banks.length, vents: H.vents.map(v => ({ x: v.x, z: v.z, r: v.r, up: v.up, push: v.push })), penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
+  fx: () => ({ penguinHops: S.penguinHops || 0, puffs: S.puffs || 0, snow: snowfall.visible, snowN: SNOW_N, sizzles: S.sizzles || 0, ventBoosts: S.ventBoosts || 0, embers: embers.visible, embersN: EMBER_N, plume: H.plume.length, lavaGlow: MAT.water.emissiveMap === lavaTex }),
+  setVents(on) { S.noVents = !on; },
   loadHole: (i) => loadHole(i),
   loadPractice: () => loadHole(0, { practice: true }),
   nextHole, restartHole, restartRound, endRound,
