@@ -577,6 +577,23 @@ const ICE_COURSE = {
 const LAVA_COURSE = {
   id: 'volcano',
   name: 'Volcano', world: 'lava', blurb: 'Mount Ember · lava = +1',
+  // Story: Mount Ember wakes up, one clue per hole (decoration only, never touches the disc or the score); it erupts after the last putt.
+  // plume = strength of the volcano's smoke on that hole, sky = how red the sky turns (0..1)
+  story: {
+    intro: 'Mount Ember has been asleep for 500 years… or has it? Keep an eye on the mountain.',
+    holes: [
+      { clue: 'calm', at: [-10, -40], face: 0.4, scale: 2, plume: 0.35, caption: 'Ash Landing. Ferns, warm rocks and a lazy wisp of smoke on the peak. Nice and quiet.' },
+      { clue: 'steam', at: [-7.5, -44], face: 0.3, plume: 0.55, caption: 'Steam is hissing out of the rocks by the lava. Hisss… that\'s new.' },
+      { clue: 'cracks', at: [-8.4, -27], face: 0.3, scale: 1.7, plume: 0.7, caption: 'The ground is splitting open… and it\'s glowing orange underneath.' },
+      { clue: 'ash', at: [-8, -26], face: 0.4, scale: 1.8, plume: 0.9, caption: 'Ash is falling like snow. Even the ferns have gone grey.' },
+      { clue: 'tremor', at: [10.5, -40], face: -0.5, scale: 1.8, plume: 1.0, caption: 'The ground feels jumpy here. Throw… and hold on to something.' },
+      { clue: 'flows', at: [10.5, -30], face: -0.3, scale: 2, plume: 1.15, caption: 'These lava flows weren\'t on the map yesterday. And they\'re spitting.' },
+      { clue: 'rumble', at: [-7, -40], face: 0.3, scale: 1.6, plume: 1.3, sky: 0.8, caption: 'The sky has turned red and the mountain won\'t stop rumbling…' },
+      { clue: 'plume', at: [12, -40], face: -0.3, plume: 1.6, sky: 0.9, caption: 'A HUGE black smoke plume is towering over the course. It\'s going to blow!' },
+      { clue: 'peak', at: [46, -120], plume: 1.8, sky: 0.95, caption: 'The peak is spitting fire. Sink this putt to finish… quickly!' },
+    ],
+    reveal: { creature: 'eruption', title: 'ERUPTION!', sub: 'You conquered the volcano!' },
+  },
   holes: [
     {
       name: 'Ash Landing', par: 3, tip: 'Welcome to the volcano. Carry the little lava creek; touch the glow and it costs +1.',
@@ -1338,7 +1355,7 @@ function makeHole(data, index) {
     pts.frustumCulled = false; group.add(pts); ventFx.push({ v, pts, N, seed: Array.from({ length: N }, (_, i) => [((i * 7919) % 997) / 997, ((i * 3571) % 991) / 991]) });
   }
   // Volcanic scenery: basalt boulders and ash mounds at the border, dark peaks, and a big smoking volcano behind the basket (scenery only)
-  const plume = [];
+  const plume = []; let volcano = null;
   if (WORLD.scenery === 'volcanic') {
     const rnd = seeded(8100 + index * 29), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
     if (decor.length) { const blocks = new THREE.InstancedMesh(GEO.iceBlock, MAT.basalt, decor.length), mounds = new THREE.InstancedMesh(GEO.mound, MAT.ashMound, decor.length); let nb = 0, nm = 0;
@@ -1355,7 +1372,7 @@ function makeHole(data, index) {
     const H0 = 78, R0 = 105, R1 = 18, prof = [];
     for (let i = 0; i <= 12; i++) { const k = i / 12; prof.push(new THREE.Vector2(R0 - (R0 - R1) * Math.pow(k, 0.75), H0 * k)); }
     prof.push(new THREE.Vector2(R1 - 6, H0 - 6));
-    const cone = new THREE.Mesh(new THREE.LatheGeometry(prof, 28), MAT.volcano); cone.position.set(vc.x, -3, vc.y); group.add(cone);
+    const cone = new THREE.Mesh(new THREE.LatheGeometry(prof, 28), MAT.volcano); cone.position.set(vc.x, -3, vc.y); group.add(cone); volcano = { x: vc.x, z: vc.y, top: H0 - 6 };
     const glow = new THREE.Mesh(new THREE.CircleGeometry(R1 - 5, 24).rotateX(-Math.PI / 2), MAT.craterGlow); glow.position.set(vc.x, H0 - 7, vc.y); group.add(glow);
     for (let i = 0; i < 5; i++) { const a = Math.atan2(-dir.y, -dir.x) + (i - 2) * 0.32 + (rnd() - 0.5) * 0.1, len = 30 + rnd() * 30; // lava streaks down the front face
       const k0 = 0.02, k1 = len / 95, pa = new THREE.Vector3(Math.cos(a) * (R1 + 2), H0 - 4, Math.sin(a) * (R1 + 2)), r1 = R1 + (R0 - R1) * Math.pow(k1, 1 / 0.75), pb = new THREE.Vector3(Math.cos(a) * r1, H0 * (1 - k1), Math.sin(a) * r1); void k0;
@@ -1398,7 +1415,7 @@ function makeHole(data, index) {
   // Sun follows the hole so shadows cover it
   const mid = curve.getPoint(0.5);
   const span = Math.max(70, length * 0.65 + 20);
-  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, banks, penguins, vents, ventFx, plume };
+  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, banks, penguins, vents, ventFx, plume, volcano };
 }
 
 function convexHull(pts) { // monotone chain, counter-clockwise in (x, z)
@@ -1616,7 +1633,8 @@ const snowfall = new THREE.Points(new THREE.BufferGeometry().setAttribute('posit
       gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.8)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })() }));
 snowfall.frustumCulled = false; snowfall.visible = false; scene.add(snowfall);
 function updateSnow(dt, t) {
-  snowfall.visible = !!WORLD.snow && S.phase !== 'menu'; if (!snowfall.visible) return;
+  snowfall.visible = (!!WORLD.snow || !!S.ashfall) && S.phase !== 'menu'; if (!snowfall.visible) return;
+  { const ash = !!S.ashfall && !WORLD.snow; if (snowfall.userData.ash !== ash) { snowfall.userData.ash = ash; snowfall.material.color.setHex(ash ? 0xd6cec9 : 0xffffff); snowfall.material.size = ash ? 0.2 : 0.09; } }
   const w = S.wind, arr = snowfall.geometry.attributes.position.array, c = camLook, R = 26;
   for (let i = 0; i < SNOW_N; i++) {
     const s = leafSeed[i % LEAF_N], k = 0.6 + ((i * 37) % 17) / 17; let x = arr[i * 3], y = arr[i * 3 + 1], z = arr[i * 3 + 2];
@@ -1652,7 +1670,7 @@ function updateVents(dt, t) {
     f.pts.geometry.attributes.position.needsUpdate = true; f.pts.material.opacity = 0.32 + Math.sin(t * 3 + v.x) * 0.08; }
   for (const p of H.plume) { const life = (t * 0.03 + p.ph) % 1, s = 6 + life * 24;
     p.m.position.set(p.base.x + p.sx * life + life * 90 * (S.wind.x / 10), p.base.y + life * 110, p.base.z + p.sz * life + life * 90 * (S.wind.z / 10));
-    p.m.scale.setScalar(s); p.m.material.opacity = 0.6 * Math.min(1, life * 6) * (1 - life * 0.75); }
+    const K = S.plumeK ?? 1; p.m.scale.setScalar(s * (0.6 + 0.4 * K)); p.m.material.opacity = Math.min(0.92, 0.6 * K) * Math.min(1, life * 6) * (1 - life * 0.75); }
   if (WORLD.lava) { MAT.water.emissiveIntensity = 0.85 + Math.sin(t * 2.2) * 0.12; lavaTex.offset.x = (lavaTex.offset.x + dt * 0.012) % 1; lavaTex.offset.y = (lavaTex.offset.y + dt * 0.006) % 1; }
 }
 // Penguins bob and waddle; when a disc comes down near one it hops out of the way
@@ -2325,7 +2343,8 @@ function updateCamera(dt) {
   const k = 1 - Math.exp(-dt * (S.phase === 'flying' ? 5 : 4));
   camPos.lerp(target.pos, k); camLook.lerp(target.look, k);
   camera.position.copy(camPos); camera.lookAt(camLook);
-  if (S.shake) { const a = S.shake.amp * (1 - S.shake.t / S.shake.dur); camera.position.x += (Math.random() - 0.5) * a; camera.position.y += (Math.random() - 0.5) * a; camera.position.z += (Math.random() - 0.5) * a * 0.5; }
+  S.shakeApplied = !!S.shake && S.phase !== 'aim' && S.phase !== 'charging';
+  if (S.shakeApplied) { const a = S.shake.amp * (1 - S.shake.t / S.shake.dur); camera.position.x += (Math.random() - 0.5) * a; camera.position.y += (Math.random() - 0.5) * a; camera.position.z += (Math.random() - 0.5) * a * 0.5; }
 }
 
 // ---------- Input ----------
@@ -2520,10 +2539,10 @@ GEO.storyRiver = SG; // shared: never disposed with a hole
 const DISC_MATS = [0xff6b3d, 0xffd23f, 0x5ad1ff, 0xc9a0ff, 0x7dff8a, 0xff5fa2].map(c => new THREE.MeshLambertMaterial({ color: c }));
 MAT.storyDiscs = DISC_MATS;
 const sm = (geo, mat, sx, sy, sz, x, y, z, parent) => { const o = new THREE.Mesh(geo, mat); o.scale.set(sx, sy, sz); o.position.set(x, y, z); parent?.add(o); return o; };
-function textSprite(text, w = 6) { // a small speech-bubble caption floating in the world (its texture belongs to the hole)
+function textSprite(text, w = 6, bg = 'rgba(20,40,30,0.78)', fg = '#e8ffe0') { // a small speech-bubble caption floating in the world (its texture belongs to the hole)
   const c = document.createElement('canvas'); c.width = 384; c.height = 96; const x = c.getContext('2d');
-  x.fillStyle = 'rgba(20,40,30,0.78)'; x.beginPath(); x.roundRect(4, 4, 376, 70, 18); x.fill(); x.beginPath(); x.moveTo(60, 72); x.lineTo(80, 94); x.lineTo(96, 72); x.fill();
-  x.fillStyle = '#e8ffe0'; x.font = 'italic 800 36px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(text, 192, 52);
+  x.fillStyle = bg; x.beginPath(); x.roundRect(4, 4, 376, 70, 18); x.fill(); x.beginPath(); x.moveTo(60, 72); x.lineTo(80, 94); x.lineTo(96, 72); x.fill();
+  x.fillStyle = fg; x.font = 'italic 800 36px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(text, 192, 52);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); sp.scale.set(w, w / 4, 1); return sp;
 }
 // Snapping turtle head + neck + front flippers (the island is its shell). Faces +z, hidden under the water until the reveal.
@@ -2545,6 +2564,48 @@ function bubblePool(parent, n, size = 1) {
   return { list, spawn(x, y, z, s = 1) { const b = list[k = (k + 1) % n]; b.position.set(x, y, z); b.userData.t = 0; b.userData.s = s * size; },
     update(dt) { for (const b of list) { const u = b.userData; if (u.t > 1.6) { b.scale.setScalar(0); continue; } u.t += dt; const f = u.t / 1.6; b.position.y += dt * 0.25; b.scale.setScalar(u.s * Math.sin(Math.min(1, f) * Math.PI) * (0.6 + f * 0.6)); } } };
 }
+// Volcano story: shared materials/shapes and two pooled particle kinds (no per-frame allocation)
+Object.assign(SM, {
+  fern: new THREE.MeshLambertMaterial({ color: 0x4f9a3a, flatShading: true, side: THREE.DoubleSide }), fernAsh: new THREE.MeshLambertMaterial({ color: 0x8a837e, flatShading: true, side: THREE.DoubleSide }),
+  steam: new THREE.MeshLambertMaterial({ color: 0xf2ece8, transparent: true, opacity: 0.55, depthWrite: false }), ember: new THREE.MeshBasicMaterial({ color: 0xffb040 }),
+  crack: new THREE.MeshBasicMaterial({ color: 0xff7a1a }), lavaBlob: new THREE.MeshBasicMaterial({ color: 0xffa83a }),
+  smoke: new THREE.MeshLambertMaterial({ color: 0x1c1717, transparent: true, opacity: 0.82, depthWrite: false }), smokeLit: new THREE.MeshLambertMaterial({ color: 0x3a2a26, transparent: true, opacity: 0.8, depthWrite: false }),
+  fireRock: new THREE.MeshBasicMaterial({ color: 0xff6a1a }), hotMetal: new THREE.MeshLambertMaterial({ color: 0xff6a3a, emissive: 0xff2a00, emissiveIntensity: 0 }),
+  halo: new THREE.SpriteMaterial({ map: DOT_TEX, color: 0xff7a2a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+});
+Object.assign(SG, { vent: new THREE.CylinderGeometry(1, 1.3, 0.4, 9, 1, true), plane: new THREE.PlaneGeometry(1, 1) });
+function fern(g, x, z, s, mat) { const f = new THREE.Group(); f.position.set(x, 0, z); f.scale.setScalar(s); g.add(f);
+  for (let i = 0; i < 8; i++) { const m = new THREE.Mesh(SG.frond, mat); m.rotation.set(-0.75 - (i % 2) * 0.25, i / 8 * 6.28, 0); m.scale.setScalar(0.75); f.add(m); } return f; }
+function crackField(g, rnd, n, R, hole = 0) { let k = 0; // zigzag glowing cracks on the ground (inside radius R, outside radius hole)
+  for (let i = 0; i < n; i++) { const a0 = rnd() * 6.28, r0 = hole + rnd() * (R - hole) * 0.6; let x = Math.cos(a0) * r0, z = Math.sin(a0) * r0, a = rnd() * 6.28;
+    for (let j = 0; j < 5; j++) { const len = 0.8 + rnd() * 0.9; a += (j % 2 ? 0.7 : -0.7) + (rnd() - 0.5) * 0.3; const nx = x + Math.cos(a) * len, nz = z + Math.sin(a) * len;
+      if (Math.hypot(nx, nz) > R || Math.hypot(nx, nz) < hole) break;
+      const m = sm(SG.box, SM.crack, 0.3 + rnd() * 0.2, 0.05, len, (x + nx) / 2, 0.04, (z + nz) / 2, g); m.rotation.y = Math.atan2(nx - x, nz - z); x = nx; z = nz; k++; } }
+  return k; }
+// rising puffs (steam, sparks): spawn(x, y, z, size, vx, vy, vz); they swell and fade over `life` seconds
+function puffPool(parent, n, mat, size = 1, life = 1.6) {
+  const list = []; for (let i = 0; i < n; i++) { const b = sm(SG.ball, mat, 0, 0, 0, 0, -50, 0, parent); b.userData = { t: 9, v: new THREE.Vector3(), s: 1 }; list.push(b); }
+  let k = 0;
+  return { list, live: () => list.filter(b => b.userData.t < life).length,
+    spawn(x, y, z, s = 1, vx = 0, vy = 1, vz = 0) { const b = list[k = (k + 1) % n], u = b.userData; b.position.set(x, y, z); u.t = 0; u.s = s * size; u.v.set(vx, vy, vz); },
+    update(dt) { for (const b of list) { const u = b.userData; if (u.t >= life) { if (b.scale.x) b.scale.setScalar(0); continue; } u.t += dt; const f = Math.min(1, u.t / life); b.position.addScaledVector(u.v, dt); b.scale.setScalar(u.s * (0.4 + f * 1.2) * Math.sin(Math.max(0.05, f) * Math.PI)); } } };
+}
+// ballistic bits (tumbling rocks, lava spatter, fire rocks): gravity, optional ground bounce, roll while moving
+function ballPool(parent, n, geo, mat, { life = 3, floor = false, bounce = 0.3 } = {}) {
+  const list = []; for (let i = 0; i < n; i++) { const b = sm(geo, mat, 0, 0, 0, 0, -50, 0, parent); b.userData = { t: 1e9, v: new THREE.Vector3(), s: 1 }; list.push(b); }
+  let k = 0;
+  return { list, live: () => list.filter(b => b.userData.t < life && b.scale.x > 0).length,
+    spawn(x, y, z, vx, vy, vz, s = 1) { const b = list[k = (k + 1) % n], u = b.userData; b.position.set(x, y, z); u.v.set(vx, vy, vz); u.t = 0; u.s = s; u.still = false; b.scale.setScalar(s); return b; },
+    update(dt) { for (const b of list) { const u = b.userData; if (u.t >= life) { if (b.scale.x) b.scale.setScalar(0); continue; } u.t += dt; if (u.still) continue;
+      u.v.y -= 9.8 * dt; b.position.addScaledVector(u.v, dt); b.rotation.x += dt * u.v.length() * 0.8; b.rotation.z += dt * 2;
+      if (floor) { const fy = H.groundY(b.position.x, b.position.z) + u.s * 0.7; if (b.position.y < fy) { b.position.y = fy; u.v.y = Math.abs(u.v.y) * bounce; u.v.x *= 0.6; u.v.z *= 0.6; if (u.v.lengthSq() < 0.05) u.still = true; } }
+      if (life < 1e8) b.scale.setScalar(u.s * Math.min(1, (life - u.t) * 2.5)); } } };
+}
+// sky tint toward an angry red (0 = the world's own sky)
+const TINT = { a: new THREE.Color(), b: new THREE.Color() };
+function storyTint(k) { k = Math.min(1, Math.max(0, k)); if (!k && !S.skyTint) return; S.skyTint = k; const U = scene.userData.sky.material.uniforms, w = WORLD;
+  U.top.value.setHex(w.sky[0]).lerp(TINT.a.setHex(0x5a0604), k); U.bottom.value.setHex(w.sky[1]).lerp(TINT.a.setHex(0xff2a0a), k);
+  TINT.b.setHex(w.fog).lerp(TINT.a.setHex(0xa8200e), k); scene.fog.color.copy(TINT.b); scene.background.copy(TINT.b); }
 const STORY_CLUES = {
   // ----- Riverbend: the snapping turtle -----
   dock(g) { // a short dock out over the river, a whole boat and one snapped in half
@@ -2634,6 +2695,96 @@ const STORY_CLUES = {
         return false; },
       finish() { turtle.visible = true; turtle.position.y = 0.9; },
       cam() { const w = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 10), 3.2, Math.cos(face) * (R + 10))).add(new THREE.Vector3(Math.cos(face) * 6, 0, -Math.sin(face) * 6)), look = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 1), 1.4, Math.cos(face) * (R + 1))); return { pos: w, look }; },
+    };
+    return st;
+  },
+  // ----- Volcano: Mount Ember wakes up -----
+  calm(g, c, rnd) { // a peaceful base: fern clumps, warm stones, a little 'asleep' sign; the peak's smoke is just a lazy wisp (plume: 0.35)
+    for (const [x, z, s] of [[0, 0, 1.1], [-2.2, -1.2, 0.8], [2, -1.5, 0.9], [0.8, 1.8, 0.6]]) fern(g, x, z, s, SM.fern);
+    for (const [x, z, k] of [[-1.2, 1.4, 0.5], [1.6, 0.6, 0.4], [-2.8, 0.3, 0.6]]) sm(SG.lump, MAT.rock, k, k * 0.7, k, x, 0.15, z, g);
+    const tx = textSprite('asleep for 500 years', 5.4, 'rgba(40,24,16,0.8)', '#ffe2c4'); tx.position.set(0, 2.6, 0); g.add(tx);
+  },
+  steam(g) { // three small steam vents in the rocks by the lava: puffs burst out every couple of seconds with a 'hiss…'
+    const spots = [[0, 2.5], [-0.6, 0], [0.2, -2.6]];
+    for (const [x, z] of spots) { sm(SG.vent, MAT.ventRim, 0.9, 1, 0.9, x, 0.15, z, g); sm(SG.disk, MAT.ventGlow, 0.55, 1, 0.55, x, 0.2, z, g); }
+    const steam = puffPool(H.group, 18, SM.steam, 2.2, 2.2), hiss = textSprite('hissss…', 4, 'rgba(40,24,16,0.8)', '#fff0e0'); hiss.position.set(0, 3.2, 0); g.add(hiss);
+    let next = 0.3, burst = -9;
+    return { steam, hiss, update: (dt, t) => { steam.update(dt);
+      if (t > next) { next = t + 2.4; burst = t; } if (t - burst < 0.9 && Math.random() < 0.5) { const [x, z] = spots[Math.floor(Math.random() * 3)], w = g.localToWorld(TMP.rp.set(x, 0.4, z)); steam.spawn(w.x, w.y, w.z, 0.7 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6, 2.2 + Math.random(), (Math.random() - 0.5) * 0.6); }
+      hiss.visible = t - burst < 1.6; hiss.scale.set(4 * (1 + Math.max(0, 0.15 - (t - burst) * 0.3)), 1, 1); } };
+  },
+  cracks(g, c, rnd) { // glowing orange cracks splitting the ground beside the fairway (flat decals, no physics), embers rising out
+    const n = crackField(g, rnd, 5, 4.5), sparks = puffPool(H.group, 14, SM.ember, 0.12, 1.6); let last = 0;
+    return { cracks: n, update: (dt, t) => { sparks.update(dt); SM.crack.color.setHSL(0.07, 1, 0.5 + Math.sin(t * 2.6) * 0.12);
+      if (t - last > 0.25) { last = t; const w = g.localToWorld(TMP.rp.set((rnd() - 0.5) * 7, 0.1, (rnd() - 0.5) * 7)); sparks.spawn(w.x, w.y, w.z, 1, 0, 1.6, 0); } } };
+  },
+  ash(g) { // ash falls like snow over the whole hole (the snowfall particles, tinted grey); the ferns are grey with ash now
+    S.ashfall = true;
+    for (const [x, z, s] of [[0, 0, 1.1], [-2, -1.4, 0.8], [2.1, -1.2, 0.9]]) fern(g, x, z, s, SM.fernAsh);
+    sm(SG.ball, MAT.deepSnow, 2.6, 0.35, 2, 0.4, 0, 1.2, g); sm(SG.ball, MAT.deepSnow, 1.6, 0.3, 1.3, -2.4, 0, 0.8, g);
+  },
+  tremor(g, c, rnd) { // a basalt outcrop with a pile of loose rocks; the first throw sets off a short, gentle tremor and the rocks tumble off it
+    sm(SG.lump, MAT.basalt, 2.4, 2.2, 2.0, 0, 1.0, -0.6, g); sm(SG.lump, MAT.basalt, 1.5, 1.6, 1.4, 1.8, 0.7, 0.4, g);
+    const rocks = ballPool(H.group, 7, SG.lump, MAT.basalt, { life: 1e9, floor: true, bounce: 0.35 });
+    for (let i = 0; i < 7; i++) { const w = g.localToWorld(new THREE.Vector3(-0.8 + (i % 4) * 0.6, 2.6 + Math.floor(i / 4) * 0.5, -0.6 + (i % 3) * 0.4)); const b = rocks.spawn(w.x, w.y, w.z, 0, 0, 0, 0.35 + rnd() * 0.25); b.userData.still = true; b.userData.home = w.clone(); }
+    const out = g.localToWorld(new THREE.Vector3(3, 0, 0)).sub(g.position).normalize();
+    const st = { tremors: 0, rocksMoved: () => rocks.list.filter(m => m.position.distanceTo(m.userData.home) > 1).length };
+    st.update = (dt) => { rocks.update(dt);
+      if (!st.tremors && S.phase === 'flying' && S.flightTime > 0.5) { st.tremors = 1; S.tremors = (S.tremors || 0) + 1; shakeCamera(0.16, 0.7);
+        rocks.list.forEach((m, i) => { const u = m.userData; u.still = false; u.v.set(out.x * (3 + i * 0.6) + (Math.random() - 0.5), 2 + Math.random() * 2, out.z * (3 + i * 0.6) + (Math.random() - 0.5)); });
+        showStoryCaption('TREMOR! The ground shook and rocks tumbled down. Mount Ember is waking up…', 4000); } };
+    return st;
+  },
+  flows(g, c, rnd) { // the lava flows are new: a 'NEW FLOW' sign on the bank, and the lava spits blobs up into the air (decoration only)
+    sm(SG.box, MAT.wood, 0.14, 1.6, 0.14, 0, 0.8, 0, g);
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#f2d24a'; x.fillRect(0, 0, 256, 128); x.strokeStyle = '#2a1a10'; x.lineWidth = 8; x.strokeRect(6, 6, 244, 116);
+    x.fillStyle = '#2a1a10'; x.font = '900 46px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('NEW FLOW', 128, 60); x.font = '700 28px system-ui, sans-serif'; x.fillText('not on the map!', 128, 100);
+    const board = new THREE.Mesh(SG.plane, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), side: THREE.DoubleSide })); board.scale.set(2.2, 1.1, 1); board.position.set(0, 1.9, 0.08); board.rotation.z = 0.08; g.add(board);
+    const spots = []; for (const r of H.data.rivers || []) { const P = r.pts; for (let k = 0; k < P.length - 1; k++) for (let f = 0; f < 1; f += 0.1) { const px = P[k][0] + (P[k + 1][0] - P[k][0]) * f, pz = P[k][1] + (P[k + 1][1] - P[k][1]) * f; if (Math.abs(px) < 16) spots.push([px, pz]); } }
+    const spatter = ballPool(H.group, 20, SG.ball, SM.lavaBlob, { life: 1.4 }); let last = 0;
+    return { spatter, update: (dt, t) => { spatter.update(dt); if (spots.length && t - last > 0.16) { last = t; const [px, pz] = spots[Math.floor(rnd() * spots.length)];
+      spatter.spawn(px + (rnd() - 0.5) * 2, 0.2, pz + (rnd() - 0.5) * 2, (rnd() - 0.5) * 2, 4 + rnd() * 4, (rnd() - 0.5) * 2, 0.16 + rnd() * 0.14); } } };
+  },
+  rumble(g, c, rnd) { // red sky (sky: 0.6 in the data) and a rumble you can't hear: the camera trembles gently while the disc flies, and a pulsing 'rrrumble…' bubble
+    sm(SG.lump, MAT.basalt, 1.4, 1.1, 1.2, 0, 0.5, 0, g); sm(SG.lump, MAT.basalt, 0.9, 0.7, 0.8, 1.6, 0.3, 0.6, g); sm(SG.lump, MAT.basalt, 0.7, 0.6, 0.7, -1.4, 0.25, 0.9, g); crackField(g, rnd, 3, 3.5, 1.2);
+    const tx = textSprite('rrrumble…', 4.6, 'rgba(60,10,8,0.82)', '#ffd0a8'); tx.position.set(0, 2.6, 0); g.add(tx);
+    return { hiss: tx, update: (dt, t) => { tx.position.x = Math.sin(t * 40) * 0.04; tx.scale.set(4.6 * (1 + Math.abs(Math.sin(t * 3)) * 0.08), 4.6 / 4, 1); if (S.phase === 'flying') shakeCamera(0.05, 0.25); } };
+  },
+  plume(g) { // a huge black smoke plume pours out of a fissure by the tee and towers overhead; the volcano's own plume turns black too
+    sm(SG.disk, SM.crack, 1.8, 1, 0.7, 0, 0.06, 0, g); sm(SG.lump, MAT.basalt, 1.2, 0.8, 1, -1.8, 0.3, 0.4, g); sm(SG.lump, MAT.basalt, 1, 0.7, 0.9, 1.9, 0.3, -0.3, g);
+    for (const p of H.plume) p.m.material.color.setHex(0x231d1c);
+    const N = 22, puffs = []; for (let i = 0; i < N; i++) puffs.push(sm(SG.ball, i % 3 ? SM.smoke : SM.smokeLit, 1, 1, 1, 0, 0, 0, H.group));
+    const o = g.position.clone();
+    return { smoke: N, update: (dt, t) => { const wx = S.wind?.x || 0, wz = S.wind?.z || 0;
+      puffs.forEach((m, i) => { const life = (t * 0.07 + i / N) % 1, h = life * 55; m.position.set(o.x + Math.sin(i * 2.4) * 2 * life + wx * life * 2 + 8 * life, o.y + 1 + h, o.z + Math.cos(i * 1.7) * 2 * life + wz * life * 2 + 22 * life * life);
+        m.scale.setScalar((2 + life * 13) * Math.min(1, life * 8)); }); } };
+  },
+  peak(g, c, rnd) { // the finale: cracks glowing round the green and the crater spitting fire; after the putt the peak erupts (reveal below)
+    const n = crackField(g, rnd, 6, 9, 6); const V = H.volcano;
+    const fountain = ballPool(H.group, 28, SG.lump, SM.fireRock, { life: 5 }), rain = ballPool(H.group, 26, SG.lump, SM.fireRock, { life: 2.6, floor: true, bounce: 0.2 });
+    const hot = []; H.group.children.filter(o => o.userData.basketGroup).forEach(bg => bg.traverse(m => { if (m.isMesh && m !== bg.userData.flag) hot.push([m, m.material]); }));
+    const halo = new THREE.Sprite(SM.halo); halo.scale.setScalar(0.01); halo.position.copy(H.basket).setY(H.basket.y + 1.2); H.group.add(halo);
+    SM.hotMetal.emissiveIntensity = 0; const creature = new THREE.Group(); creature.visible = false;
+    const st = { cracks: n, fountain, rain, creature, world: [creature], hotParts: () => hot.filter(([m]) => m.material === SM.hotMetal).length }; let last = 0, camK = 0;
+    const B = H.basket, T = H.tee, back = new THREE.Vector3(T.x - B.x, 0, T.z - B.z).normalize(), side = new THREE.Vector3(-back.z, 0, back.x);
+    const shoot = (big) => { if (!V) return; for (let i = 0; i < (big ? 3 : 1); i++) fountain.spawn(V.x + (Math.random() - 0.5) * 8, V.top, V.z + (Math.random() - 0.5) * 8, (Math.random() - 0.5) * (big ? 26 : 8), (big ? 30 : 14) + Math.random() * 16, (Math.random() - 0.5) * (big ? 26 : 8), big ? 2 + Math.random() * 3 : 1.4); };
+    st.update = (dt, t) => { fountain.update(dt); rain.update(dt); SM.crack.color.setHSL(0.06, 1, 0.5 + Math.sin(t * 3.4) * 0.14); if (!S.reveal && t - last > 1.3) { last = t; shoot(false); } };
+    st.reveal = {
+      update(t, Rv) { const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x); camK = ease((t - 0.6) / 4.4);
+        if (t < 1.0) { Rv.stage = 'rumble'; shakeCamera(0.1, 0.3); storyTint(0.85 + t * 0.1); }
+        else if (t < 4.4) { Rv.stage = 'erupt'; creature.visible = true;
+          if (!Rv.boom) { Rv.boom = true; shakeCamera(0.24, 0.9); for (let i = 0; i < 6; i++) shoot(true); hot.forEach(([m]) => m.material = SM.hotMetal); }
+          if (t > 1.5 && !Rv.shown) { Rv.shown = true; showRevealBanner(); }
+          if (Math.random() < 0.6) shoot(true);
+          if (Math.random() < 0.45) { const a = Math.random() * 6.28, r = 6 + Math.random() * 20; rain.spawn(B.x + Math.cos(a) * r, B.y + 28 + Math.random() * 10, B.z + Math.sin(a) * r, (Math.random() - 0.5) * 4, -14, (Math.random() - 0.5) * 4, 0.35 + Math.random() * 0.4); }
+          SM.hotMetal.emissiveIntensity = Math.min(1.3, (t - 1) * 0.8); halo.scale.setScalar(Math.min(4.5, (t - 1) * 2.4)); }
+        else if (t < 6.0) { Rv.stage = 'trophy'; SM.hotMetal.emissiveIntensity = 1.1 + Math.sin(t * 6) * 0.2; halo.scale.setScalar(4.5 + Math.sin(t * 6) * 0.3); }
+        else return true;
+        return false; },
+      finish() { creature.visible = true; hot.forEach(([m]) => m.material = SM.hotMetal); SM.hotMetal.emissiveIntensity = 1.1; halo.scale.setScalar(4.5); },
+      // pull back from a close-up of the basket to a wide shot: the glowing basket low in frame, the erupting peak above it
+      cam() { const d = 7 + camK * 25, h = 2.4 + camK * 9, pos = B.clone().addScaledVector(back, d).addScaledVector(side, 3 * (1 - camK)).setY(B.y + h);
+        const look = B.clone().setY(B.y + 1); if (V) look.lerp(new THREE.Vector3(B.x + (V.x - B.x) * 0.1, B.y + 5.5, B.z + (V.z - B.z) * 0.1), camK); return { pos, look }; },
     };
     return st;
   },
@@ -2743,13 +2894,14 @@ function showStoryCaption(text, ms = 8000) {
 }
 function hideStoryCaption() { if (storyCap) storyCap.classList.add('hidden'); clearTimeout(storyCapTimer); }
 function buildStory(idx) {
-  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil');
+  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; S.ashfall = false; S.plumeK = 1; storyTint(0); SM.hotMetal.emissiveIntensity = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil');
   const st = COURSE.story, c = !S.practice && st && st.holes[idx]; if (!c) { hideStoryCaption(); return; }
   const g = new THREE.Group(), rnd = seeded(4242 + idx * 7);
   if (c.at && !['prints', 'shadow'].includes(c.clue)) { g.position.set(c.at[0], H.groundY(c.at[0], c.at[1]), c.at[1]); g.rotation.y = c.face || 0; g.scale.setScalar(c.scale || 1); }
-  const built = STORY_CLUES[c.clue](g, c, rnd) || {};
+  S.plumeK = c.plume ?? 1; storyTint(c.sky || 0);
+  const n0 = H.group.children.length, built = STORY_CLUES[c.clue](g, c, rnd) || {}, extra = H.group.children.slice(n0); // pooled bits the clue parented to the hole
   H.group.add(g); for (const o of built.world || []) H.group.add(o);
-  let meshes = 0; g.traverse(o => { if (o.isMesh || o.isSprite) meshes++; }); for (const o of built.world || []) o.traverse(q => { if (q.isMesh) meshes++; });
+  let meshes = 0; g.traverse(o => { if (o.isMesh || o.isSprite) meshes++; }); for (const o of [...(built.world || []), ...extra]) o.traverse(q => { if (q.isMesh || q.isSprite) meshes++; });
   H.story = { clue: c.clue, data: c, group: g, built, meshes };
   showStoryCaption((idx === 0 && st.intro ? st.intro + '\n' : '') + c.caption, idx === 0 ? 11000 : 8000);
 }
@@ -2929,7 +3081,7 @@ window.__game = {
   story: () => { const st = H.story, b = st?.built; return { hasStory: !!COURSE.story, intro: COURSE.story?.intro || null, clue: st?.clue || null, meshes: st?.meshes || 0, caption: S.storyCaption || null,
     captionVisible: !!storyCap && !storyCap.classList.contains('hidden'), at: st?.data.at || null, roared: !!S.roared, shake: !!S.shake,
     eyes: b?.eyes ? { visible: b.eyes.visible, everShown: b.everShown } : null, shadow: b?.bear && st.clue === 'shadow' ? { visible: b.bear.visible, everShown: b.everShown } : null,
-    prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible, creatureVisible: !!(b?.bear || b?.turtle)?.visible } : null,
+    prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible, creatureVisible: !!(b?.bear || b?.turtle || b?.creature)?.visible } : null,
     revealShown: !!storyReveal && !storyReveal.classList.contains('hidden'), bannerVeiled: ui.banner.classList.contains('veil') }; },
   holeTime: (t) => { S.holeT = t; },
   mem: () => ({ geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, sharedDisposed: S.sharedDisposed || 0, previewSims: curvePreview.sims, previewLayers: scene.children.filter(o => o.isPoints && o.material.isShaderMaterial).length, aimDots: (() => { let n = 0; scene.traverse(o => { if (o.isPoints && o.visible && ![leaves, snowfall, embers].includes(o) && !H.group.children.includes(o) && o.parent === scene) n++; }); return n; })() }),
@@ -2937,6 +3089,9 @@ window.__game = {
   loadPractice: () => loadHole(0, { practice: true }),
   setTreeFade: (on) => { treeFadeOn = !!on; },
   storyBubbles: () => { let live = 0, nearDisc = false; H.group.traverse(o => { if (o.isMesh && o.material === SM.bubble && o.scale.x > 0.01) { live++; if (Math.hypot(o.position.x - S.pos.x, o.position.z - S.pos.z) < 25) nearDisc = true; } }); return { live, nearDisc }; },
+  storyVolcano: () => { const b = H.story?.built || {}; return { ashfall: !!S.ashfall && snowfall.visible, plumeK: S.plumeK ?? 1, sky: S.skyTint || 0, tremors: b.tremors || 0, rocksMoved: b.rocksMoved?.() || 0,
+    steam: b.steam?.live() || 0, hiss: !!b.hiss?.visible, spatter: b.spatter?.live() || 0, smoke: b.smoke || 0, rain: b.rain?.live() || 0, fountain: b.fountain?.live() || 0, cracks: b.cracks || 0,
+    hot: +SM.hotMetal.emissiveIntensity.toFixed(2), hotParts: b.hotParts?.() || 0, shakeApplied: !!S.shakeApplied, camToBasket: +camera.position.distanceTo(H.basket).toFixed(1), plumeDark: H.plume.length ? '#' + H.plume[0].m.material.color.getHexString() : null }; },
   storyShadow: () => { const sh = H.story?.built?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2) } : null; },
   storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
   treeFade: () => { const v = H.group.userData.treeViz || []; return { trees: v.reduce((n, g) => n + g.list.length, 0), faded: v.reduce((n, g) => n + g.faded.reduce((a, b) => a + b, 0), 0), styles: v.map(g => g.list.length) }; },
