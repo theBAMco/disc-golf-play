@@ -365,6 +365,22 @@ const PARK_COURSE = {
 const RIVER_COURSE = {
   id: 'river',
   name: 'Riverbend', world: 'river', blurb: 'Water everywhere · splash = +1',
+  // Story: something big lives in this river… one clue per hole (decoration only), the island green is its shell
+  story: {
+    intro: 'Strange things keep happening on the river… keep your eyes on the water.',
+    holes: [
+      { clue: 'dock', at: [9.5, -31], face: 0, scale: 1.7, caption: 'A peaceful little dock. Calm water, bobbing boats… and one boat snapped clean in half.' },
+      { clue: 'ripples', at: [-11, -47], caption: 'Big rings spreading across the water… but there\'s nothing there.' },
+      { clue: 'logs', at: [-9, -36], face: 0.5, scale: 1.2, caption: 'These logs have HUGE bite marks. Beavers don\'t bite like that.' },
+      { clue: 'nest', at: [-16, -40], face: 0.4, scale: 1.2, caption: 'Dozens of lost discs pushed into the mud… like a nest.' },
+      { clue: 'waterfall', at: [-10, -33], face: 0.3, scale: 1.1, caption: 'The waterfall has gone still. The frogs went quiet…' },
+      { clue: 'bubbles', at: [13.5, -52], track: [[24, 10], [24, -30], [34, -80], [52, -104], [90, -118]], caption: 'Giant bubbles follow your disc… and what is that huge mossy rock in the river?' },
+      { clue: 'dent', at: [-8, -30], face: -0.6, caption: 'The mossy rock from the last hole is GONE. Just a dent, and wet drag marks to the water.' },
+      { clue: 'silhouette', at: [-11, -89], from: [-30, -89], to: [14, -90], caption: 'A huge dark shape glides under the bridge…' },
+      { clue: 'island', at: [-10, -124.5], r: 8.5, caption: 'Turtle Island. Lovely moss, a palm tree… is it breathing? Sink this putt.' },
+    ],
+    reveal: { creature: 'turtle', title: 'SNAPPING TURTLE!', sub: 'The island was its shell!' },
+  },
   holes: [
     {
       name: 'First Crossing', par: 3, tip: 'Carry the river. Anything past it is dry.',
@@ -432,15 +448,16 @@ const RIVER_COURSE = {
       path: [[0, 0], [6, -50], [-4, -108]],
       rivers: [{ pts: [[-70, -22], [0, -26], [70, -18]], w: 8 }, { pts: [[-70, -94], [-20, -88], [20, -92], [70, -84]], w: 12 }],
       trees: [{ x: 14, z: -45, s: 1.1 }, { x: -6, z: -55, s: 1 }, { x: 5, z: -116, s: 1 }],
+      bridges: [{ from: [-11, -80], to: [-11, -100], w: 2.6 }], // the story's bridge (side crossing)
       rocks: [{ x: -3, z: -85, s: 1.3 }, { x: 6, z: -89, s: 1 }, { x: 2, z: -25, s: 0.8 }],
     },
     {
-      name: 'Waterfront', par: 4, tip: 'Water left and in front of the green. Finish strong!',
-      tee: [0, 0], basket: [-10, -124], width: 13, ob: 14,
+      name: 'Turtle Island', par: 4, tip: 'Island green to finish! Miss the island and re-throw from the drop zone.',
+      tee: [0, 0], basket: [-10, -124], width: 13, ob: 14, greenR: 5,
       path: [[0, 0], [4, -60], [-10, -124]],
-      rivers: [{ pts: [[-22, 30], [-20, -40], [-24, -100], [-40, -150]], w: 14 }, { pts: [[-24, -104], [0, -108], [60, -100]], w: 9, open: [false, true] }],
-      bridges: [{ from: [-5, -97], to: [-7, -118], w: 3 }],
-      trees: [{ x: 14, z: -40, s: 1.1 }, { x: 12, z: -85, s: 1.1 }, { x: -2, z: -133, s: 1 }],
+      rivers: [{ pts: [[-22, 30], [-20, -40], [-24, -100], [-40, -150]], w: 14 }],
+      ponds: [{ x: -10, z: -125, r: 16 }], islands: [{ x: -10, z: -124.5, r: 8.5 }], drop: [-3, -101],
+      trees: [{ x: 14, z: -40, s: 1.1 }, { x: 12, z: -85, s: 1.1 }, { x: 10, z: -146, s: 1 }],
       rocks: [{ x: -12, z: -60, s: 1 }],
     },
   ],
@@ -1376,7 +1393,7 @@ function makeHole(data, index) {
     const fpole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.6), MAT.metal); fpole.position.set(0, 2.4, 0); g.add(fpole);
     flagRef = { flag, pivot: flagPivot };
     g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    g.position.copy(basket); group.add(g);
+    g.position.copy(basket); g.userData.basketGroup = true; group.add(g);
   }
   // Sun follows the hole so shadows cover it
   const mid = curve.getPoint(0.5);
@@ -2478,7 +2495,148 @@ function makeBear(mat = SM.bear, dark = SM.bearDark, mouth = SM.bearMouth) {
   g.traverse(o => { if (o.isMesh) o.castShadow = mat !== SM.silhouette; });
   g.userData = { torso, head, jaw, front, back }; return g;
 }
+// Riverbend story: shared materials and shapes (built once), a low-poly snapping turtle, a text-bubble sprite
+Object.assign(SM, {
+  plank: new THREE.MeshLambertMaterial({ color: 0x9a6b3f, flatShading: true }), boatA: new THREE.MeshLambertMaterial({ color: 0xe8e2d2, flatShading: true }),
+  boatB: new THREE.MeshLambertMaterial({ color: 0x3a7fc0, flatShading: true }), boatRed: new THREE.MeshLambertMaterial({ color: 0xd8452b, flatShading: true }),
+  wood: new THREE.MeshLambertMaterial({ color: 0x7a5232, flatShading: true }), woodIn: new THREE.MeshLambertMaterial({ color: 0xd9b27a, flatShading: true }),
+  bite: new THREE.MeshLambertMaterial({ color: 0x3a2414 }), mud: layered(new THREE.MeshLambertMaterial({ color: 0x4a3622, transparent: true, opacity: 0.95 }), 7),
+  wet: layered(new THREE.MeshPhongMaterial({ color: 0x3e4a44, specular: 0x99bbcc, shininess: 60, transparent: true, opacity: 0.7, depthWrite: false }), 7),
+  ripple: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }),
+  bubble: new THREE.MeshPhongMaterial({ color: 0xd8f2ff, specular: 0xffffff, shininess: 120, transparent: true, opacity: 0.55, depthWrite: false }),
+  ice: new THREE.MeshPhongMaterial({ color: 0xbfe6f5, specular: 0xffffff, shininess: 100, transparent: true, opacity: 0.85, flatShading: true }),
+  cliffRock: new THREE.MeshLambertMaterial({ color: 0x7d7a72, flatShading: true }), frog: new THREE.MeshLambertMaterial({ color: 0x5fb83a }),
+  moss: new THREE.MeshLambertMaterial({ color: 0x4f7d2c, flatShading: true }), mossLight: new THREE.MeshLambertMaterial({ color: 0x7aa83c, flatShading: true }),
+  shell: new THREE.MeshLambertMaterial({ color: 0x3f5a2a, flatShading: true }), turtle: new THREE.MeshLambertMaterial({ color: 0x6b8a3a, flatShading: true }),
+  turtleBelly: new THREE.MeshLambertMaterial({ color: 0xc8b46a, flatShading: true }), beak: new THREE.MeshLambertMaterial({ color: 0x5b4a2a, flatShading: true }),
+  eyeW: new THREE.MeshBasicMaterial({ color: 0xffffff }), eyeB: new THREE.MeshBasicMaterial({ color: 0x111111 }),
+  palm: new THREE.MeshLambertMaterial({ color: 0x8a6a42, flatShading: true }), frond: new THREE.MeshLambertMaterial({ color: 0x3f9a3a, flatShading: true, side: THREE.DoubleSide }),
+  shadowFish: new THREE.MeshBasicMaterial({ color: 0x06121a, transparent: true, opacity: 0.72, depthWrite: false }),
+});
+const SG = { ball: new THREE.SphereGeometry(1, 10, 8), lump: new THREE.IcosahedronGeometry(1, 0), log: new THREE.CylinderGeometry(0.45, 0.5, 1, 9).rotateZ(Math.PI / 2),
+  box: new THREE.BoxGeometry(1, 1, 1), ring: new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), disc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 14),
+  frond: new THREE.ConeGeometry(0.35, 2.6, 3).rotateX(Math.PI / 2).translate(0, 0, 1.3).scale(1, 0.2, 1), disk: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2) };
+GEO.storyRiver = SG; // shared: never disposed with a hole
+const DISC_MATS = [0xff6b3d, 0xffd23f, 0x5ad1ff, 0xc9a0ff, 0x7dff8a, 0xff5fa2].map(c => new THREE.MeshLambertMaterial({ color: c }));
+MAT.storyDiscs = DISC_MATS;
+const sm = (geo, mat, sx, sy, sz, x, y, z, parent) => { const o = new THREE.Mesh(geo, mat); o.scale.set(sx, sy, sz); o.position.set(x, y, z); parent?.add(o); return o; };
+function textSprite(text, w = 6) { // a small speech-bubble caption floating in the world (its texture belongs to the hole)
+  const c = document.createElement('canvas'); c.width = 384; c.height = 96; const x = c.getContext('2d');
+  x.fillStyle = 'rgba(20,40,30,0.78)'; x.beginPath(); x.roundRect(4, 4, 376, 70, 18); x.fill(); x.beginPath(); x.moveTo(60, 72); x.lineTo(80, 94); x.lineTo(96, 72); x.fill();
+  x.fillStyle = '#e8ffe0'; x.font = 'italic 800 36px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(text, 192, 52);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); sp.scale.set(w, w / 4, 1); return sp;
+}
+// Snapping turtle head + neck + front flippers (the island is its shell). Faces +z, hidden under the water until the reveal.
+function makeTurtle() {
+  const g = new THREE.Group(), neck = new THREE.Group(); g.add(neck);
+  sm(SG.ball, SM.turtle, 0.75, 0.7, 1.4, 0, 0, 0.6, neck);
+  const head = new THREE.Group(); head.position.set(0, 0.35, 1.9); neck.add(head);
+  sm(SG.ball, SM.turtle, 1.0, 0.85, 1.15, 0, 0, 0, head); sm(SG.lump, SM.beak, 0.55, 0.42, 0.6, 0, -0.18, 1.0, head); // head + hooked beak
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.35, 0.3); head.add(jaw); sm(SG.ball, SM.turtleBelly, 0.75, 0.3, 0.85, 0, -0.05, 0.25, jaw);
+  for (const sx of [-1, 1]) { sm(SG.ball, SM.eyeW, 0.27, 0.27, 0.27, sx * 0.55, 0.38, 0.55, head); sm(SG.ball, SM.eyeB, 0.14, 0.14, 0.14, sx * 0.6, 0.42, 0.75, head); }
+  const flips = [-1, 1].map(sx => sm(SG.ball, SM.turtle, 1.5, 0.25, 0.7, sx * 2.6, -0.4, -0.6, g));
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData = { neck, head, jaw, flips }; return g;
+}
+// a pooled set of bubbles (no per-frame allocation): spawn() reuses the oldest
+function bubblePool(parent, n, size = 1) {
+  const list = []; for (let i = 0; i < n; i++) { const b = sm(SG.ball, SM.bubble, 0, 0, 0, 0, -9, 0, parent); b.userData.t = 9; list.push(b); }
+  let k = 0;
+  return { list, spawn(x, y, z, s = 1) { const b = list[k = (k + 1) % n]; b.position.set(x, y, z); b.userData.t = 0; b.userData.s = s * size; },
+    update(dt) { for (const b of list) { const u = b.userData; if (u.t > 1.6) { b.scale.setScalar(0); continue; } u.t += dt; const f = u.t / 1.6; b.position.y += dt * 0.25; b.scale.setScalar(u.s * Math.sin(Math.min(1, f) * Math.PI) * (0.6 + f * 0.6)); } } };
+}
 const STORY_CLUES = {
+  // ----- Riverbend: the snapping turtle -----
+  dock(g) { // a short dock out over the river, a whole boat and one snapped in half
+    for (let i = 0; i < 7; i++) sm(SG.box, SM.plank, 1.8, 0.12, 0.42, 0, 0.55, -i * 0.5, g);
+    for (const [x, z] of [[-0.8, 0], [0.8, 0], [-0.8, -3], [0.8, -3]]) sm(SG.box, SM.wood, 0.16, 1.2, 0.16, x, 0.1, z, g);
+    const boat = (m, x, z, yaw) => { const b = new THREE.Group(); sm(SG.ball, m, 0.8, 0.35, 1.9, 0, 0.1, 0, b); sm(SG.box, SM.plank, 1.2, 0.08, 0.3, 0, 0.32, 0, b); b.position.set(x, 0.05, z); b.rotation.y = yaw; g.add(b); return b; };
+    const whole = boat(SM.boatB, -2.2, -4.2, 0.4);
+    const front = boat(SM.boatRed, 2.2, -5, -0.3), back = boat(SM.boatRed, 3.3, -3, -0.8); // the snapped one: two tilted halves, splinters
+    front.scale.z = 0.5; front.rotation.x = 0.35; back.scale.z = 0.5; back.rotation.x = -0.4;
+    for (let i = 0; i < 6; i++) sm(SG.box, SM.woodIn, 0.08, 0.06, 0.5, 2.7 + (i % 3) * 0.3, 0.12, -4 + i * 0.15, g).rotation.y = i;
+    return { update: (dt, t) => { whole.position.y = 0.05 + Math.sin(t * 1.6) * 0.06; whole.rotation.z = Math.sin(t * 1.1) * 0.06; } };
+  },
+  ripples(g) { // big rings spreading over empty water (each ring has its own fading material)
+    const rings = [0, 1, 2, 3].map(i => { const r = new THREE.Mesh(SG.ring, SM.ripple.clone()); r.position.y = 0.12; r.renderOrder = 3; g.add(r); return r; });
+    return { update: (dt, t) => rings.forEach((r, i) => { const f = ((t * 0.35 + i / 4) % 1); r.scale.setScalar(0.6 + f * 6); r.material.opacity = 0.75 * (1 - f); }) };
+  },
+  logs(g) { // logs on the bank with huge half-moon bites out of them, and chips
+    const log = (x, z, len, yaw) => { const l = new THREE.Group(); sm(SG.log, SM.wood, len, 1, 1, 0, 0.45, 0, l); for (const bx of [-len * 0.2, len * 0.25]) { sm(SG.ball, SM.bite, 0.55, 0.5, 0.6, bx, 0.75, 0.25, l); sm(SG.ball, SM.woodIn, 0.5, 0.45, 0.55, bx, 0.72, 0.22, l); } l.position.set(x, 0, z); l.rotation.y = yaw; g.add(l); };
+    log(0, 0, 4.2, 0.2); log(1.5, -1.6, 3.2, -0.5); log(-1.6, -1.2, 2.6, 1.1);
+    for (let i = 0; i < 14; i++) sm(SG.box, SM.woodIn, 0.22, 0.05, 0.12, Math.sin(i * 2.1) * 2.5, 0.03, Math.cos(i * 1.7) * 1.8, g).rotation.y = i;
+  },
+  nest(g, c, rnd) { // a mud mound with dozens of lost discs stuck in it, edges up
+    sm(SG.disk, SM.mud, 3.2, 1, 2.6, 0, 0.05, 0, g); sm(SG.ball, SM.mud, 2.2, 0.45, 1.8, 0, 0, 0, g);
+    for (let i = 0; i < 30; i++) { const a = rnd() * 6.28, r = 0.5 + rnd() * 1.9, d = sm(SG.disc, DISC_MATS[i % DISC_MATS.length], 4, 4, 4, Math.cos(a) * r, 0.35 + rnd() * 0.25, Math.sin(a) * r * 0.85, g);
+      d.rotation.set(1.1 + rnd() * 0.6, a, rnd() * 0.5); }
+  },
+  waterfall(g) { // a little rock cliff whose waterfall has frozen still, a mirror-still pool and frogs that went quiet
+    sm(SG.lump, SM.cliffRock, 3.4, 2.6, 1.6, 0, 1.6, -1.2, g); sm(SG.lump, SM.cliffRock, 1.8, 1.8, 1.4, -2.6, 0.9, -0.6, g); sm(SG.lump, SM.cliffRock, 1.6, 1.5, 1.3, 2.6, 0.8, -0.5, g);
+    const fall = sm(SG.box, SM.ice, 1.6, 3.2, 0.25, 0, 1.75, 0.35, g); fall.rotation.x = -0.12; // the frozen sheet of water
+    for (let i = 0; i < 5; i++) sm(SG.box, SM.eyeW, 0.06, 2.6, 0.02, -0.6 + i * 0.3, 1.8, 0.5, g); // still streaks
+    sm(SG.disk, MAT.water, 2.6, 1, 1.7, 0, 0.08, 1.8, g);
+    for (const [x, z] of [[-1.7, 2.2], [1.6, 2.6], [0.2, 3.3]]) { const f = new THREE.Group(); sm(SG.ball, SM.frog, 0.32, 0.22, 0.36, 0, 0.18, 0, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, -0.13, 0.36, 0.2, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, 0.13, 0.36, 0.2, f); f.position.set(x, 0.05, z); f.rotation.y = -0.4; g.add(f); }
+    const tx = textSprite('the frogs went quiet…'); tx.position.set(0, 4.3, 1); g.add(tx);
+  },
+  bubbles(g, c) { // the 'mossy rock' in the river (it's the turtle) + giant bubbles that follow your disc along the river
+    const rock = new THREE.Group(); sm(SG.ball, SM.moss, 2.6, 1.3, 2.2, 0, 0, 0, rock); for (let i = 0; i < 6; i++) sm(SG.lump, SM.mossLight, 0.5, 0.3, 0.5, Math.cos(i) * 1.6, 0.9, Math.sin(i * 1.3) * 1.3, rock);
+    g.add(rock); const pool = bubblePool(H.group, 26, 0.7), track = c.track.map(([x, z]) => new THREE.Vector2(x, z)), q = new THREE.Vector2();
+    let last = 0;
+    const nearest = (x, z) => { let best = 1e9; for (let i = 0; i < track.length - 1; i++) { const a = track[i], b = track[i + 1], dx = b.x - a.x, dz = b.y - a.y, u = THREE.MathUtils.clamp(((x - a.x) * dx + (z - a.y) * dz) / (dx * dx + dz * dz), 0, 1), px = a.x + dx * u, pz = a.y + dz * u, d = (px - x) ** 2 + (pz - z) ** 2; if (d < best) { best = d; q.set(px, pz); } } return q; };
+    return { rock, update: (dt, t) => { pool.update(dt); rock.position.y = Math.sin(t * 0.7) * 0.06;
+      if (t - last > (S.phase === 'flying' ? 0.12 : 0.6)) { last = t; if (S.phase === 'flying') { const p = nearest(S.pos.x, S.pos.z); pool.spawn(p.x + (Math.random() - 0.5) * 2, 0.1, p.y + (Math.random() - 0.5) * 2, 0.8 + Math.random() * 0.8); }
+        else { const w = g.localToWorld(TMP.rp.set(Math.random() * 4 - 2, 0, 2.6)); pool.spawn(w.x, 0.1, w.z, 0.5 + Math.random() * 0.5); } } } };
+  },
+  dent(g) { // where the mossy rock was: a muddy dent, a wet patch, two drag marks to the river, bits of moss
+    sm(SG.disk, SM.mud, 2.4, 1, 2.0, 0, 0.04, 0, g); sm(SG.disk, SM.wet, 3.2, 1, 2.6, 0, 0.035, 0, g);
+    for (const sx of [-1, 1]) sm(SG.box, SM.wet, 0.7, 0.02, 9, sx * 1.4, 0.04, -5.5, g);
+    for (let i = 0; i < 7; i++) sm(SG.lump, SM.mossLight, 0.28, 0.12, 0.28, Math.sin(i * 2.3) * 1.8, 0.06, -1 - i * 1.3, g);
+    const tx = textSprite('where did the rock go?', 5.4); tx.position.set(0, 2.6, 0); g.add(tx);
+  },
+  silhouette(g, c) { // a huge dark turtle shape gliding just under the water, back and forth beneath the bridge
+    const sh = new THREE.Group(); sm(SG.ball, SM.shadowFish, 3.2, 0.05, 3.8, 0, 0, 0, sh); sm(SG.ball, SM.shadowFish, 1, 0.05, 1.2, 0, 0, 4.2, sh);
+    for (const [x, z] of [[-3, 2], [3, 2], [-2.4, -2.8], [2.4, -2.8]]) sm(SG.ball, SM.shadowFish, 1.2, 0.05, 0.6, x, 0, z, sh);
+    sh.position.y = 0.09; sh.renderOrder = 3; sh.scale.setScalar(1.25); const [ax, az] = c.from, [bx, bz] = c.to;
+    return { shadow: sh, world: [sh], update: (dt, t) => { const k = (t / 16) % 1, f = k < 0.5 ? k * 2 : 2 - k * 2, dir = k < 0.5 ? 1 : -1;
+      sh.position.x = ax + (bx - ax) * f; sh.position.z = az + (bz - az) * f; sh.rotation.y = Math.atan2(bx - ax, bz - az) * (dir > 0 ? 1 : -1) + (dir > 0 ? 0 : Math.PI); sh.children.slice(2).forEach((m, i) => m.rotation.y = Math.sin(t * 2 + i) * 0.4); } };
+  },
+  island(g, c, rnd) { // Turtle Island: moss + palm + rocks on the island green; the island (its shell) slowly breathes; bubbles around the edge
+    const R = c.r; g.rotation.y = 0;
+    const shellBits = new THREE.Group(); g.add(shellBits);
+    for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28 + 0.2; sm(SG.lump, i % 2 ? SM.moss : SM.shell, 1.3, 0.35, 0.9, Math.cos(a) * (R - 0.4), 0.12, Math.sin(a) * (R - 0.4), shellBits).rotation.y = -a; } // shell-plate rim
+    const palm = new THREE.Group(); palm.position.set(-4.5, 0, -3.2); shellBits.add(palm);
+    for (let i = 0; i < 6; i++) sm(SG.ball, SM.palm, 0.22, 0.55, 0.22, i * 0.12, 0.45 + i * 0.85, 0, palm);
+    for (let i = 0; i < 7; i++) { const f = new THREE.Mesh(SG.frond, SM.frond); f.position.set(0.7, 5.2, 0); f.rotation.set(0.5, i / 7 * 6.28, 0); palm.add(f); }
+    for (const [x, z, s] of [[4.6, -3, 0.9], [5.5, -1.6, 0.6], [-5.5, 2.5, 0.7], [-3, 5.4, 0.5]]) sm(MAT.rock ? GEO.rock : SG.lump, MAT.rock, s * 1.6, s * 1.4, s * 1.6, x, 0.15, z, shellBits);
+    for (let i = 0; i < 10; i++) { const a = rnd() * 6.28, r = rnd() * (R - 2); if (Math.hypot(Math.cos(a) * r, Math.sin(a) * r) < 2.5) continue; sm(SG.lump, SM.mossLight, 0.6, 0.12, 0.5, Math.cos(a) * r, 0.1, Math.sin(a) * r, shellBits); }
+    // the island's own meshes (sand, grass, green, basket) breathe with it: tiny, visual only (the basket stays catchable)
+    const bob = H.group.children.filter(o => [MAT.islandSand, MAT.islandGrass, MAT.green].includes(o.material) || o.userData.basketGroup);
+    const base = bob.map(o => o.position.y);
+    const pool = bubblePool(H.group, 14, 0.6); let last = 0;
+    const turtle = makeTurtle(); turtle.visible = false; g.add(turtle);
+    const face = Math.atan2(-c.at[0], -c.at[1]); // toward the tee side
+    turtle.position.set(Math.sin(face) * (R + 1.2), -2.2, Math.cos(face) * (R + 1.2)); turtle.rotation.y = face;
+    const st = { turtle, R, face, bob, base, breathe: 0, swim: 0 };
+    st.update = (dt, t) => { pool.update(dt); const y = (Math.sin(t * 1.1) * 0.05 + st.breathe); st.y = y;
+      bob.forEach((o, i) => { o.position.y = base[i] + y; }); shellBits.position.y = y; g.position.x = c.at[0] + st.swim * Math.sin(face + Math.PI); g.position.z = c.at[1] + st.swim * Math.cos(face + Math.PI);
+      if (st.swim) bob.forEach(o => { o.position.x = (o.userData.x0 ??= o.position.x) + st.swim * Math.sin(face + Math.PI); o.position.z = (o.userData.z0 ??= o.position.z) + st.swim * Math.cos(face + Math.PI); });
+      if (t - last > 0.45) { last = t; const a = Math.random() * 6.28; pool.spawn(g.position.x + Math.cos(a) * (R + 0.6), 0.1, g.position.z + Math.sin(a) * (R + 0.6), 0.6 + Math.random() * 0.6); } };
+    // reveal: rumble + bubbles, the head rises out of the water and looks at you, then the whole island swims off
+    st.reveal = {
+      update(t, Rv) { const u = turtle.userData, ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
+        if (t < 1.1) { Rv.stage = 'rumble'; shakeCamera(0.12, 0.3); st.breathe = Math.sin(t * 25) * 0.08; if (Math.random() < 0.5) { const a = Math.random() * 6.28; pool.spawn(g.position.x + Math.cos(a) * (R + 0.5), 0.1, g.position.z + Math.sin(a) * (R + 0.5), 1.2); } }
+        else if (t < 2.1) { Rv.stage = 'rise'; st.breathe = 0; turtle.visible = true; turtle.position.y = -2.2 + 3.1 * ease((t - 1.1) / 0.8); u.neck.rotation.x = -0.35 * ease((t - 1.1) / 0.9); shakeCamera(0.2, 0.3); if (!Rv.splash) { Rv.splash = true; const w = turtle.getWorldPosition(TMP.rp); spawnSplash(w.x, w.z); } }
+        else if (t < 4.3) { Rv.stage = 'look'; const k = t - 2.1; u.head.rotation.y = Math.sin(k * 1.6) * 0.35 * Math.max(0, 1 - k / 2.2); u.jaw.rotation.x = k > 1.2 && k < 1.7 ? 0.45 : 0.05; // snap!
+          if (!Rv.shown) { Rv.shown = true; shakeCamera(0.4, 1.2); showRevealBanner(); } }
+        else if (t < 6.0) { Rv.stage = 'swim'; const k = ease((t - 4.3) / 1.7); st.swim = k * 14; st.breathe = -k * 0.6; u.flips.forEach((f, i) => f.rotation.y = Math.sin(t * 6 + i * 3) * 0.5); turtle.rotation.y = face + Math.PI * k; }
+        else return true;
+        return false; },
+      finish() { turtle.visible = true; turtle.position.y = 0.9; },
+      cam() { const w = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 10), 3.2, Math.cos(face) * (R + 10))).add(new THREE.Vector3(Math.cos(face) * 6, 0, -Math.sin(face) * 6)), look = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 1), 1.4, Math.cos(face) * (R + 1))); return { pos: w, look }; },
+    };
+    return st;
+  },
   camp(g, c, rnd) {
     const tent = (m, x, z, s, yaw) => { const t = new THREE.Mesh(new THREE.ConeGeometry(1.7 * s, 2.2 * s, 4).translate(0, 1.1 * s, 0), m); t.position.set(x, 0, z); t.rotation.y = Math.PI / 4 + yaw; g.add(t); return t; };
     tent(SM.tentA, -3.4, -0.6, 1, 0.2); tent(SM.tentC, 0, -3, 1.1, -0.1);
@@ -2602,11 +2760,12 @@ function dumpSnow(x, z, top) { // snow chunks sliding off a ledge
     m.userData = { v: new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 1.5, 1.2 + Math.random() * 2), t: -Math.random() * 0.5, drop: true, floor: H.groundY(x, z) + 0.1, life: 2.8 }; scene.add(m); splashes.push(m); }
 }
 function startReveal() {
-  const cave = H.story?.built; if (!cave || !cave.bear) return false;
+  const cave = H.story?.built; if (!cave || !(cave.bear || cave.reveal)) return false;
   S.reveal = { t: 0, stage: 'rumble', done: false }; ui.banner.classList.add('veil'); hideStoryCaption(); return true;
 }
 function finishReveal() {
   if (!S.reveal || S.reveal.done) return; S.reveal.done = true; S.reveal.stage = 'done'; ui.banner.classList.remove('veil'); storyReveal?.classList.add('hidden');
+  H.story?.built?.reveal?.finish?.();
   const b = H.story?.built?.bear; if (b) { const u = b.userData; u.torso.rotation.x = -0.2; u.jaw.rotation.x = 0.3; b.position.z = H.story.built.mouthZ + 3.5; b.visible = true; }
 }
 function updateStory(dt) {
@@ -2619,6 +2778,7 @@ function updateStory(dt) {
     showStoryCaption('ROOOAARR… the ground shakes and snow crashes off the ledges!', 3500);
   }
   const R = S.reveal; if (!R || R.done) return;
+  if (st.built.reveal) { R.t += dt; if (st.built.reveal.update(R.t, R)) { finishReveal(); if (S.phase === 'holed') endRound(); } return; }
   R.t += dt; const t = R.t, b = st.built.bear, u = b.userData, Z0 = 2.2, Z1 = st.built.mouthZ + 3.5, g = st.group;
   const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
   if (t < 1.3) { R.stage = 'rumble'; shakeCamera(0.12, 0.3); if (!R.dust) { R.dust = true; const p = g.localToWorld(new THREE.Vector3(0, 0, 0)); dumpSnow(p.x, p.z, p.y + 4.4); } }
@@ -2627,11 +2787,13 @@ function updateStory(dt) {
     if (!R.puff) { R.puff = true; const p = g.localToWorld(new THREE.Vector3(0, 0, st.built.mouthZ)); spawnPuff(p.x, p.z); spawnPuff(p.x + 1, p.z + 0.5); } }
   else if (t < 4.8) { R.stage = 'roar'; b.position.z = Z1; for (const l of [...u.front, ...u.back]) l.rotation.x *= 0.8; const k = ease((t - 2.4) / 0.5);
     u.torso.rotation.x = -0.85 * k; u.jaw.rotation.x = 0.75 * k; u.head.rotation.x = -0.25 * k + Math.sin(t * 30) * 0.03 * k; u.front[0].rotation.x = u.front[1].rotation.x = -0.9 * k;
-    if (!R.roared) { R.roared = true; shakeCamera(0.55, 1.8); const rv = COURSE.story.reveal; if (storyReveal) { storyReveal.querySelector('b').textContent = rv.title; storyReveal.querySelector('span').textContent = rv.sub; storyReveal.classList.remove('hidden'); } } }
+    if (!R.roared) { R.roared = true; shakeCamera(0.55, 1.8); showRevealBanner(); } }
   else if (t < 6.2) { R.stage = 'settle'; const k = ease((t - 4.8) / 0.8); u.torso.rotation.x = -0.85 * (1 - k) - 0.2 * k; u.jaw.rotation.x = 0.75 * (1 - k) + 0.3 * k; u.head.rotation.x = 0; u.front[0].rotation.x = u.front[1].rotation.x = -0.9 * (1 - k); }
   else { finishReveal(); if (S.phase === 'holed') endRound(); }
 }
+function showRevealBanner() { const rv = COURSE.story.reveal; if (storyReveal) { storyReveal.querySelector('b').textContent = rv.title; storyReveal.querySelector('span').textContent = rv.sub; storyReveal.classList.remove('hidden'); } }
 function revealCam() {
+  if (H.story.built.reveal) return H.story.built.reveal.cam();
   const st = H.story, g = st.group, m = g.localToWorld(new THREE.Vector3(0, 0, st.built.mouthZ + 3));
   const pos = g.localToWorld(new THREE.Vector3(13, 4.0, st.built.mouthZ + 17)), look = m.setY(m.y + 2.6); // three-quarter view so the rear-up reads
   return { pos, look };
@@ -2767,13 +2929,16 @@ window.__game = {
   story: () => { const st = H.story, b = st?.built; return { hasStory: !!COURSE.story, intro: COURSE.story?.intro || null, clue: st?.clue || null, meshes: st?.meshes || 0, caption: S.storyCaption || null,
     captionVisible: !!storyCap && !storyCap.classList.contains('hidden'), at: st?.data.at || null, roared: !!S.roared, shake: !!S.shake,
     eyes: b?.eyes ? { visible: b.eyes.visible, everShown: b.everShown } : null, shadow: b?.bear && st.clue === 'shadow' ? { visible: b.bear.visible, everShown: b.everShown } : null,
-    prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible } : null,
+    prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible, creatureVisible: !!(b?.bear || b?.turtle)?.visible } : null,
     revealShown: !!storyReveal && !storyReveal.classList.contains('hidden'), bannerVeiled: ui.banner.classList.contains('veil') }; },
   holeTime: (t) => { S.holeT = t; },
   mem: () => ({ geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, sharedDisposed: S.sharedDisposed || 0, previewSims: curvePreview.sims, previewLayers: scene.children.filter(o => o.isPoints && o.material.isShaderMaterial).length, aimDots: (() => { let n = 0; scene.traverse(o => { if (o.isPoints && o.visible && ![leaves, snowfall, embers].includes(o) && !H.group.children.includes(o) && o.parent === scene) n++; }); return n; })() }),
   loadHole: (i) => loadHole(i),
   loadPractice: () => loadHole(0, { practice: true }),
   setTreeFade: (on) => { treeFadeOn = !!on; },
+  storyBubbles: () => { let live = 0, nearDisc = false; H.group.traverse(o => { if (o.isMesh && o.material === SM.bubble && o.scale.x > 0.01) { live++; if (Math.hypot(o.position.x - S.pos.x, o.position.z - S.pos.z) < 25) nearDisc = true; } }); return { live, nearDisc }; },
+  storyShadow: () => { const sh = H.story?.built?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2) } : null; },
+  storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
   treeFade: () => { const v = H.group.userData.treeViz || []; return { trees: v.reduce((n, g) => n + g.list.length, 0), faded: v.reduce((n, g) => n + g.faded.reduce((a, b) => a + b, 0), 0), styles: v.map(g => g.list.length) }; },
   renderInfo: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, ratio: renderer.getPixelRatio(), geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }),
   // tests only: invisible physics-only obstacles on the current hole (cleared by loading a hole)
