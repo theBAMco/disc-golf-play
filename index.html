@@ -297,6 +297,12 @@ const WORLDS = {
   lava: { id: 'lava', sky: [0x2a1420, 0xff9150], fog: 0x6b4038, fogRange: [160, 720], hemi: [0xffd2b0, 0x4a2a22, 1.3], sun: [0xffb878, 2.1], sunLow: true,
     ground: { ob: 0x1f1a19, rough: 0x3a3230, fairway: 0x6e6661, green: 0x9a5c3c }, trees: 'none', borderMix: 0, windMin: 9, windMax: 24, leaf: null, embers: true,
     water: 0xff6a1c, sand: 0x1e1614, reeds: null, rock: 0x302b2b, scenery: 'volcanic', lava: true, obPost: 0xffd23d, pick: [0xff7a2a, 0x3a1010] },
+  // Moon: grey dust and craters, black starry sky with Earth, no wind, low gravity (the disc floats: gravity scales lift-minus-gravity,
+  // latK scales turn/fade so curves stay readable, rangeK is the measured carry gain used for range hints and disc suggestions)
+  moon: { id: 'moon', sky: [0x010103, 0x0a0c16], fog: 0x07080d, fogRange: [220, 900], hemi: [0xc8d0e6, 0x34343c, 0.75], sun: [0xfff8ee, 2.5],
+    ground: { ob: 0x4e4e54, rough: 0x6f6f76, fairway: 0x8e8e95, green: 0xa9adb8 }, trees: 'none', borderMix: 0, windMin: 0, windMax: 0, leaf: null,
+    water: 0x0c0c10, sand: 0x3c3c42, reeds: null, rock: 0x7c7c82, scenery: 'moon', stars: true, earth: true, rille: true, dust: true,
+    gravity: 0.5, latK: 0.5, rangeK: 1.42, obPost: 0x7affd0, pick: [0xc4c8d4, 0x0a0c16] },
 };
 
 const PARK_COURSE = {
@@ -680,7 +686,96 @@ const LAVA_COURSE = {
   ],
 };
 
-const COURSES = [PARK_COURSE, RIVER_COURSE, ICE_COURSE, LAVA_COURSE];
+const MOON_COURSE = {
+  id: 'moon',
+  name: 'Moon', world: 'moon', blurb: 'Tranquility Links · low gravity',
+  // Distances are ~1.4x the park's: in low gravity the same throw floats much further. No wind on the moon.
+  // craters { x, z, r, rim, dust }: a raised rim ring (rolls the disc) with soft deep dust inside (stops it dead), unless dust: false
+  // rivers are rilles here: long dark trenches (+1, re-throw), boulders are solid
+  story: {
+    intro: 'Moon Base Tranquility stopped answering the radio last night… find out why.',
+    holes: [
+      { clue: 'base', at: [-12, -46], face: 0.5, scale: 1.6, caption: 'Moon Base Tranquility. Cozy dome, little rover… but who bent the antenna?' },
+      { clue: 'circles', at: [-12.5, -48], face: 0.3, scale: 1.6, caption: 'Crop circles. In moon dust. Where nothing grows.' },
+      { clue: 'radio', at: [11.5, -38], face: -0.4, scale: 1.6, caption: 'The base radio is picking something up… and it isn\'t human. Beep… bzzt…' },
+      { clue: 'rover', at: [-10.5, -52], face: 0.6, scale: 1.5, caption: 'The rover is tipped on its side. One wheel is still spinning…' },
+      { clue: 'flag', at: [-10.5, -42], face: 0.3, scale: 1.5, caption: 'The flag is gone. Just an empty pole and a scorched ring in the dust.' },
+      { clue: 'skylights', at: [11, -40], face: -0.4, scale: 1.6, caption: 'Lights in the sky! Something just zipped across the stars. Look up!' },
+      { clue: 'lamps', at: [-9.5, -32], to: [-9.5, -92], caption: 'The path lights are flickering… and going out one by one.' },
+      { clue: 'ufoShadow', at: [0, -48], caption: 'A HUGE shadow just swept over the fairway. Look up… there\'s nothing there.' },
+      { clue: 'abduct', at: [-20, -160], caption: 'The landing lights on the last green are blinking. Sink this putt… and keep watching the sky.' },
+    ],
+    reveal: { creature: 'ufo', title: 'ABDUCTED!', sub: 'They took the basket!' },
+  },
+  holes: [
+    {
+      name: 'Tranquility Base', par: 3, tip: 'Low gravity! The disc floats ~40% further, so ease off. No wind on the moon.',
+      tee: [0, 0], basket: [3, -92], width: 18, ob: 14,
+      path: [[0, 0], [0, -46], [3, -92]],
+      craters: [{ x: 14, z: -74, r: 5 }],
+      pillars: [{ x: 9, z: -52, r: 1.4, h: 2, kind: 'boulder' }],
+    },
+    {
+      name: 'Crater Cup', par: 3, tip: 'The basket sits inside a crater. Clear the rim, or bounce off it and roll down to the basket.',
+      tee: [0, 0], basket: [0, -100], width: 16, ob: 13, greenR: 5,
+      path: [[0, 0], [0, -100]],
+      craters: [{ x: 0, z: -100, r: 8.5, rim: 1.3, dust: false }, { x: 9, z: -62, r: 5 }],
+    },
+    {
+      name: 'The Rille', par: 3, tip: 'A deep trench crosses the fairway. Carry it: falling in costs +1.',
+      tee: [0, 0], basket: [4, -96], width: 16, ob: 13,
+      path: [[0, 0], [4, -96]],
+      rivers: [{ pts: [[-70, -50], [0, -54], [70, -48]], w: 9 }],
+      pillars: [{ x: -7, z: -80, r: 1.3, h: 2.2, kind: 'boulder' }],
+    },
+    {
+      name: 'Boulder Field', par: 4, tip: 'Boulders everywhere. Pick a lane and lay up between them.',
+      tee: [0, 0], basket: [-12, -165], width: 17, ob: 13,
+      path: [[0, 0], [4, -82], [-12, -165]],
+      pillars: [{ x: -4, z: -58, r: 1.6, h: 2.4, kind: 'boulder' }, { x: 9, z: -75, r: 1.8, h: 2.6, kind: 'boulder' }, { x: -1, z: -100, r: 1.5, h: 2.2, kind: 'boulder' }, { x: -14, z: -122, r: 1.7, h: 2.5, kind: 'boulder' }, { x: 2, z: -138, r: 1.4, h: 2, kind: 'boulder' }],
+      craters: [{ x: 12, z: -112, r: 6 }],
+    },
+    {
+      name: 'Flag Hill', par: 3, tip: 'The basket is up on a mound. Land on top; short throws roll back down.',
+      tee: [0, 0], basket: [2, -90], width: 15, ob: 13, greenR: 4,
+      path: [[0, 0], [2, -90]],
+      hills: [{ x: 2, z: -90, r: 14, h: 3.5 }],
+      craters: [{ x: -10, z: -68, r: 4.5 }],
+    },
+    {
+      name: 'Long Rille', par: 4, tip: 'A rille runs all down the left. The Driver fades left, so aim right.',
+      tee: [0, 0], basket: [10, -172], width: 15, ob: 13,
+      path: [[0, 0], [0, -90], [10, -172]],
+      rivers: [{ pts: [[-21, 25], [-19, -80], [-8, -200]], w: 10 }],
+      craters: [{ x: 14, z: -120, r: 6 }],
+      pillars: [{ x: 6, z: -60, r: 1.4, h: 2, kind: 'boulder' }],
+    },
+    {
+      name: 'Base Lights', par: 4, tip: 'Dogleg right past the base lights. A Right Curve (E) wraps around the boulders.',
+      tee: [0, 0], basket: [36, -150], width: 15, ob: 13,
+      path: [[0, 0], [0, -88], [36, -150]],
+      pillars: [{ x: 12, z: -78, r: 2, h: 2.8, kind: 'boulder' }, { x: 18, z: -90, r: 1.8, h: 2.6, kind: 'boulder' }],
+      craters: [{ x: -8, z: -112, r: 6 }],
+    },
+    {
+      name: 'Shadow Plain', par: 5, tip: 'The long one: a crater, a rille across the middle and another crater by the green.',
+      tee: [0, 0], basket: [-10, -262], width: 17, ob: 13,
+      path: [[0, 0], [6, -110], [-4, -190], [-10, -262]],
+      craters: [{ x: -9, z: -118, r: 8 }, { x: 10, z: -228, r: 6 }],
+      rivers: [{ pts: [[-70, -152], [0, -158], [70, -150]], w: 8 }],
+      pillars: [{ x: 12, z: -72, r: 1.5, h: 2.2, kind: 'boulder' }, { x: -14, z: -205, r: 1.6, h: 2.4, kind: 'boulder' }],
+    },
+    {
+      name: 'Landing Zone', par: 4, tip: 'Dogleg left to the landing pad green. Mind the crater rims at the corner.',
+      tee: [0, 0], basket: [-20, -160], width: 16, ob: 13,
+      path: [[0, 0], [-4, -82], [-20, -160]],
+      craters: [{ x: 9, z: -96, r: 6 }, { x: -18, z: -112, r: 5 }],
+      pillars: [{ x: -14, z: -60, r: 1.6, h: 2.4, kind: 'boulder' }, { x: -6, z: -176, r: 1.4, h: 2, kind: 'boulder' }],
+    },
+  ],
+};
+
+const COURSES = [PARK_COURSE, RIVER_COURSE, ICE_COURSE, LAVA_COURSE, MOON_COURSE];
 
 // Open practice field used by tests (and handy for tuning discs). Not part of the round.
 const PRACTICE_HOLE = {
@@ -704,7 +799,7 @@ const DISCS = {
   putter: { key: 'putter', name: 'Putter', short: 'Putter', hotkey: '3', color: 0xc77dff, css: '#c77dff', vmin: 2.5, vmax: 15, l0: 6, l1: 12, liftK: 0.03, liftMax: 7.5, dragK: 0.008, drag0: 0.35, fade: 1.5, turn: 2, hst: 0.5, tailK: 2.6, hsAt: 0.7, hot: 14, windK: 1.25, look: { r: 1.5, rb: 1.48, h: 0.07 } },
 };
 const DISC_ORDER = ['driver', 'mid', 'putter'];
-function suggestDisc(dist) { return dist > 58 ? 'driver' : dist > 31 ? 'mid' : 'putter'; }
+function suggestDisc(dist) { dist /= GRAV.range; return dist > 58 ? 'driver' : dist > 31 ? 'mid' : 'putter'; }
 // Straight full-power carry, measured by tests/play.mjs; drawn as the range ring
 const DISC_RANGE = { driver: 97, mid: 62, putter: 33 };
 // Basket geometry used for both visuals and catch detection (heights above the ground at the basket)
@@ -764,10 +859,10 @@ scene.add(sun, sun.target);
     side: THREE.BackSide, depthWrite: false, fog: false,
     uniforms: { top: { value: new THREE.Color(0x3d8be0) }, bottom: { value: new THREE.Color(0xcdeeff) }, haze: { value: new THREE.Color(0xffffff) },
       sunDir: { value: new THREE.Vector3(0.5, 0.4, -0.6).normalize() }, sunCol: { value: new THREE.Color(0xfff1d0) }, sunSize: { value: 1 },
-      cloudCol: { value: new THREE.Color(0xffffff) }, cloudAmt: { value: 0.5 }, cloudShade: { value: new THREE.Color(0xc0d0e0) }, time: { value: 0 } },
+      cloudCol: { value: new THREE.Color(0xffffff) }, cloudAmt: { value: 0.5 }, cloudShade: { value: new THREE.Color(0xc0d0e0) }, time: { value: 0 }, stars: { value: 0 } },
     vertexShader: 'varying vec3 p; void main(){ p = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: `uniform vec3 top; uniform vec3 bottom; uniform vec3 haze; uniform vec3 sunDir; uniform vec3 sunCol; uniform float sunSize;
-      uniform vec3 cloudCol; uniform vec3 cloudShade; uniform float cloudAmt; uniform float time; varying vec3 p;
+      uniform vec3 cloudCol; uniform vec3 cloudShade; uniform float cloudAmt; uniform float time; uniform float stars; varying vec3 p;
       float h21(vec2 q){ return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
       float vn(vec2 q){ vec2 i = floor(q), f = fract(q); f = f*f*(3.0-2.0*f); return mix(mix(h21(i), h21(i+vec2(1,0)), f.x), mix(h21(i+vec2(0,1)), h21(i+vec2(1,1)), f.x), f.y); }
       float fbm(vec2 q){ float a = 0.5, r = 0.0; for (int i = 0; i < 3; i++){ r += a*vn(q); q = q*2.03 + 7.1; a *= 0.5; } return r; }
@@ -780,6 +875,9 @@ scene.add(sun, sun.target);
           float n = fbm(uv), c = smoothstep(1.0 - cloudAmt*0.62, 1.05 - cloudAmt*0.3, n) * smoothstep(0.0, 0.18, h);
           vec3 cc = mix(cloudShade, cloudCol, smoothstep(0.45, 0.95, n + h*0.6)) + sunCol*pow(s, 8.0)*0.4;
           col = mix(col, cc, c*0.92); }
+        if (stars > 0.0 && h > -0.03) { vec3 q = d*150.0, ci = floor(q); float r = fract(sin(dot(ci, vec3(12.9898, 78.233, 37.719)))*43758.5453);
+          float st = step(0.988, r) * smoothstep(0.42, 0.0, length(fract(q) - 0.5)) * (0.55 + 0.45*sin(time*2.0 + r*60.0));
+          col += vec3(0.9, 0.95, 1.0) * st * stars * (1.0 + step(0.997, r)*1.5); }
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -788,6 +886,19 @@ scene.add(sun, sun.target);
   const sky = new THREE.Mesh(new THREE.SphereGeometry(450, 32, 16), m);
   scene.add(sky);
   scene.userData.sky = sky;
+  // Earth hanging in the moon sky (only shown in the moon world): a small painted globe with a soft blue glow
+  const ec = document.createElement('canvas'); ec.width = 256; ec.height = 128; const ex = ec.getContext('2d');
+  ex.fillStyle = '#1f5fbf'; ex.fillRect(0, 0, 256, 128); const er = seeded(77);
+  for (let i = 0; i < 26; i++) { ex.fillStyle = i % 3 ? '#3f8f3a' : '#9a8a52'; ex.beginPath(); ex.ellipse(er() * 256, 20 + er() * 88, 8 + er() * 26, 5 + er() * 14, er() * 3, 0, 6.28); ex.fill(); }
+  ex.fillStyle = 'rgba(255,255,255,0.75)'; for (let i = 0; i < 22; i++) { ex.beginPath(); ex.ellipse(er() * 256, er() * 128, 10 + er() * 30, 2 + er() * 4, er() * 0.6, 0, 6.28); ex.fill(); }
+  ex.fillRect(0, 0, 256, 8); ex.fillRect(0, 120, 256, 8);
+  const earth = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(ec), fog: false }));
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: DOT_TEX_EARLY(), color: 0x6fb0ff, transparent: true, opacity: 0.55, depthWrite: false, fog: false })); glow.scale.setScalar(3.4);
+  const eg = new THREE.Group(); eg.add(glow, earth); eg.position.set(40, 85, -390); eg.scale.setScalar(19); eg.rotation.set(0.3, 0.8, 0.2); eg.visible = false; sky.add(eg); scene.userData.earth = eg;
+}
+function DOT_TEX_EARLY() { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,0.6)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
+{
 }
 // Per-world look on top of the course data: exposure, sky sun (where it sits relative to the hole's forward), clouds
 const GFX = {
@@ -795,6 +906,7 @@ const GFX = {
   river: { exposure: 0.98, sunAz: 0.75, sunEl: 0.14, sunSize: 2.2, haze: 0xffe4bd, cloud: [0xfff1de, 0xd59a8a, 0.5] },
   ice: { hemiK: 0.72, sunK: 1.35, exposure: 1.05, sunAz: -0.7, sunEl: 0.1, sunSize: 1.8, haze: 0xfff0e0, cloud: [0xf6f7fb, 0xb6c3d6, 0.35] },
   lava: { exposure: 1.05, sunAz: 0.6, sunEl: 0.06, sunSize: 3, haze: 0xff9c5c, cloud: [0x5a3a3c, 0x231419, 0.7] },
+  moon: { hemiK: 0.8, sunK: 1.2, exposure: 1.0, sunAz: -0.8, sunEl: 0.42, sunSize: 0.7, haze: 0x0c0e18, cloud: [0x000000, 0x000000, 0] },
 };
 const MAT = {
   ob: new THREE.MeshLambertMaterial({ color: 0x3d7a2c }),
@@ -816,6 +928,9 @@ const MAT = {
   reeds: new THREE.MeshLambertMaterial({ color: 0x7f9640 }),
   rock: new THREE.MeshLambertMaterial({ color: 0x8f8d84, flatShading: true }),
   dropRing: new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+  // Moon world: grey regolith boulders, crater rims, far hills
+  boulder: new THREE.MeshLambertMaterial({ color: 0x8a8a90, flatShading: true }), moonHill: new THREE.MeshLambertMaterial({ color: 0x5c5c63, flatShading: true }),
+  craterRim: new THREE.MeshLambertMaterial({ color: 0x77777e, flatShading: true }),
 };
 // Layered flat ground (sand under water under islands) is ordered with polygon offset, not height, so it never flickers
 const layered = (mat, k) => Object.assign(mat, { polygonOffset: true, polygonOffsetFactor: -k, polygonOffsetUnits: -k * 4 });
@@ -958,6 +1073,7 @@ const GEO = {
   plume: new THREE.IcosahedronGeometry(1, 1),
   mound: new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.6, 0.55, 1.2),
   mountain: new THREE.ConeGeometry(1, 1, 6, 1).translate(0, 0.5, 0),
+  boulder: new THREE.IcosahedronGeometry(1, 1).scale(1, 0.55, 1).translate(0, 0.45, 0), craterRing: new THREE.TorusGeometry(1, 0.16, 4, 20).rotateX(Math.PI / 2).scale(1, 0.4, 1),
   peng: {
     body: new THREE.SphereGeometry(0.3, 10, 8).scale(1, 1.5, 0.92).translate(0, 0.5, 0),
     belly: new THREE.SphereGeometry(0.25, 10, 8).scale(0.9, 1.4, 0.62).translate(0, 0.46, 0.11),
@@ -989,11 +1105,12 @@ function seeded(seed) { return () => ((seed = (seed * 16807) % 2147483647) / 214
 
 function makeHole(data, index) {
   const v2 = ([x, z]) => new THREE.Vector2(x, z);
-  const hills = data.hills || [];
+  const hills = data.hills || [], craters = (data.craters || []).map(c => ({ rim: 1, ...c, w: c.r * 0.32 }));
   // terrain (hills) for drawing the ground; physics ground adds bridge decks on top
   const groundY = (x, z) => {
     let y = 0;
     for (const h of hills) { const d = Math.hypot(x - h.x, z - h.z); if (d < h.r) { const k = 1 - (d / h.r) ** 2; y += h.h * k * k; } }
+    for (const c of craters) { const u = (Math.hypot(x - c.x, z - c.z) - c.r) / c.w; if (u > -1 && u < 1) { const k = 1 - u * u; y += c.rim * k * k; } }
     return y;
   };
   // ----- Water: rivers (smooth bands), ponds, with islands and bridges as dry land -----
@@ -1031,7 +1148,7 @@ function makeHole(data, index) {
     const c = new THREE.CatmullRomCurve3(zd.pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
     const sm = c.getSpacedPoints(Math.max(4, Math.ceil(c.getLength() / 1.5))).map(p => new THREE.Vector2(p.x, p.z)); return { w: zd.w, samples: sm }; };
   const inZone = (zn, x, z) => zn.circle ? Math.hypot(x - zn.x, z - zn.z) < zn.r : segDist2(zn.samples, x, z) < zn.w / 2;
-  const iceZones = (data.icePatches || []).map(mkZone), snowZones = (data.snowDrifts || []).map(mkZone);
+  const iceZones = (data.icePatches || []).map(mkZone), snowZones = [...(data.snowDrifts || []), ...craters.filter(c => c.dust !== false).map(c => ({ x: c.x, z: c.z, r: c.r - c.w * 0.75 }))].map(mkZone);
   const surface = (x, z) => snowZones.some(zn => inZone(zn, x, z)) ? 'snow' : iceZones.some(zn => inZone(zn, x, z)) ? 'ice' : null;
   // ----- Solid ice obstacles: pillars/seracs/bergs are cylinders for physics; arches are a half ring you can throw through;
   // snow banks are low mounds that stop a rolling disc -----
@@ -1144,6 +1261,10 @@ function makeHole(data, index) {
     const m = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), MAT.rough); m.position.y = 0.012; m.receiveShadow = true; group.add(m);
   }
   group.add(ribbon(data.width / 2, 0.03, MAT.fairway, 7));
+  for (const c of craters) { // the rim: a lathe ring following the terrain, plus a darker floor disc
+    const prof = []; for (let i = 0; i <= 16; i++) { const d = c.r + c.w * (1 - i / 8); prof.push(new THREE.Vector2(d, groundY(c.x + d, c.z) + 0.02)); }
+    const m = new THREE.Mesh(new THREE.LatheGeometry(prof, 36), MAT.craterRim); m.position.set(c.x, 0, c.z); m.receiveShadow = true; m.castShadow = true; group.add(m);
+  }
   for (const h of hills) {
     const prof = []; for (let i = 0; i <= 24; i++) { const d = h.r * (1 - i / 24); prof.push(new THREE.Vector2(d, groundY(h.x + d, h.z) + 0.005)); }
     const m = new THREE.Mesh(new THREE.LatheGeometry(prof, 40), MAT.rough); m.position.set(h.x, 0, h.z); m.receiveShadow = true; m.castShadow = true; group.add(m);
@@ -1285,11 +1406,11 @@ function makeHole(data, index) {
   for (const zn of snowZones) group.add(zoneMesh(zn, MAT.deepSnow, 0.06));
   { // solid obstacles
     const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
-    for (const [kind, geo, mat] of [['pillar', GEO.pillar, MAT.iceSolid], ['serac', GEO.serac, MAT.serac], ['berg', GEO.berg, MAT.berg], ['basalt', GEO.basalt, MAT.basalt]]) {
+    for (const [kind, geo, mat] of [['pillar', GEO.pillar, MAT.iceSolid], ['serac', GEO.serac, MAT.serac], ['berg', GEO.berg, MAT.berg], ['basalt', GEO.basalt, MAT.basalt], ['boulder', GEO.boulder, MAT.boulder]]) {
       const list = solids.filter(o => o.kind === kind); if (!list.length) continue;
       const im = new THREE.InstancedMesh(geo, mat, list.length);
       list.forEach((o, i) => { q.setFromAxisAngle(up, (i * 2.1 + o.x) % 6.28);
-        if (kind === 'pillar' || kind === 'basalt') sc.set(o.r, o.h, o.r); else if (kind === 'serac') sc.set(o.r, o.h / 2.8, o.r); else sc.set(o.r * 1.12, o.h / 0.97, o.r * 1.12);
+        if (kind === 'pillar' || kind === 'basalt' || kind === 'boulder') sc.set(o.r, o.h, o.r); else if (kind === 'serac') sc.set(o.r, o.h / 2.8, o.r); else sc.set(o.r * 1.12, o.h / 0.97, o.r * 1.12);
         mtx.compose(ps.set(o.x, o.y, o.z), q, sc); im.setMatrixAt(i, mtx); });
       im.castShadow = true; im.receiveShadow = true; group.add(im);
     }
@@ -1381,6 +1502,19 @@ function makeHole(data, index) {
     for (let i = 0; i < 16; i++) { // smoke plume: big soft puffs that rise, drift and loop
       const m = new THREE.Mesh(GEO.plume, new THREE.MeshLambertMaterial({ color: i % 3 ? 0x6e6462 : 0x857a76, transparent: true, opacity: 0.55, depthWrite: false })); group.add(m);
       plume.push({ m, base: new THREE.Vector3(vc.x, H0 - 6, vc.y), ph: i / 16, sx: (rnd() - 0.5) * 18, sz: (rnd() - 0.5) * 18 }); }
+  }
+  if (WORLD.scenery === 'moon') { // boulders and little craters past the edges, a ring of far grey hills (instanced: a few draw calls)
+    const rnd = seeded(9100 + index * 31), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    if (decor.length) { const rocks = new THREE.InstancedMesh(GEO.boulder, MAT.boulder, decor.length), rings = new THREE.InstancedMesh(GEO.craterRing, MAT.craterRim, decor.length); let nb = 0, nr = 0;
+      for (const t of decor) { q.setFromAxisAngle(up, rnd() * 6.28); const k = t.s * (0.6 + rnd() * 1.1);
+        if (rnd() < 0.6) { mtx.compose(ps.set(t.x, groundY(t.x, t.z) - 0.15, t.z), q, sc.set(k * 1.2, k * (0.7 + rnd()), k * 1.1)); rocks.setMatrixAt(nb++, mtx); }
+        else { mtx.compose(ps.set(t.x, groundY(t.x, t.z), t.z), q, sc.set(k * 2.4, k * 2, k * 2.4)); rings.setMatrixAt(nr++, mtx); } }
+      rocks.count = nb; rings.count = nr; rocks.castShadow = true; group.add(rocks, rings); }
+    const cx = (samples[0].x + samples[samples.length - 1].x) / 2, cz = (samples[0].y + samples[samples.length - 1].y) / 2;
+    const hillsM = new THREE.InstancedMesh(GEO.mountain, MAT.moonHill, 20);
+    for (let i = 0; i < 20; i++) { const a = (i / 20) * Math.PI * 2 + rnd() * 0.25, d = 280 + rnd() * 80, r = 50 + rnd() * 40, h = 8 + rnd() * 18;
+      q.setFromAxisAngle(up, rnd() * 6.28); mtx.compose(ps.set(cx + Math.cos(a) * d, -2, cz + Math.sin(a) * d), q, sc.set(r, h, r)); hillsM.setMatrixAt(i, mtx); }
+    group.add(hillsM);
   }
   const drop = data.drop ? new THREE.Vector3(data.drop[0], 0, data.drop[1]) : null;
   if (drop) {
@@ -1871,6 +2005,14 @@ function applyWorld(w) {
   MAT.foam.color.setHex(L ? 0xffc24a : w.snow ? 0xdff4ff : 0xffffff); MAT.foam.opacity = L ? 0.85 : 0.55; MAT.water.userData.ground.gSparkle.value = L ? 0 : 0.9;
   MAT.ice.color.setHex(L ? 0x3c3650 : 0x8fcdf0); MAT.ice.specular.setHex(L ? 0xffb080 : 0xffffff);
   MAT.deepSnow.color.setHex(L ? 0x7a726d : 0xffffff); MAT.bank.color.setHex(L ? 0x5a514c : 0xf7fbff); PUFF_MAT.color.setHex(L ? 0x8e8580 : 0xffffff); DUST_MAT.color.setHex(L ? 0x6e6661 : w.snow ? 0xf4f8fc : w.ground.rough);
+  // Moon: low gravity, black starry sky with Earth, grey dust; rivers are rilles (dark trenches)
+  GRAV.k = w.gravity || 1; GRAV.lat = w.latK || 1; GRAV.range = w.rangeK || 1;
+  U.stars.value = w.stars ? 1 : 0; scene.userData.earth.visible = !!w.earth;
+  if (w.rille) { Object.assign(MAT.water, { map: null, emissiveMap: null, shininess: 4 }); MAT.water.emissive.setHex(0x000000); MAT.water.specular.setHex(0x111111); MAT.water.needsUpdate = true; MAT.water.userData.ground.gSparkle.value = 0;
+    MAT.foam.color.setHex(0x3a3a40); MAT.foam.opacity = 0.5; MAT.sand.color.setHex(0x3c3c42); MAT.islandSand.color.setHex(0x3c3c42); }
+  DROP_MAT.color.setHex(w.rille ? 0x9a9aa0 : 0xe8f6ff); if (w.dust) { MAT.deepSnow.color.setHex(0x505057); PUFF_MAT.color.setHex(0xb0b0b6); DUST_MAT.color.setHex(0xa8a8ae); MAT.bank.color.setHex(0x6a6a70); }
+  for (const k of ['ob', 'rough', 'fairway', 'green']) if (w.dust) MAT[k].userData.ground.gSparkle.value = 0.25;
+  if (w.dust) MAT.fairway.userData.ground.gStripe.value = 0.12;
   document.body.dataset.world = w.id;
 }
 const bestKey = id => `discgolflab.best.${id}`;
@@ -1940,6 +2082,8 @@ function throwDisc(power, curve = S.curve) {
 
 // ---------- Physics ----------
 const G = 9.8;
+// per-world gravity: k scales lift-minus-gravity (the moon floats), lat scales the turn/fade so curves stay readable. Set in applyWorld.
+const GRAV = { k: 1, lat: 1, range: 1 };
 // per-throw flight state beyond position/velocity: bank (visual tilt, + = right side down), rolling on edge, inside a canopy
 const newFlightState = () => ({ hold: false, bank: 0, roll: 0, rollT: 0, rolled: false, canopy: false, spin: 1, landBank: undefined, landSteep: 0 });
 // Ground contact per surface: friction = rolling slowdown (m/s²), keep = speed kept on a bounce, slope = downhill pull
@@ -1969,7 +2113,7 @@ function stepPhysics(dt) {
     // slow putts sit low in the air and feel less of it (wa < 1), full throws feel all of it
     const W = S.wind, wa = Math.min(1, S.v0 / 12), wx = W.x * wa, wz = W.z * wa, ax = v.x - wx, az = v.z - wz, va = Math.hypot(ax, az);
     const lift = Math.min(D.liftMax, D.liftK * va * va);
-    v.y += (lift - G) * dt;
+    v.y += (lift - G) * GRAV.k * dt;
     const drag = D.dragK * va * va + D.drag0;
     if (va > 0.01) { const k = Math.max(0, va - drag * dt) / va; v.x = wx + ax * k; v.z = wz + az * k; }
     // Flight shape: turn right while the disc is really fast (powerful throws only, most on the Driver), glide,
@@ -1977,7 +2121,7 @@ function stepPhysics(dt) {
     const slow = THREE.MathUtils.clamp(1 - va / S.v0, 0, 1), fast = 1 - slow, scale = S.v0 / D.vmax;
     const hs = Math.max(0, va / D.vmax - D.hsAt) / (1 - D.hsAt);
     const lat = (S.curveUsed * D.turn * fast * scale) + D.hst * hs * hs * (S.curveUsed ? 0.2 : 1) - (D.fade * scale * slow * slow);
-    if (!S.knocked) v.addScaledVector(S.right0, lat * dt); // after a hard hit the disc just drops
+    if (!S.knocked) v.addScaledVector(S.right0, lat * GRAV.lat * dt); // after a hard hit the disc just drops
     // the disc banks into its sideways force (visual tilt; also decides edge-roll vs flat skid on landing)
     const fs = S.fs, tgt = THREE.MathUtils.clamp(Math.atan2(S.knocked ? 0 : lat, G) * 1.6, -1.15, 1.15);
     if (!fs.roll && !fs.hold) fs.bank += (tgt - fs.bank) * Math.min(1, dt * 5);
@@ -2211,7 +2355,7 @@ function onSplash() {
   S.events.push({ type: 'water', lava, disc: S.disc, throw: S.throws, at: { x: S.pos.x, z: S.pos.z } });
   S.lie.copy(H.drop || S.prevLie); S.lie.y = 0;
   S.phase = 'splash'; S.splashT = 1.4;
-  flashBanner(lava ? 'Lava! +1' : 'Splash! +1', (lava ? 'Sizzle! ' : '') + (H.drop ? `Penalty throw · re-throw from the drop zone (${S.throws} so far)` : `Penalty throw · back to your last spot (${S.throws} so far)`), 2400);
+  flashBanner(lava ? 'Lava! +1' : WORLD.rille ? 'Into the rille! +1' : 'Splash! +1', (lava ? 'Sizzle! ' : WORLD.rille ? 'Lost in the trench! ' : '') + (H.drop ? `Penalty throw · re-throw from the drop zone (${S.throws} so far)` : `Penalty throw · back to your last spot (${S.throws} so far)`), 2400);
 }
 function finishSplash() {
   if (S.phase !== 'splash') return;
@@ -2392,7 +2536,7 @@ function hidePullUI() { for (const el of Object.values(pullUI)) el && el.classLi
 function drawPullUI() {
   const charging = S.phase === 'charging';
   if (!charging) { hidePullUI(); return; }
-  const est = Math.max(1, DISC_RANGE[S.disc] * S.power);
+  const est = Math.max(1, DISC_RANGE[S.disc] * GRAV.range * S.power);
   const pct = Math.round(S.power * 100);
   const valid = S.pull ? S.pull.valid : true;
   const html = valid ? `<b>${pct}%</b> <span>~${Math.round(est)} m</span>` : '<b>Pull back</b> <span>to throw · let go here to cancel</span>';
@@ -2606,6 +2750,32 @@ const TINT = { a: new THREE.Color(), b: new THREE.Color() };
 function storyTint(k) { k = Math.min(1, Math.max(0, k)); if (!k && !S.skyTint) return; S.skyTint = k; const U = scene.userData.sky.material.uniforms, w = WORLD;
   U.top.value.setHex(w.sky[0]).lerp(TINT.a.setHex(0x5a0604), k); U.bottom.value.setHex(w.sky[1]).lerp(TINT.a.setHex(0xff2a0a), k);
   TINT.b.setHex(w.fog).lerp(TINT.a.setHex(0xa8200e), k); scene.fog.color.copy(TINT.b); scene.background.copy(TINT.b); }
+// Moon story: shared materials/shapes, a little rover and a flying saucer
+Object.assign(SM, {
+  metalW: new THREE.MeshLambertMaterial({ color: 0xe6e6ea, flatShading: true }), panel: new THREE.MeshLambertMaterial({ color: 0x24407e, flatShading: true }),
+  gold: new THREE.MeshLambertMaterial({ color: 0xd8a83a, flatShading: true }), tire: new THREE.MeshLambertMaterial({ color: 0x26262a, flatShading: true }),
+  lampOn: new THREE.MeshBasicMaterial({ color: 0xfff0b8 }), lampOff: new THREE.MeshLambertMaterial({ color: 0x3a3a40 }),
+  scorch: layered(new THREE.MeshBasicMaterial({ color: 0x141416, transparent: true, opacity: 0.85, depthWrite: false }), 8),
+  circleDust: layered(new THREE.MeshBasicMaterial({ color: 0x55555c, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }), 8),
+  ufo: new THREE.MeshPhongMaterial({ color: 0xa8b2be, emissive: 0x4a5664, specular: 0xffffff, shininess: 90, flatShading: true }), ufoDome: new THREE.MeshPhongMaterial({ color: 0x8affd2, specular: 0xffffff, shininess: 120, transparent: true, opacity: 0.75 }),
+  ufoLight: new THREE.MeshBasicMaterial({ color: 0x7affd0 }), ufoLight2: new THREE.MeshBasicMaterial({ color: 0xffe36a }),
+  beam: new THREE.MeshBasicMaterial({ color: 0x6dff9a, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }),
+  zip: new THREE.SpriteMaterial({ map: DOT_TEX, color: 0xc8ffee, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }),
+  ufoShadow: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, depthWrite: false }),
+});
+Object.assign(SG, { beam: new THREE.CylinderGeometry(1.3, 5.5, 1, 24, 1, true).translate(0, -0.5, 0), wheel: new THREE.CylinderGeometry(0.42, 0.42, 0.3, 12).rotateZ(Math.PI / 2) });
+function makeRover() { // a little six-wheel moon buggy (≈2.6 m), wheels kept for spinning
+  const g = new THREE.Group(); sm(SG.box, SM.metalW, 1.6, 0.5, 2.6, 0, 0.75, 0, g); sm(SG.box, SM.gold, 1.2, 0.35, 1.0, 0, 1.15, -0.5, g); sm(SG.box, SM.panel, 1.5, 0.06, 0.9, 0, 1.38, 0.6, g);
+  const wheels = []; for (const z of [-0.95, 0, 0.95]) for (const sx of [-1, 1]) wheels.push(sm(SG.wheel, SM.tire, 1, 1, 1, sx * 0.95, 0.42, z, g));
+  sm(SG.box, SM.metalW, 0.06, 1.1, 0.06, 0.5, 1.6, -1.0, g); sm(SG.ball, SM.metalW, 0.3, 0.08, 0.3, 0.5, 2.15, -1.0, g);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.userData.wheels = wheels; return g;
+}
+function makeSaucer() { // classic flying saucer: hull, glass dome, a ring of blinking lights, and the tractor beam hanging under it
+  const g = new THREE.Group(); sm(SG.ball, SM.ufo, 5, 0.9, 5, 0, 0, 0, g); sm(SG.ball, SM.ufo, 2.6, 0.7, 2.6, 0, -0.45, 0, g); sm(SG.ball, SM.ufoDome, 2, 1.5, 2, 0, 0.55, 0, g);
+  const lights = []; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28; lights.push(sm(SG.ball, i % 2 ? SM.ufoLight : SM.ufoLight2, 0.32, 0.32, 0.32, Math.cos(a) * 4.4, -0.1, Math.sin(a) * 4.4, g)); }
+  const beam = new THREE.Mesh(SG.beam, SM.beam); beam.position.y = -0.6; beam.scale.y = 0.01; g.add(beam);
+  g.userData = { lights, beam }; return g;
+}
 const STORY_CLUES = {
   // ----- Riverbend: the snapping turtle -----
   dock(g) { // a short dock out over the river, a whole boat and one snapped in half
@@ -2695,6 +2865,89 @@ const STORY_CLUES = {
         return false; },
       finish() { turtle.visible = true; turtle.position.y = 0.9; },
       cam() { const w = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 10), 3.2, Math.cos(face) * (R + 10))).add(new THREE.Vector3(Math.cos(face) * 6, 0, -Math.sin(face) * 6)), look = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 1), 1.4, Math.cos(face) * (R + 1))); return { pos: w, look }; },
+    };
+    return st;
+  },
+  // ----- Moon: the UFO abduction -----
+  base(g) { // the outpost: habitat dome, a module with solar panels, a bent antenna, and the rover parked outside
+    sm(SG.ball, SM.metalW, 2.4, 1.8, 2.4, 0, 0, 0, g); sm(SG.box, SM.metalW, 2.2, 1.4, 1.6, 2.8, 0.7, 0.3, g); sm(SG.box, SM.gold, 0.9, 0.9, 0.2, 0, 0.5, 2.3, g);
+    for (const sx of [-1, 1]) sm(SG.box, SM.panel, 1.6, 0.06, 1, 2.8 + sx * 1.8, 1.6, 0.3, g).rotation.z = sx * 0.35;
+    sm(SG.box, SM.metalW, 0.1, 2.4, 0.1, -1.6, 1.2, -1.6, g); const top = new THREE.Group(); top.position.set(-1.6, 2.4, -1.6); top.rotation.z = 1.1; g.add(top); // the bent antenna
+    sm(SG.box, SM.metalW, 0.08, 1.4, 0.08, 0, 0.7, 0, top); sm(SG.ball, SM.metalW, 0.45, 0.12, 0.45, 0, 1.4, 0, top);
+    const rover = makeRover(); rover.position.set(-3.6, 0, 1.8); rover.rotation.y = 0.6; g.add(rover);
+    const tx = textSprite('who bent the antenna?', 5.6, 'rgba(14,20,34,0.82)', '#d8ecff'); tx.position.set(0.6, 4.2, 0); g.add(tx);
+  },
+  circles(g) { // crop circles pressed into the dust: a big ring pattern with little satellite circles joined by lines
+    for (const [r, x, z] of [[4.6, 0, 0], [3.4, 0, 0], [1.6, 0, 0], [1.2, 6.2, -1.5], [1.0, -5.8, 2], [0.8, 1.4, 6.0]]) { sm(SG.ring, SM.circleDust, r, 1, r, x, 0.05, z, g); if (r < 2) sm(SG.disk, SM.circleDust, r * 0.55, 1, r * 0.55, x, 0.05, z, g); }
+    for (const [x, z, len, a] of [[3.6, -0.8, 2.6, 1.33], [-3.4, 1.1, 2.4, -1.2], [0.8, 4.0, 1.8, 0.2]]) sm(SG.box, SM.circleDust, 0.18, 0.01, len, x, 0.05, z, g).rotation.y = a;
+    return {};
+  },
+  radio(g) { // the base radio crackles with signals that aren't human: 'beep… bzzt… ???', a blinking light
+    sm(SG.box, SM.metalW, 1.4, 0.9, 1.0, 0, 0.45, 0, g); sm(SG.box, SM.tire, 0.9, 0.5, 0.45, 0, 1.15, 0, g);
+    sm(SG.box, SM.metalW, 0.04, 1.2, 0.04, 0.35, 1.9, 0, g); sm(SG.ball, SM.metalW, 0.5, 0.12, 0.5, -0.9, 1.6, -0.4, g).rotation.x = 0.8;
+    const led = sm(SG.ball, SM.ufoLight, 0.08, 0.08, 0.08, -0.3, 1.2, 0.24, g);
+    const tx = textSprite('beep… bzzt… ???', 5.2, 'rgba(14,20,34,0.82)', '#8affd2'); tx.position.set(0, 3.0, 0); g.add(tx);
+    return { beep: tx, update: (dt, t) => { const k = t % 3.2; tx.visible = k < 2.2; tx.position.x = k < 2.2 ? Math.sin(t * 47) * 0.05 : 0; led.visible = Math.sin(t * 14) > 0; } };
+  },
+  rover(g) { // the rover, tipped on its side in a skid of dust; one wheel is still spinning
+    const rover = makeRover(); rover.rotation.z = 1.75; rover.position.set(0, 0.85, 0); g.add(rover);
+    sm(SG.box, SM.circleDust, 1.4, 0.01, 7, 0.6, 0.05, 4.2, g); for (let i = 0; i < 5; i++) sm(SG.lump, MAT.boulder, 0.25, 0.18, 0.25, -1.5 + i * 0.7, 0.1, 1.6 + (i % 2), g);
+    const wheel = rover.userData.wheels[1], tx = textSprite('still spinning…', 4.6, 'rgba(14,20,34,0.82)', '#d8ecff'); tx.position.set(0, 3.2, 0); g.add(tx);
+    return { wheel, update: (dt) => { wheel.rotation.x += dt * 9; } };
+  },
+  flag(g) { // the flag is gone: just the empty pole and a scorched ring in the dust
+    sm(SG.disk, SM.scorch, 2.2, 1, 2.2, 0, 0.05, 0, g); sm(SG.ring, SM.scorch, 3.4, 1, 3.4, 0, 0.05, 0, g);
+    sm(SG.box, SM.metalW, 0.08, 3.2, 0.08, 0, 1.6, 0, g); sm(SG.box, SM.metalW, 1.6, 0.06, 0.06, 0.8, 3.15, 0, g);
+    for (let i = 0; i < 6; i++) sm(SG.lump, SM.tire, 0.12, 0.06, 0.12, Math.cos(i) * 1.4, 0.08, Math.sin(i * 1.3) * 1.3, g);
+    const tx = textSprite('where did the flag go?', 5.4, 'rgba(14,20,34,0.82)', '#d8ecff'); tx.position.set(0, 4.2, 0); g.add(tx);
+  },
+  skylights(g, c) { // a telescope pointed up, and a glowing dot that zips across the stars every few seconds
+    for (let i = 0; i < 3; i++) { const l = sm(SG.box, SM.metalW, 0.06, 1.5, 0.06, Math.cos(i * 2.1) * 0.35, 0.7, Math.sin(i * 2.1) * 0.35, g); l.rotation.set(Math.sin(i * 2.1) * 0.3, 0, -Math.cos(i * 2.1) * 0.3); }
+    const tube = sm(SG.log, SM.metalW, 1.8, 0.6, 0.6, 0, 1.6, 0, g); tube.rotation.z = 0.9;
+    const dot = new THREE.Sprite(SM.zip); dot.scale.setScalar(5); dot.visible = false;
+    const T = H.tee, B = H.basket, f = new THREE.Vector3(B.x - T.x, 0, B.z - T.z).normalize(), side = new THREE.Vector3(-f.z, 0, f.x);
+    const st = { world: [dot], zip: dot, everShown: false };
+    st.update = (dt, t) => { const k = (t % 6.5) / 1.8; dot.visible = k < 1; if (!dot.visible) return; st.everShown = true;
+      dot.position.copy(T).addScaledVector(f, 150 + k * 20).addScaledVector(side, -80 + k * 160).setY(40 + Math.sin(k * 3.1) * 14); dot.scale.setScalar(5 + Math.sin(t * 30) * 0.8); };
+    return st;
+  },
+  lamps(g, c) { // a row of path lights along the fairway edge: they flicker and die one by one, then come back and do it again
+    const [x0, z0] = c.at, [x1, z1] = c.to, N = 8, heads = [];
+    for (let i = 0; i < N; i++) { const x = x0 + (x1 - x0) * i / (N - 1), z = z0 + (z1 - z0) * i / (N - 1), y = H.groundY(x, z) - g.position.y;
+      const l = g.worldToLocal(new THREE.Vector3(x, g.position.y, z)); sm(SG.box, SM.metalW, 0.1, 1.6, 0.1, l.x, y + 0.8, l.z, g); heads.push(sm(SG.ball, SM.lampOn, 0.28, 0.22, 0.28, l.x, y + 1.7, l.z, g)); }
+    const st = { lit: N, heads };
+    st.update = (dt, t) => { const k = t % 15; let lit = 0;
+      heads.forEach((h, i) => { const off = 1.5 + i * 1.2; const on = k < off ? true : k < off + 0.6 ? Math.sin(t * 40 + i) > 0 : k > 13.5; h.material = on ? SM.lampOn : SM.lampOff; if (on) lit++; }); st.lit = lit; };
+    return st;
+  },
+  ufoShadow(g, c) { // a huge round shadow sweeps across the fairway… and there is nothing above it
+    const sh = new THREE.Group(); sm(SG.disk, SM.ufoShadow, 9, 1, 9, 0, 0, 0, sh); sm(SG.ring, SM.ufoShadow, 11, 1, 11, 0, 0, 0, sh); sm(SG.disk, SM.ufoShadow, 4, 1, 4, 0, 0.01, 0, sh); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28; sm(SG.disk, SM.ufoShadow, 1.6, 1, 1.6, Math.cos(a) * 9.5, 0.005, Math.sin(a) * 9.5, sh); } // the saucer's outline: hull, dome, landing legs
+    sh.renderOrder = 3; sh.visible = false; const T = H.tee, B = H.basket, f = new THREE.Vector3(B.x - T.x, 0, B.z - T.z).normalize(), side = new THREE.Vector3(-f.z, 0, f.x), [ax, az] = c.at;
+    const st = { world: [sh], shadow: sh, everShown: false };
+    st.update = (dt, t) => { const k = (t % 8) / 2.6; sh.visible = k < 1; if (!sh.visible) return; st.everShown = true; const x = ax + side.x * (-55 + k * 110), z = az + side.z * (-55 + k * 110);
+      sh.position.set(x, H.groundY(x, z) + 0.08, z); };
+    return st;
+  },
+  abduct(g) { // landing lights blink round the green; after the putt a saucer drops in, its tractor beam lifts the basket, the disc and the green, and it zooms off
+    const ring = []; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28; ring.push(sm(SG.ball, SM.ufoLight, 0.18, 0.12, 0.18, Math.cos(a) * 6.2, 0.1, Math.sin(a) * 6.2, g)); }
+    const B = H.basket, T = H.tee, back = new THREE.Vector3(T.x - B.x, 0, T.z - B.z).normalize(), side = new THREE.Vector3(-back.z, 0, back.x);
+    const saucer = makeSaucer(); saucer.visible = false; saucer.position.set(B.x, B.y + 70, B.z); const u = saucer.userData;
+    const lift = H.group.children.filter(o => o.material === MAT.green || o.userData.basketGroup), base = lift.map(o => o.position.y);
+    const hover = B.y + 13, look = B.clone(); const st = { world: [saucer], saucer, creature: saucer, lifted: 0, lit: ring.length };
+    st.update = (dt, t) => { ring.forEach((m, i) => { m.visible = Math.floor(t * 4 + i) % 3 !== 0; }); u.lights.forEach((m, i) => { m.material = (Math.floor(t * 6) + i) % 2 ? SM.ufoLight : SM.ufoLight2; }); saucer.rotation.y += dt * 1.5; };
+    const setLift = (h) => { st.lifted = h; lift.forEach((o, i) => { o.position.y = base[i] + h; o.rotation.y = h * 0.15; o.visible = h < hover - B.y - 1.5; }); S.discLift = h; S.discHidden = h >= hover - B.y - 1.5; };
+    st.reveal = {
+      update(t, Rv) { const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
+        if (t < 1.1) { Rv.stage = 'arrive'; saucer.visible = true; saucer.position.y = B.y + 70 - (70 - 13) * ease(t / 1.1); shakeCamera(0.06, 0.2); }
+        else if (t < 3.7) { Rv.stage = 'beam'; saucer.position.y = hover + Math.sin(t * 3) * 0.2; const k = ease((t - 1.1) / 0.35); u.beam.scale.set(1, 12.5 * k, 1); SM.beam.opacity = 0.42 * k + Math.sin(t * 20) * 0.04;
+          setLift((hover - B.y - 1) * ease((t - 1.5) / 2.0)); if (t > 2.2 && !Rv.shown) { Rv.shown = true; showRevealBanner(); } }
+        else if (t < 4.1) { Rv.stage = 'beam'; setLift(hover - B.y); SM.beam.opacity = 0.42 * (1 - (t - 3.7) / 0.4); }
+        else if (t < 6.0) { Rv.stage = 'zoom'; SM.beam.opacity = 0; u.beam.scale.y = 0.01; const k = ease((t - 4.1) / 1.4); saucer.position.set(B.x - back.x * 40 * k + side.x * 60 * k, hover + 90 * k * k, B.z - back.z * 40 * k + side.z * 60 * k); saucer.scale.setScalar(1 - 0.5 * k); }
+        else return true;
+        return false; },
+      finish() { setLift(hover - B.y); saucer.visible = false; SM.beam.opacity = 0; },
+      cam() { const pos = B.clone().addScaledVector(back, 23).addScaledVector(side, 7).setY(B.y + 4); look.set(B.x, B.y + 4 + Math.min(st.lifted, 9) * 0.6, B.z);
+        if (S.reveal?.stage === 'zoom') look.lerp(saucer.position, 0.5); return { pos, look }; },
     };
     return st;
   },
@@ -2894,10 +3147,10 @@ function showStoryCaption(text, ms = 8000) {
 }
 function hideStoryCaption() { if (storyCap) storyCap.classList.add('hidden'); clearTimeout(storyCapTimer); }
 function buildStory(idx) {
-  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; S.ashfall = false; S.plumeK = 1; storyTint(0); SM.hotMetal.emissiveIntensity = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil');
+  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; S.ashfall = false; S.plumeK = 1; storyTint(0); SM.hotMetal.emissiveIntensity = 0; S.discLift = 0; S.discHidden = false; SM.beam.opacity = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil');
   const st = COURSE.story, c = !S.practice && st && st.holes[idx]; if (!c) { hideStoryCaption(); return; }
   const g = new THREE.Group(), rnd = seeded(4242 + idx * 7);
-  if (c.at && !['prints', 'shadow'].includes(c.clue)) { g.position.set(c.at[0], H.groundY(c.at[0], c.at[1]), c.at[1]); g.rotation.y = c.face || 0; g.scale.setScalar(c.scale || 1); }
+  if (c.at && !['prints', 'shadow', 'ufoShadow'].includes(c.clue)) { g.position.set(c.at[0], H.groundY(c.at[0], c.at[1]), c.at[1]); g.rotation.y = c.face || 0; g.scale.setScalar(c.scale || 1); }
   S.plumeK = c.plume ?? 1; storyTint(c.sky || 0);
   const n0 = H.group.children.length, built = STORY_CLUES[c.clue](g, c, rnd) || {}, extra = H.group.children.slice(n0); // pooled bits the clue parented to the hole
   H.group.add(g); for (const o of built.world || []) H.group.add(o);
@@ -2967,8 +3220,9 @@ function frame(now) {
 
   const aiming = S.phase === 'aim' || S.phase === 'charging';
   if (aiming) disc.position.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z); else disc.position.copy(S.pos);
+  if (S.discLift) disc.position.y += S.discLift; // the moon story's tractor beam (looks only: S.pos is untouched)
   for (const [k, m] of Object.entries(discMeshes)) m.visible = k === S.disc;
-  disc.visible = S.phase !== 'splash' && S.phase !== 'menu';
+  disc.visible = S.phase !== 'splash' && S.phase !== 'menu' && !S.discHidden;
   // Disc look: faces where it is going, banks with the real bank angle (up on edge while rolling, flat once settled),
   // a slight nose-up in the air, spins fast in flight, and wobbles more as the spin dies when it lands (spin-out)
   if (S.phase === 'flying') {
@@ -2991,7 +3245,7 @@ function frame(now) {
   if (aiming) {
     // while charging the ring marks the rough straight carry at this power; otherwise this disc's full range
     // with a curve picked, dots show the bend and the ring sits where the curved (no-wind) flight lands
-    const rp = TMP.rp.set(Math.sin(S.yaw), 0, -Math.cos(S.yaw)).multiplyScalar(showPower ? Math.max(1.5, DISC_RANGE[S.disc] * S.power) : DISC_RANGE[S.disc]).add(S.lie);
+    const rp = TMP.rp.set(Math.sin(S.yaw), 0, -Math.cos(S.yaw)).multiplyScalar((showPower ? Math.max(1.5, DISC_RANGE[S.disc] * S.power) : DISC_RANGE[S.disc]) * GRAV.range).add(S.lie);
     { const e = updateCurvePreview(showPower ? Math.max(0.05, S.power) : 1); if (e) { rp.x = e.x; rp.z = e.z; } }
     if (!S.pull && S.phase === 'aim') S.camOff = previewCamOffset();
     rangeRing.position.set(rp.x, H.groundY(rp.x, rp.z) + 0.07 + Math.min(0.25, Math.hypot(rp.x - S.lie.x, rp.z - S.lie.z) / 400), rp.z); rangeRing.scale.setScalar(THREE.MathUtils.clamp(Math.hypot(rp.x - S.lie.x, rp.z - S.lie.z) / 45, 1, 2.4)); // bigger far away so it stays readable
@@ -3081,7 +3335,7 @@ window.__game = {
   story: () => { const st = H.story, b = st?.built; return { hasStory: !!COURSE.story, intro: COURSE.story?.intro || null, clue: st?.clue || null, meshes: st?.meshes || 0, caption: S.storyCaption || null,
     captionVisible: !!storyCap && !storyCap.classList.contains('hidden'), at: st?.data.at || null, roared: !!S.roared, shake: !!S.shake,
     eyes: b?.eyes ? { visible: b.eyes.visible, everShown: b.everShown } : null, shadow: b?.bear && st.clue === 'shadow' ? { visible: b.bear.visible, everShown: b.everShown } : null,
-    prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible, creatureVisible: !!(b?.bear || b?.turtle || b?.creature)?.visible } : null,
+    prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible, creatureVisible: !!(b?.bear || b?.turtle || b?.creature)?.visible || (st?.clue === 'abduct' && !!b?.lifted) } : null,
     revealShown: !!storyReveal && !storyReveal.classList.contains('hidden'), bannerVeiled: ui.banner.classList.contains('veil') }; },
   holeTime: (t) => { S.holeT = t; },
   mem: () => ({ geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, sharedDisposed: S.sharedDisposed || 0, previewSims: curvePreview.sims, previewLayers: scene.children.filter(o => o.isPoints && o.material.isShaderMaterial).length, aimDots: (() => { let n = 0; scene.traverse(o => { if (o.isPoints && o.visible && ![leaves, snowfall, embers].includes(o) && !H.group.children.includes(o) && o.parent === scene) n++; }); return n; })() }),
@@ -3092,6 +3346,10 @@ window.__game = {
   storyVolcano: () => { const b = H.story?.built || {}; return { ashfall: !!S.ashfall && snowfall.visible, plumeK: S.plumeK ?? 1, sky: S.skyTint || 0, tremors: b.tremors || 0, rocksMoved: b.rocksMoved?.() || 0,
     steam: b.steam?.live() || 0, hiss: !!b.hiss?.visible, spatter: b.spatter?.live() || 0, smoke: b.smoke || 0, rain: b.rain?.live() || 0, fountain: b.fountain?.live() || 0, cracks: b.cracks || 0,
     hot: +SM.hotMetal.emissiveIntensity.toFixed(2), hotParts: b.hotParts?.() || 0, shakeApplied: !!S.shakeApplied, camToBasket: +camera.position.distanceTo(H.basket).toFixed(1), plumeDark: H.plume.length ? '#' + H.plume[0].m.material.color.getHexString() : null }; },
+  storyMoon: () => { const b = H.story?.built || {}; return { lit: b.lit ?? null, zip: b.zip ? { visible: b.zip.visible, ever: b.everShown } : null, shadow: b.shadow ? { visible: b.shadow.visible, ever: b.everShown, x: +b.shadow.position.x.toFixed(1), z: +b.shadow.position.z.toFixed(1) } : null,
+    wheel: b.wheel ? +b.wheel.rotation.x.toFixed(2) : null, beep: b.beep ? b.beep.visible : null, lifted: +(b.lifted || 0).toFixed(2), saucer: b.saucer ? { visible: b.saucer.visible, y: +b.saucer.position.y.toFixed(1) } : null,
+    beam: +SM.beam.opacity.toFixed(2), discLift: S.discLift || 0, discHidden: !!S.discHidden, basketPhysY: H.basket.y, gravity: GRAV.k, rangeK: GRAV.range, stars: scene.userData.sky.material.uniforms.stars.value, earth: scene.userData.earth.visible,
+    basketVis: (() => { const bg = H.group.children.find(o => o.userData.basketGroup); return bg ? { y: +bg.position.y.toFixed(2), visible: bg.visible } : null; })() }; },
   storyShadow: () => { const sh = H.story?.built?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2) } : null; },
   storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
   treeFade: () => { const v = H.group.userData.treeViz || []; return { trees: v.reduce((n, g) => n + g.list.length, 0), faded: v.reduce((n, g) => n + g.faded.reduce((a, b) => a + b, 0), 0), styles: v.map(g => g.list.length) }; },
