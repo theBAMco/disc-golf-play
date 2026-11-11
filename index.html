@@ -58,6 +58,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; position: fixed; inset: 
 #curvebtns { grid-area: curve; justify-self: center; display: flex; gap: 6px; }
 #curvebtns button { padding: 9px 12px; font-size: 14px; background: rgba(255,255,255,.85); box-shadow: 0 3px 0 #999; }
 #curvebtns button.on { background: #ffe066; box-shadow: 0 3px 0 #c9a800; }
+#curvebtns #tomahawkbtn { background: rgba(225,240,255,.9); }
+#curvebtns #tomahawkbtn.on { background: #ff9f43; color: #fff; box-shadow: 0 3px 0 #b8621a; }
 #curvebtns .lvl:empty { display: none; }
 #curvebtns .lvl { display: inline-block; min-width: 1.35em; margin-left: 4px; padding: 0 4px; border-radius: 9px; background: #1f5f33; color: #fff; font-size: .82em; font-weight: 900; line-height: 1.35em; text-align: center; vertical-align: 1px; }
 #discbtns { grid-area: disc; display: flex; gap: 6px; align-self: end; }
@@ -101,7 +103,7 @@ body.played #help .touch { display: none; } body.played.coarse #help { display: 
 /* Portrait phone: controls stack under the play area */
 @media (max-width: 600px) and (orientation: portrait) {
   #controls { grid-template-columns: 1fr auto; grid-template-areas: "curve curve" "disc aim"; gap: 10px; }
-  #curvebtns { width: 100%; } #curvebtns button { flex: 1; padding: 10px 4px; }
+  #curvebtns { width: 100%; gap: 5px; } #curvebtns button { flex: 1; padding: 10px 3px; min-height: 44px; } #curvebtns .cw { display: none; } #curvebtns #tomahawkbtn { flex: 1.25; }
   #discbtns { width: 100%; } #discbtns button { flex: 1; justify-content: center; padding: 10px 4px; }
   #aimbtns { gap: 6px; } #aimbtns button { width: 50px; height: 46px; font-size: 18px; }
 }
@@ -200,15 +202,16 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
       <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcourse">Change course</button><button id="restartcancel" class="ghost">Cancel</button></div>
       <div id="help">
-        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q left · E right (tap again: 2, 3) · W straight<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
+        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q left · E right (tap again: 2, 3) · W straight<br /><b>Tomahawk</b> T (over trees, lands dead)<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
         <span class="touch"><b>Pull back</b> anywhere to throw<br />Arrow = aim &amp; power · let go<br />Slide back to start to cancel</span>
       </div>
     </div>
     <div id="controls">
       <div id="curvebtns" role="group" aria-label="Curve">
-        <button data-curve="-1" id="hyzerbtn">↰ Left Curve<span class="lvl"></span></button>
+        <button data-curve="-1" id="hyzerbtn">↰ Left<span class="cw"> Curve</span><span class="lvl"></span></button>
         <button data-curve="0" id="straightbtn">Straight</button>
-        <button data-curve="1" id="anhyzerbtn">Right Curve<span class="lvl"></span> ↱</button>
+        <button data-curve="1" id="anhyzerbtn">Right<span class="cw"> Curve</span><span class="lvl"></span> ↱</button>
+        <button id="tomahawkbtn" title="Tomahawk (T): overhead throw — goes up steep, flips and dives; shorter, lands dead">⤴ Tomahawk</button>
       </div>
       <div id="discbtns" role="group" aria-label="Disc">
         <button data-disc="driver" id="disc-driver" title="Driver (1): longest range"><i style="background:#ff7a1a"></i><span>Driver</span><kbd>1</kbd></button>
@@ -1594,6 +1597,9 @@ for (const d of Object.values(DISCS)) {
   body.castShadow = true; g.add(body);
   const stripe = new THREE.Mesh(new THREE.TorusGeometry(DISC_R * 1.0, 0.012, 6, 28), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   stripe.rotation.x = Math.PI / 2; stripe.position.y = d.look.h / 2 + 0.002; g.add(stripe);
+  // underside: a darker cup (shows on top when a tomahawk flips the disc upside down)
+  const belly = new THREE.Mesh(new THREE.CircleGeometry(DISC_R * d.look.rb * 0.86, 24).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(d.color).multiplyScalar(0.35) }));
+  belly.position.y = -d.look.h / 2 - 0.002; g.add(belly);
   discMeshes[d.key] = g; disc.add(g);
 }
 disc.rotation.order = 'YXZ'; // heading, then nose pitch, then bank around the flight line
@@ -1624,7 +1630,7 @@ scene.add(aimArrow);
 const PREVIEW_N = 38;
 const curvePreview = { key: '', base: '', power: -1, t: 0, sims: 0, pts: [], end: null, maxH: 0, outcome: null };
 function updateCurvePreview(power) {
-  const W = S.wind, base = [S.lie.x.toFixed(2), S.lie.z.toFixed(2), S.yaw.toFixed(3), S.disc, S.curve, W.mph, W.deg, COURSE.id, H.name, S.noVents ? 0 : 1].join('|'), key = base + '|' + power.toFixed(3);
+  const W = S.wind, base = [S.lie.x.toFixed(2), S.lie.z.toFixed(2), S.yaw.toFixed(3), S.disc, S.curve, S.tomahawk ? 'T' : '', W.mph, W.deg, COURSE.id, H.name, S.noVents ? 0 : 1].join('|'), key = base + '|' + power.toFixed(3);
   // Only re-fly when the input changed; while only the pull strength moves, re-fly at most ~15 times a second
   // (a big jump in power, or any other change, updates at once)
   const now = performance.now(), onlyPower = base === curvePreview.base && Math.abs(power - curvePreview.power) < 0.08;
@@ -1949,7 +1955,7 @@ function loadHole(idx, { practice = false } = {}) {
   GROUND_U.gStripeDir.value.set(H.basket.x - H.tee.x, H.basket.z - H.tee.z).normalize();
   { const gx = GFX[WORLD.id] || GFX.park, f = Math.atan2(H.basket.x - H.tee.x, -(H.basket.z - H.tee.z)) + gx.sunAz; // yaw of the hole + offset
     scene.userData.sky.material.uniforms.sunDir.value.set(Math.sin(f) * Math.cos(gx.sunEl), Math.sin(gx.sunEl), -Math.cos(f) * Math.cos(gx.sunEl)); }
-  S.throws = 0; S.penalties = 0; S.curve = 0; S.result = null; S.lastThrow = null; S.events = [];
+  S.throws = 0; S.penalties = 0; S.curve = 0; S.tomahawk = false; S.result = null; S.lastThrow = null; S.events = [];
   S.leavesInit = false; S.snowInit = false; S.penguinHops = 0; S.puffs = 0; S.sizzles = 0; S.ventBoosts = 0;
   S.wind = practice || S.windMode === 'calm' ? CALM : windFor(COURSE.id, idx, S.roundSeed, (WORLDS[COURSE.world] || WORLDS.park).windMax, (WORLDS[COURSE.world] || WORLDS.park).windMin);
   setFlagWind();
@@ -2068,14 +2074,15 @@ function throwDisc(power, curve = S.curve) {
   const D = S.D = DISCS[S.disc];
   const q = Math.sqrt(power); // even distance growth across the power range
   const speed = D.vmin + q * (D.vmax - D.vmin);
-  const launch = THREE.MathUtils.degToRad(D.l0 + q * D.l1);
+  const toma = !!S.tomahawk; if (toma) curve = 0;
+  const launch = THREE.MathUtils.degToRad(toma ? TOMA.launch0 + q * TOMA.launch1 : D.l0 + q * D.l1);
   S.dir0.copy(dirFromYaw(S.yaw)); S.right0.set(Math.cos(S.yaw), 0, Math.sin(S.yaw));
   S.prevLie.copy(S.lie);
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
-  S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
+  const sp = toma ? tomaSpeed(speed, q, S.disc) : speed; S.vel.copy(S.dir0).multiplyScalar(sp * Math.cos(launch)); S.vel.y = sp * Math.sin(launch); S.tomaUsed = toma;
   S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.dusted = false; S.ventT = 0; S.vented = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y; S.acc = 0; S.fs = newFlightState(); S.fs.bank = curve * 0.3;
   document.body.classList.add('played');
-  S.lastThrow = { disc: S.disc, power, curve, speed, from: S.lie.clone(), yaw: S.yaw };
+  S.lastThrow = { disc: S.disc, power, curve, speed, from: S.lie.clone(), yaw: S.yaw, tomahawk: toma };
   hideBanner(); hideMenu();
   return true;
 }
@@ -2084,6 +2091,11 @@ function throwDisc(power, curve = S.curve) {
 const G = 9.8;
 // per-world gravity: k scales lift-minus-gravity (the moon floats), lat scales the turn/fade so curves stay readable. Set in applyWorld.
 const GRAV = { k: 1, lat: 1, range: 1 };
+// Tomahawk (overhead throw): steep launch, flips upside down early and dives (lift turns negative), a little late drift left,
+// lands nose-first with almost no skid or roll. About 55-70% of a normal throw's carry. Same stepPhysics as everything else,
+// so the landing ring (simulateThrow) stays exact.
+function tomaSpeed(speed, q, disc) { return speed * (TOMA.speed0 + TOMA.speed1 * q) * (TOMA.discK[disc] || 1) * Math.pow(GRAV.k, TOMA.gravK); } // low gravity: thrown a touch softer so it stays a short throw
+const TOMA = { launch0: 40, launch1: 8, speed0: 0.56, speed1: 0.33, gravK: 0.16, discK: { driver: 1, mid: 1, putter: 1.12 }, flipT: 0.55, liftAfter: -0.35, dragK: 1.15, drift: 1.0, keep: 0.12, bounce: 0.04, friction: 3, carryK: 0.62 };
 // per-throw flight state beyond position/velocity: bank (visual tilt, + = right side down), rolling on edge, inside a canopy
 const newFlightState = () => ({ hold: false, bank: 0, roll: 0, rollT: 0, rolled: false, canopy: false, spin: 1, landBank: undefined, landSteep: 0 });
 // Ground contact per surface: friction = rolling slowdown (m/s²), keep = speed kept on a bounce, slope = downhill pull
@@ -2112,15 +2124,17 @@ function stepPhysics(dt) {
     // a tailwind takes lift away and lets it fade early (it drops). Plus an arcade push along the wind so drift stays readable.
     // slow putts sit low in the air and feel less of it (wa < 1), full throws feel all of it
     const W = S.wind, wa = Math.min(1, S.v0 / 12), wx = W.x * wa, wz = W.z * wa, ax = v.x - wx, az = v.z - wz, va = Math.hypot(ax, az);
-    const lift = Math.min(D.liftMax, D.liftK * va * va);
+    let lift = Math.min(D.liftMax, D.liftK * va * va);
+    const toma = S.tomaUsed, flip = toma ? Math.min(1, S.flightTime / TOMA.flipT) : 0; S.fs.flip = flip;
+    if (toma) lift *= 1 + (TOMA.liftAfter - 1) * flip; // upside down: the lift turns into a push down (the dive)
     v.y += (lift - G) * GRAV.k * dt;
-    const drag = D.dragK * va * va + D.drag0;
+    const drag = (D.dragK * va * va + D.drag0) * (toma ? TOMA.dragK : 1);
     if (va > 0.01) { const k = Math.max(0, va - drag * dt) / va; v.x = wx + ax * k; v.z = wz + az * k; }
     // Flight shape: turn right while the disc is really fast (powerful throws only, most on the Driver), glide,
     // then fade left at the end as it slows (Driver fades most). Q/E curve adds a steady bank on top.
     const slow = THREE.MathUtils.clamp(1 - va / S.v0, 0, 1), fast = 1 - slow, scale = S.v0 / D.vmax;
     const hs = Math.max(0, va / D.vmax - D.hsAt) / (1 - D.hsAt);
-    const lat = (S.curveUsed * D.turn * fast * scale) + D.hst * hs * hs * (S.curveUsed ? 0.2 : 1) - (D.fade * scale * slow * slow);
+    const lat = toma ? -TOMA.drift * flip * slow * (0.5 + scale) : (S.curveUsed * D.turn * fast * scale) + D.hst * hs * hs * (S.curveUsed ? 0.2 : 1) - (D.fade * scale * slow * slow);
     if (!S.knocked) v.addScaledVector(S.right0, lat * GRAV.lat * dt); // after a hard hit the disc just drops
     // the disc banks into its sideways force (visual tilt; also decides edge-roll vs flat skid on landing)
     const fs = S.fs, tgt = THREE.MathUtils.clamp(Math.atan2(S.knocked ? 0 : lat, G) * 1.6, -1.15, 1.15);
@@ -2218,7 +2232,7 @@ function stepPhysics(dt) {
   const g2 = H.groundY(p.x, p.z);
   if (p.y <= g2 + DISC_R) {
     p.y = g2 + DISC_R;
-    if (S.fs.landBank === undefined) { S.fs.landBank = S.fs.bank; S.fs.landSteep = -v.y / (Math.hypot(v.x, v.z) + 0.01); }
+    if (S.fs.landBank === undefined) { S.fs.landAt = { x: p.x, z: p.z }; S.fs.landBank = S.fs.bank; S.fs.landSteep = -v.y / (Math.hypot(v.x, v.z) + 0.01); }
     // Water: only touching down counts (flying over is fine). The disc sinks where it lands or rolls in.
     if (H.hasWater && H.isWater(p.x, p.z)) { v.set(0, 0, 0); return 'water'; }
     // Surface: ice skids on (low friction), deep snow swallows the disc (stops fast), everything else is normal ground
@@ -2228,7 +2242,8 @@ function stepPhysics(dt) {
       if (surf === 'snow' && !S.sim && !S.puffed) { spawnPuff(p.x, p.z); S.puffed = true; }
       else if (!S.sim && !S.dusted && vh > 3) { spawnDust(p.x, p.z, vh); S.dusted = true; }
       const steep = -v.y / (vh + 0.01);
-      if (F.roll && Math.abs(fs.bank) > ROLL.bank && steep < ROLL.steep && vh > ROLL.minV) {
+      if (S.tomaUsed) { v.y = -v.y * TOMA.bounce; v.x *= TOMA.keep; v.z *= TOMA.keep; } // nose-first: it sticks (barely skids, never rolls)
+      else if (F.roll && Math.abs(fs.bank) > ROLL.bank && steep < ROLL.steep && vh > ROLL.minV) {
         // came in hard on its edge at a shallow angle: it stands up and rolls (a rollaway)
         fs.roll = Math.sign(fs.bank); fs.rolled = true; fs.rollT = 0;
         v.y = 0; v.x *= ROLL.keep; v.z *= ROLL.keep;
@@ -2256,7 +2271,7 @@ function stepPhysics(dt) {
         }
         if (h < ROLL.stopV || fs.rollT > ROLL.maxT) fs.roll = 0;
       }
-      const nh = Math.max(0, h - F.friction * (fs.roll ? F.roll : 1) * dt);
+      const nh = Math.max(0, h - F.friction * (fs.roll ? F.roll : 1) * (S.tomaUsed ? TOMA.friction : 1) * dt);
       if (h > 0) { v.x *= nh / h; v.z *= nh / h; }
     }
     // visuals: up on edge while rolling, otherwise settles flat; spin dies away on the ground
@@ -2391,14 +2406,15 @@ function endRound() {
 
 // Predict a throw without changing the game (used by tests and the practice bot).
 // Same physics and step size as a real throw; restores all flight state afterwards.
-function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = null, test = null }) {
-  const keep = { fs: S.fs, knocked: S.knocked, pos: S.pos.clone(), vel: S.vel.clone(), v0: S.v0, dir0: S.dir0.clone(), right0: S.right0.clone(), curveUsed: S.curveUsed, D: S.D, flightTime: S.flightTime, maxY: S.maxY };
+function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = null, test = null, tomahawk = !!S.tomahawk }) {
+  const keep = { tomaUsed: S.tomaUsed, fs: S.fs, knocked: S.knocked, pos: S.pos.clone(), vel: S.vel.clone(), v0: S.v0, dir0: S.dir0.clone(), right0: S.right0.clone(), curveUsed: S.curveUsed, D: S.D, flightTime: S.flightTime, maxY: S.maxY };
   S.sim = true;
   const D = S.D = DISCS[disc], q = Math.sqrt(THREE.MathUtils.clamp(power, 0, 1));
-  let speed = D.vmin + q * (D.vmax - D.vmin), launch = THREE.MathUtils.degToRad(D.l0 + q * D.l1);
+  const toma = !!tomahawk && !test; if (toma) curve = 0; S.tomaUsed = toma;
+  let speed = D.vmin + q * (D.vmax - D.vmin), launch = THREE.MathUtils.degToRad(toma ? TOMA.launch0 + q * TOMA.launch1 : D.l0 + q * D.l1);
   S.dir0.copy(dirFromYaw(yaw)); S.right0.set(Math.cos(yaw), 0, Math.sin(yaw));
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
-  S.vel.copy(S.dir0).multiplyScalar(speed * Math.cos(launch)); S.vel.y = speed * Math.sin(launch);
+  { const sp = toma ? tomaSpeed(speed, q, disc) : speed; S.vel.copy(S.dir0).multiplyScalar(sp * Math.cos(launch)); S.vel.y = sp * Math.sin(launch); }
   if (test) { // tests only: an exact launch (height above ground, speed, flat) to hit things like the basket chains on purpose
     S.pos.y = S.lie.y + test.height; S.vel.copy(S.dir0).multiplyScalar(test.speed); speed = test.speed;
   }
@@ -2423,8 +2439,8 @@ function simulateThrow({ power, disc = S.disc, curve = 0, yaw = S.yaw, path = nu
   const end = { x: S.pos.x, z: S.pos.z };
   if (path) path.push(S.pos.clone());
   if (outcome === 'landed' && H.isOB(end.x, end.z)) outcome = 'ob';
-  const out = { landBank: S.fs.landBank, landSteep: S.fs.landSteep, rolled: !!S.fs.rolled, outcome, end, trees, banks, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
-  Object.assign(S, { fs: keep.fs, knocked: keep.knocked, v0: keep.v0, curveUsed: keep.curveUsed, D: keep.D, flightTime: keep.flightTime, maxY: keep.maxY });
+  const out = { land: S.fs.landAt || null, landBank: S.fs.landBank, landSteep: S.fs.landSteep, rolled: !!S.fs.rolled, outcome, end, trees, banks, bounced, dist: Math.hypot(end.x - H.basket.x, end.z - H.basket.z), maxY: S.maxY };
+  Object.assign(S, { tomaUsed: keep.tomaUsed, fs: keep.fs, knocked: keep.knocked, v0: keep.v0, curveUsed: keep.curveUsed, D: keep.D, flightTime: keep.flightTime, maxY: keep.maxY });
   S.pos.copy(keep.pos); S.vel.copy(keep.vel); S.dir0.copy(keep.dir0); S.right0.copy(keep.right0);
   S.sim = false; S.ventT = keepVentT;
   return out;
@@ -2536,7 +2552,7 @@ function hidePullUI() { for (const el of Object.values(pullUI)) el && el.classLi
 function drawPullUI() {
   const charging = S.phase === 'charging';
   if (!charging) { hidePullUI(); return; }
-  const est = Math.max(1, DISC_RANGE[S.disc] * GRAV.range * S.power);
+  const est = Math.max(1, DISC_RANGE[S.disc] * GRAV.range * S.power * (S.tomahawk ? TOMA.carryK : 1));
   const pct = Math.round(S.power * 100);
   const valid = S.pull ? S.pull.valid : true;
   const html = valid ? `<b>${pct}%</b> <span>~${Math.round(est)} m</span>` : '<b>Pull back</b> <span>to throw · let go here to cancel</span>';
@@ -2558,9 +2574,10 @@ addEventListener('keydown', e => {
   keys[k] = true;
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) startCharge(); }
   if (k === 'r' && !e.repeat) { e.shiftKey ? restartRound() : restartHole(); }
-  if (k === 'q' && !e.repeat) stepCurve(-1);
-  if (k === 'e' && !e.repeat) stepCurve(1);
-  if (k === 'w' && !e.repeat) S.curve = 0;
+  if (k === 'q' && !e.repeat) { S.tomahawk = false; stepCurve(-1); }
+  if (k === 'e' && !e.repeat) { S.tomahawk = false; stepCurve(1); }
+  if (k === 'w' && !e.repeat) { S.tomahawk = false; S.curve = 0; }
+  if (k === 't' && !e.repeat) toggleTomahawk();
   if (k === 'c' && !e.repeat) toggleCard();
   if ((k === 'enter' || k === 'n') && !e.repeat) { if (S.phase === 'holed') nextHole(); else if (S.phase === 'done' && k === 'enter') restartRound(); }
   if (k === 'escape') { hideMenu(); if (S.phase !== 'done') hideCard(); }
@@ -2596,9 +2613,11 @@ function holdButton(el, down, up) {
 }
 holdButton($('aimleft'), () => { keys['_touchleft'] = true; }, () => { keys['_touchleft'] = false; });
 holdButton($('aimright'), () => { keys['_touchright'] = true; }, () => { keys['_touchright'] = false; });
-for (const b of document.querySelectorAll('#curvebtns button')) {
-  b.addEventListener('pointerdown', e => { e.preventDefault(); const c = Number(b.dataset.curve); if (c === 0) S.curve = 0; else stepCurve(c); });
+for (const b of document.querySelectorAll('#curvebtns button[data-curve]')) {
+  b.addEventListener('pointerdown', e => { e.preventDefault(); S.tomahawk = false; const c = Number(b.dataset.curve); if (c === 0) S.curve = 0; else stepCurve(c); });
 }
+function toggleTomahawk(on = !S.tomahawk) { S.tomahawk = !!on; if (S.tomahawk) S.curve = 0; }
+$('tomahawkbtn').addEventListener('pointerdown', e => { e.preventDefault(); toggleTomahawk(); });
 for (const b of document.querySelectorAll('#discbtns button')) {
   b.addEventListener('pointerdown', e => { e.preventDefault(); selectDisc(b.dataset.disc); });
 }
@@ -2622,7 +2641,7 @@ function fitView() {
 addEventListener('resize', fitView); addEventListener('orientationchange', fitView); fitView();
 
 // ---------- Loop ----------
-const curveBtns = [...document.querySelectorAll('#curvebtns button')];
+const curveBtns = [...document.querySelectorAll('#curvebtns button[data-curve]')], tomaBtn = $('tomahawkbtn');
 const discBtns = [...document.querySelectorAll('#discbtns button')];
 let last = performance.now();
 // ---------- Course stories: one clue prop per hole, a caption, and a reveal after the last hole ----------
@@ -3230,7 +3249,8 @@ function frame(now) {
     if (h > 0.5) discHeading = Math.atan2(-S.vel.x, -S.vel.z);
     discSpin += dt * (4 + 26 * fs.spin); discWob += dt * (14 + 10 * (1 - fs.spin));
     const amp = air ? 0.035 : fs.roll ? 0.05 : 0.16 * fs.spin * (1 - fs.spin) * 4 * Math.min(1, h + 0.3);
-    disc.rotation.set((air && !S.knocked ? 0.12 : 0) + amp * Math.sin(discWob), discHeading, -fs.bank + amp * Math.cos(discWob));
+    const fl = S.tomaUsed ? (fs.flip || 0) : 0; // tomahawk: rolls over onto its back early in the flight, nose tipped down for the dive
+    disc.rotation.set((air && !S.knocked ? 0.12 : 0) - fl * 0.5 * (air ? 1 : 0) + amp * Math.sin(discWob), discHeading, -fs.bank + Math.PI * fl + amp * Math.cos(discWob));
   } else {
     discHeading = -S.yaw; discSpin += dt; disc.rotation.set(0, discHeading, 0);
   }
@@ -3245,7 +3265,7 @@ function frame(now) {
   if (aiming) {
     // while charging the ring marks the rough straight carry at this power; otherwise this disc's full range
     // with a curve picked, dots show the bend and the ring sits where the curved (no-wind) flight lands
-    const rp = TMP.rp.set(Math.sin(S.yaw), 0, -Math.cos(S.yaw)).multiplyScalar((showPower ? Math.max(1.5, DISC_RANGE[S.disc] * S.power) : DISC_RANGE[S.disc]) * GRAV.range).add(S.lie);
+    const rp = TMP.rp.set(Math.sin(S.yaw), 0, -Math.cos(S.yaw)).multiplyScalar((showPower ? Math.max(1.5, DISC_RANGE[S.disc] * S.power) : DISC_RANGE[S.disc]) * GRAV.range * (S.tomahawk ? TOMA.carryK : 1)).add(S.lie);
     { const e = updateCurvePreview(showPower ? Math.max(0.05, S.power) : 1); if (e) { rp.x = e.x; rp.z = e.z; } }
     if (!S.pull && S.phase === 'aim') S.camOff = previewCamOffset();
     rangeRing.position.set(rp.x, H.groundY(rp.x, rp.z) + 0.07 + Math.min(0.25, Math.hypot(rp.x - S.lie.x, rp.z - S.lie.z) / 400), rp.z); rangeRing.scale.setScalar(THREE.MathUtils.clamp(Math.hypot(rp.x - S.lie.x, rp.z - S.lie.z) / 45, 1, 2.4)); // bigger far away so it stays readable
@@ -3279,7 +3299,7 @@ function frame(now) {
   setText(ui.dist, `${(S.phase === 'flying' ? Math.hypot(S.pos.x - H.basket.x, S.pos.z - H.basket.z) : distToBasket()).toFixed(1)} m`);
   setText(ui.total, r.played ? `${fmtToPar(r.toPar)} thru ${r.played}` : 'E');
   setText(ui.curve, curveName(S.curve));
-  { const lv = curveLevel(S.curve); for (const b of curveBtns) { const c = Number(b.dataset.curve), on = c === 0 ? lv === 0 : Math.sign(lv) === c; b.classList.toggle('on', on);
+  { const lv = curveLevel(S.curve); tomaBtn.classList.toggle('on', !!S.tomahawk); for (const b of curveBtns) { const c = Number(b.dataset.curve), on = !S.tomahawk && (c === 0 ? lv === 0 : Math.sign(lv) === c); b.classList.toggle('on', on);
     const pill = b.querySelector('.lvl'); if (pill) { const t = on ? String(Math.abs(lv)) : ''; if (pill.textContent !== t) pill.textContent = t; } } }
   const D = DISCS[S.disc];
   setText(ui.disc, D.name); if (ui.disc._c !== D.css) { ui.disc.style.color = D.css; ui.disc._c = D.css; }
@@ -3305,8 +3325,8 @@ requestAnimationFrame(frame);
 document.getElementById('bootmsg')?.remove();
 window.__game = {
   state: () => ({ disc: S.disc, suggested: S.suggested, events: S.events.slice(-10), phase: S.phase, throws: S.throws, penalties: S.penalties,
-    lastThrow: S.lastThrow && { disc: S.lastThrow.disc, power: S.lastThrow.power, speed: S.lastThrow.speed, curve: S.lastThrow.curve },
-    yaw: S.yaw, curve: S.curve, curveLevel: curveLevel(S.curve), power: S.power, maxY: S.maxY,
+    lastThrow: S.lastThrow && { disc: S.lastThrow.disc, power: S.lastThrow.power, speed: S.lastThrow.speed, curve: S.lastThrow.curve, tomahawk: !!S.lastThrow.tomahawk },
+    yaw: S.yaw, curve: S.curve, curveLevel: curveLevel(S.curve), tomahawk: !!S.tomahawk, power: S.power, maxY: S.maxY,
     pull: S.pull && { valid: S.pull.valid, frac: S.pull.frac, power: S.pull.power, offset: S.pull.offset, baseYaw: S.pull.baseYaw },
     arrow: powerArrow.visible ? { length: PA.shaft.scale.y, color: '#' + PA.fill.color.getHexString(), yaw: S.yaw } : null,
     ring: rangeRing.visible ? { x: rangeRing.position.x, z: rangeRing.position.z } : null,
@@ -3362,14 +3382,14 @@ window.__game = {
   setAim(yaw) { S.yaw = yaw; },
   aimAtBasket() { S.yaw = yawToward(S.lie, H.basket); },
   aimAt(x, z) { S.yaw = yawToward(S.lie, new THREE.Vector3(x, 0, z)); },
-  setCurve(c) { S.curve = c; },
+  setCurve(c) { S.curve = c; S.tomahawk = false; }, setTomahawk: (on) => toggleTomahawk(on), TOMA, tomahawk: () => ({ on: !!S.tomahawk, used: !!S.tomaUsed, flip: S.fs?.flip || 0, discRollZ: +disc.rotation.z.toFixed(3) }),
   curveLevels: CURVE_LEVELS,
   throwWith(power, curve) { return throwDisc(power, curve ?? S.curve); },
   discs: DISC_ORDER, selectDisc, discRange: DISC_RANGE,
   pullMetrics, easePower, PULL, CHARGE_FULL_S,
   // screen offset (from the press point) that gives this power and aim offset; used by tests to drag precisely
   pullFor(power, offset = 0) { const { max, dead } = pullMetrics(); const f = Math.pow(power, 1 / POWER_EASE), len = dead + f * (max - dead), a = offset / PULL.aimGain; return { dx: -Math.sin(a) * len, dy: Math.cos(a) * len }; },
-  screenOf(x, z) { const v = new THREE.Vector3(x, H.groundY(x, z), z).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; },
+  screenOf(x, z, y) { const v = new THREE.Vector3(x, y ?? H.groundY(x, z), z).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; },
   simulate: (o) => simulateThrow(o),
   yawToBasket: () => yawToward(S.lie, H.basket),
   fastForward() { let n = 0; while (S.phase === 'flying' && n++ < 60 * 40) updateFlight(1 / 60); finishSplash(); return this.state(); },
