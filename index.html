@@ -509,14 +509,13 @@ const ICE_COURSE = {
       rocks: [{ x: -12, z: -12, s: 1.3 }, { x: 15, z: -50, s: 1 }],
     },
     {
-      name: 'The Rink', par: 3, tip: 'An ice rink to the basket and the sea behind it. Land short and let it slide — too hot and it skates into the water.',
+      name: 'Ice Chute', par: 3, tip: 'A luge run of glare ice between snow walls. Land anywhere in the chute and it slides toward the basket. Too hot and it skates into the sea.',
       tee: [0, 0], basket: [0, -82], width: 12, ob: 10,
       path: [[0, 0], [0, -80]],
-      icePatches: [{ pts: [[0, -40], [0, -84]], w: 13 }],
+      icePatches: [{ pts: [[0, -30], [0, -84]], w: 10 }],
+      banks: [{ from: [-5.8, -30], to: [-5.8, -80], h: 0.8, w: 1.4 }, { from: [5.8, -30], to: [5.8, -80], h: 0.8, w: 1.4 }],
       snowDrifts: [{ pts: [[-12, -34], [-12, -88]], w: 8 }, { pts: [[12, -34], [12, -88]], w: 8 }],
       rivers: [{ pts: [[-70, -94], [0, -91], [70, -96]], w: 7 }],
-      penguins: [{ x: 22, z: -60, n: 5, r: 3 }],
-      rocks: [{ x: -8, z: -18, s: 1.1 }],
     },
     {
       name: 'Ice Arch', par: 3, tip: 'A wall of seracs with an arch in the middle. Thread it low, or loft it over the top.',
