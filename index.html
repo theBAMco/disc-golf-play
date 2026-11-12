@@ -130,24 +130,62 @@ body.charging #help { visibility: hidden; }
 #scorebox .coursename { font-size: 11px; font-weight: 800; letter-spacing: .06em; opacity: .85; text-transform: uppercase; margin-bottom: 1px; }
 body[data-world="river"] #scorebox .title { color: #9fe3ff; }
 body[data-world="lava"] #scorebox .title { color: #ffb066; }
-/* Course picker */
-#picker { position: absolute; inset: 0; display: grid; place-items: center; overflow-y: auto; pointer-events: auto; z-index: 8; background: linear-gradient(180deg, rgba(10,50,40,.55), rgba(0,20,10,.75)); padding: 16px; }
-#picker .pickpanel { width: min(440px, 100%); text-align: center; }
-.picktitle { font-size: 34px; font-weight: 900; color: #ffe066; }
-.picksub { font-size: 16px; margin: 2px 0 14px; }
-#picklist { display: flex; flex-direction: column; gap: 12px; }
-#hud button.pickcourse { display: grid; grid-template-columns: 1fr auto; text-align: left; gap: 2px 10px; padding: 16px 18px; min-height: 92px; border-radius: 18px; color: #fff;
-  background: linear-gradient(120deg, var(--tint), var(--tint2)); box-shadow: 0 4px 0 rgba(0,0,0,.35); text-shadow: 0 1px 3px rgba(0,0,0,.55); }
-.pickcourse .pname { font-size: 24px; font-weight: 900; } .pickcourse .pinfo { font-size: 15px; font-weight: 800; align-self: center; text-align: right; }
-.pickcourse .pblurb { font-size: 14px; font-weight: 600; opacity: .95; } .pickcourse .pbest { font-size: 13px; font-weight: 700; text-align: right; color: #ffe066; }
-#pickback { margin-top: 14px; padding: 11px 26px; font-size: 16px; }
-@media (max-height: 500px) { .picktitle { font-size: 24px; } .picksub { margin-bottom: 8px; } #picklist { flex-direction: row; } #hud button.pickcourse { flex: 1; min-height: 0; padding: 12px 14px; }
-  #picker .pickpanel { width: min(820px, 100%); }
-  #hud button.pickcourse { grid-template-columns: 1fr; gap: 3px; } .pickcourse .pname { font-size: 21px; } .pickcourse .pinfo, .pickcourse .pbest { text-align: left; align-self: start; }
-  #picklist { gap: 10px; } #hud button.pickcourse { padding: 11px 12px; } .pickcourse .pname { font-size: 19px; } .pickcourse .pblurb { font-size: 13px; } }
-/* Four courses on a portrait phone: tighter cards so the whole list and Back fit */
-@media (max-width: 600px) and (min-height: 501px) { #picklist { gap: 10px; } #hud button.pickcourse { min-height: 0; padding: 13px 16px; } .picksub { margin-bottom: 10px; } }
-@media (max-width: 600px) and (min-height: 501px) and (max-height: 720px) { .picktitle { font-size: 28px; } #hud button.pickcourse { padding: 10px 14px; } .pickcourse .pname { font-size: 21px; } #picklist { gap: 8px; } }
+/* Home screen: side-scrolling world select (swipe / arrows), background fades per world */
+@property --ha { syntax: '<color>'; inherits: false; initial-value: #3d8be0; }
+@property --hb { syntax: '<color>'; inherits: false; initial-value: #6cc04a; }
+#picker { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; pointer-events: auto; z-index: 8;
+  background: radial-gradient(120% 70% at 50% 18%, rgba(255,255,255,.18), rgba(255,255,255,0) 60%), linear-gradient(180deg, var(--ha), var(--hb)); transition: --ha .7s ease, --hb .7s ease;
+  padding: max(14px, env(safe-area-inset-top)) 0 max(14px, env(safe-area-inset-bottom)); }
+#picker .pickpanel { width: 100%; max-width: 900px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.picktitle { font-size: 34px; font-weight: 900; color: #ffe066; letter-spacing: .5px; }
+.picksub { font-size: 16px; margin: 0 0 12px; font-weight: 700; }
+#homestage { position: relative; width: 100%; }
+#homeviewport { width: 100%; overflow: hidden; touch-action: none; padding: 10px 0 18px; }
+#picklist { display: flex; gap: 16px; transition: transform .45s cubic-bezier(.2,.8,.2,1); will-change: transform; }
+#picklist.dragging { transition: none; }
+#hud button.pickcourse, #picklist .upcoming { flex: 0 0 var(--cw, 280px); height: var(--ch, 400px); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 6px; padding: 18px 16px 16px; border-radius: 26px; color: #fff; text-align: center; overflow: hidden;
+  background: linear-gradient(165deg, var(--tint), var(--tint2)); box-shadow: 0 6px 0 rgba(0,0,0,.35), 0 14px 30px rgba(0,0,0,.3); text-shadow: 0 1px 3px rgba(0,0,0,.55);
+  transform: scale(.86); opacity: .62; transition: transform .45s ease, opacity .45s ease; }
+#hud button.pickcourse.sel, #picklist .upcoming.sel { transform: scale(1); opacity: 1; }
+#hud button.pickcourse:active { transform: scale(.98); }
+.pickcourse .pworld { font-size: 12px; font-weight: 900; letter-spacing: 2px; opacity: .85; text-transform: uppercase; }
+.pickcourse .pname, .upcoming .pname { font-size: 30px; font-weight: 900; line-height: 1.05; }
+.pickcourse .pclue { width: 120px; height: 92px; margin: 6px 0 0; display: grid; place-items: center; }
+.pickcourse .pclue svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.pickcourse .pcluetxt { font-size: 13px; font-weight: 700; font-style: italic; opacity: .95; min-height: 2.4em; padding: 0 4px; }
+.pickcourse .pstars { font-size: 30px; letter-spacing: 3px; color: #ffe066; line-height: 1; margin-top: auto; }
+.pickcourse .pstars .off { color: rgba(255,255,255,.35); }
+.pickcourse .pinfo { font-size: 16px; font-weight: 800; }
+.pickcourse .pbest { font-size: 15px; font-weight: 800; color: #ffe066; }
+.pickcourse .pplay { font-size: 15px; font-weight: 900; background: rgba(0,0,0,.28); padding: 6px 16px; border-radius: 99px; opacity: 0; transition: opacity .3s; }
+.pickcourse.sel .pplay { opacity: 1; }
+.pickcourse .plock { display: none; }
+#hud button.pickcourse.locked { background: linear-gradient(165deg, #2b2b33, #121217); }
+.pickcourse.locked .pclue, .pickcourse.locked .pcluetxt, .pickcourse.locked .pplay, .pickcourse.locked .pstars { display: none; }
+.pickcourse.locked .plock { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: auto 0; font-size: 15px; font-weight: 800; opacity: .95; }
+.pickcourse.locked .plock b { font-size: 54px; line-height: 1; }
+.pickcourse.locked.shake { animation: homeshake .4s; }
+@keyframes homeshake { 25% { translate: -8px 0; } 50% { translate: 8px 0; } 75% { translate: -5px 0; } }
+#picklist .upcoming { background: linear-gradient(165deg, #1a1a20, #050507); justify-content: center; }
+.upcoming .psil { width: 150px; height: 120px; border-radius: 50% 50% 18px 18px; background: #000; box-shadow: 0 0 0 3px rgba(255,255,255,.08); display: grid; place-items: center;
+  font-size: 76px; font-weight: 900; color: rgba(255,255,255,.55); text-shadow: none; }
+.upcoming .pname { font-size: 22px; opacity: .6; }
+#hud button.homearrow { position: absolute; top: 50%; transform: translateY(-60%); z-index: 2; width: 48px; height: 64px; font-size: 22px; border-radius: 16px;
+  background: rgba(255,255,255,.88); box-shadow: 0 3px 0 rgba(0,0,0,.3); }
+#homeprev { left: max(6px, env(safe-area-inset-left)); } #homenext { right: max(6px, env(safe-area-inset-right)); }
+#hud button.homearrow:disabled { opacity: .25; }
+#homeground { position: relative; width: 100%; height: 40px; margin-top: -30px; pointer-events: none; }
+#homeground::before { content: ""; position: absolute; left: 8%; right: 8%; top: 30px; height: 4px; border-radius: 2px; background: rgba(0,0,0,.22); }
+#homedisc { position: absolute; left: 50%; top: 2px; width: 34px; height: 28px; margin-left: -17px; }
+#homedisc i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #ffe066 0 22%, #ff7a1a 23% 100%); box-shadow: 0 0 0 2px rgba(0,0,0,.35), 0 3px 4px rgba(0,0,0,.35); }
+#homedots { display: flex; gap: 8px; margin-top: 6px; } #homedots span { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.4); transition: background .3s, transform .3s; }
+#homedots span.on { background: #fff; transform: scale(1.3); } #homedots span.soon { background: rgba(0,0,0,.4); }
+#homemsg { min-height: 22px; margin-top: 8px; font-size: 15px; font-weight: 800; color: #ffe066; }
+#pickback { margin-top: 8px; padding: 11px 26px; font-size: 16px; }
+@media (max-height: 500px) { .picktitle { font-size: 22px; } .picksub { margin-bottom: 2px; font-size: 14px; } #homeviewport { padding: 4px 0 10px; }
+  .pickcourse .pclue { width: 76px; height: 54px; margin: 0; } .pickcourse .pname { font-size: 22px; } .pickcourse .pstars { font-size: 22px; } .pickcourse .pcluetxt { display: none; }
+  #hud button.pickcourse, #picklist .upcoming { gap: 3px; padding: 10px 12px; } #homemsg { margin-top: 0; min-height: 0; } #pickback { margin-top: 2px; padding: 8px 22px; } #homedots { margin-top: 2px; } }
 
 /* Wind key: dial arrow = which way the wind pushes the disc on screen; colour = strength */
 #windkey { --wind: #dfe8e2; display: flex; align-items: center; gap: 8px; background: rgba(10,40,20,.55); border-radius: 14px; padding: 6px 12px 6px 6px; }
@@ -200,7 +238,7 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
     </div>
     <div id="topright">
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
-      <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcourse">Change course</button><button id="restartcancel" class="ghost">Cancel</button></div>
+      <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcourse">Home</button><button id="restartcancel" class="ghost">Cancel</button></div>
       <div id="help">
         <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q left · E right (tap again: 2, 3) · W straight<br /><b>Tomahawk</b> T (over trees, lands dead)<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
         <span class="touch"><b>Pull back</b> anywhere to throw<br />Arrow = aim &amp; power · let go<br />Slide back to start to cancel</span>
@@ -223,12 +261,12 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
         <button id="aimright" aria-label="Aim right">▶</button>
       </div>
     </div>
-    <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a course</div><div id="picklist"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
+    <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a world</div><div id="homestage"><button id="homeprev" class="homearrow" aria-label="Previous world">◀</button><div id="homeviewport"><div id="picklist"></div></div><button id="homenext" class="homearrow" aria-label="Next world">▶</button></div><div id="homeground"><div id="homedisc"><i></i></div></div><div id="homedots"></div><div id="homemsg"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
     <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
     <div id="storycap" class="hidden"></div>
     <div id="storyreveal" class="hidden"><b></b><span></span></div>
     <div id="banner" class="hidden"><div id="bannertext"></div><div id="bannersub"></div><button id="nextbtn" class="hidden">Next hole ▶</button><button id="againbtn" class="hidden">Play again</button></div>
-    <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardcourse" class="ghost">Courses</button><button id="cardclose" class="ghost">Close</button></div></div></div>
+    <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardcourse" class="ghost">Home</button><button id="cardclose" class="ghost">Close</button></div></div></div>
   </div>
   <!-- Shown until the game starts; turns into a friendly message if 3D/WebGL or the game script fails -->
   <div id="bootmsg" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#3d8be0;color:#fff;font:600 18px/1.5 system-ui,sans-serif;z-index:9999">Loading Disc Golf…</div>
@@ -2038,16 +2076,106 @@ function loadCourse(id) {
   ui.course.textContent = COURSE.name;
   loadHole(0); return true;
 }
-const picker = { el: document.getElementById('picker'), list: document.getElementById('picklist'), back: document.getElementById('pickback'), resume: null };
+// ---------- Home screen: side-scrolling world select ----------
+// Unlock rule: shoot par (or better) on a world to open the next one. OFF while Ben is building (every world open);
+// flip UNLOCK_WORLDS to true at publish. ?unlocks=1 (or __game.setUnlocks(true)) turns it on for testing.
+const UNLOCK_WORLDS = false;
+// Stars from the best round: 3 = 3 under par or better, 2 = par to 2 under, 1 = finished (over par), 0 = not played
+const starsFor = (best, par) => !best ? 0 : best <= par - 3 ? 3 : best <= par ? 2 : 1;
+const HOME_BG = { park: ['#3d8be0', '#3f8f34'], river: ['#2f7fc0', '#1f8f9a'], ice: ['#9fd3ff', '#4c79a8'], lava: ['#2a1420', '#c8461a'], moon: ['#04050b', '#3c3c48'], soon: ['#121216', '#2a2a30'] };
+const HOME_SOON = 2; // dark "coming soon" silhouettes at the end
+// one tiny monster clue per world (never the monster itself), matching each world's story
+const HOME_CLUE = {
+  park: { txt: 'Huge muddy footprints between the maples…', svg: '<svg viewBox="0 0 120 92"><g fill="#3b2a1a" opacity=".85"><ellipse cx="38" cy="58" rx="13" ry="17"/><circle cx="24" cy="34" r="5"/><circle cx="35" cy="27" r="5"/><circle cx="47" cy="29" r="5"/><circle cx="55" cy="39" r="4.5"/><ellipse cx="86" cy="40" rx="12" ry="16" transform="rotate(12 86 40)"/><circle cx="74" cy="16" r="4.5"/><circle cx="85" cy="11" r="4.5"/><circle cx="96" cy="14" r="4.5"/><circle cx="103" cy="24" r="4"/></g></svg>' },
+  river: { txt: 'Big rings on the water… but nothing there.', svg: '<svg viewBox="0 0 120 92"><g fill="none" stroke="#e8fbff" stroke-linecap="round"><ellipse cx="60" cy="52" rx="14" ry="5" stroke-width="4"/><ellipse cx="60" cy="52" rx="32" ry="12" stroke-width="3.5" opacity=".75"/><ellipse cx="60" cy="52" rx="52" ry="20" stroke-width="3" opacity=".45"/></g><circle cx="60" cy="50" r="3" fill="#fff"/></svg>' },
+  antarctica: { txt: 'Giant claw marks in the ice wall.', svg: '<svg viewBox="0 0 120 92"><rect x="8" y="6" width="104" height="80" rx="12" fill="#dff3ff" opacity=".9"/><g stroke="#4a7ea8" stroke-width="7" stroke-linecap="round"><path d="M34 16 L52 78"/><path d="M52 12 L68 76"/><path d="M70 14 L84 72"/><path d="M88 20 L98 62"/></g></svg>' },
+  volcano: { txt: 'The ground is cracking… and glowing.', svg: '<svg viewBox="0 0 120 92"><rect x="6" y="20" width="108" height="64" rx="12" fill="#2b1a18"/><path d="M14 52 L34 44 L44 58 L62 40 L74 56 L90 46 L106 54" fill="none" stroke="#ffb347" stroke-width="5" stroke-linejoin="round"/><path d="M44 58 L48 76 M74 56 L70 74" stroke="#ff7a1a" stroke-width="3.5"/><path d="M60 18 C 52 8, 68 6, 60 -2" stroke="#bbb" stroke-width="4" fill="none" opacity=".7"/></svg>' },
+  moon: { txt: 'A huge shadow swept over the dust…', svg: '<svg viewBox="0 0 120 92"><ellipse cx="60" cy="70" rx="50" ry="13" fill="#000" opacity=".55"/><ellipse cx="60" cy="70" rx="30" ry="7" fill="#000" opacity=".5"/><g fill="#fff"><circle cx="18" cy="14" r="1.6"/><circle cx="96" cy="10" r="1.3"/><circle cx="76" cy="26" r="1.1"/><circle cx="34" cy="30" r="1"/></g></svg>' },
+};
+const picker = { el: document.getElementById('picker'), list: document.getElementById('picklist'), back: document.getElementById('pickback'), resume: null, sel: 0, discAt: -1, msgT: 0 };
+const homeUI = { vp: $('homeviewport'), prev: $('homeprev'), next: $('homenext'), disc: $('homedisc'), dots: $('homedots'), msg: $('homemsg') };
+function worldUnlocked(i) {
+  if (!S.unlocks || i <= 0) return true;
+  const c = COURSES[i - 1], b = loadBest(c.id); return b != null && b <= coursePar(c);
+}
+const homeCount = () => COURSES.length + HOME_SOON;
 function renderPicker() {
-  picker.list.innerHTML = COURSES.map(c => { const par = coursePar(c), b = loadBest(c.id), w = WORLDS[c.world] || WORLDS.park;
-    return `<button class="pickcourse" id="pick-${c.id}" data-course="${c.id}" style="--tint:#${new THREE.Color(w.pick ? w.pick[0] : w.ground.fairway).getHexString()};--tint2:#${new THREE.Color(w.pick ? w.pick[1] : w.water || w.ground.ob).getHexString()}">
-      <span class="pname">${c.name}</span><span class="pinfo">${c.holes.length} holes · Par ${par}</span><span class="pblurb">${c.blurb || ''}</span>
-      <span class="pbest">${b ? `Best ${b} (${fmtToPar(b - par)})` : 'Not played yet'}</span></button>`; }).join('');
-  for (const b of picker.list.querySelectorAll('button')) b.addEventListener('click', () => loadCourse(b.dataset.course));
+  const cards = COURSES.map((c, i) => { const par = coursePar(c), b = loadBest(c.id), w = WORLDS[c.world] || WORLDS.park, st = starsFor(b, par), clue = HOME_CLUE[c.id] || HOME_CLUE.park;
+    const open = worldUnlocked(i), prev = COURSES[i - 1];
+    return `<button class="pickcourse${open ? '' : ' locked'}" id="pick-${c.id}" data-course="${c.id}" data-i="${i}" ${open ? '' : 'aria-disabled="true"'} style="--tint:#${new THREE.Color(w.pick ? w.pick[0] : w.ground.fairway).getHexString()};--tint2:#${new THREE.Color(w.pick ? w.pick[1] : w.water || w.ground.ob).getHexString()}">
+      <span class="pworld">World ${i + 1}</span><span class="pname">${c.name}</span>
+      <span class="pclue">${clue.svg}</span><span class="pcluetxt">${clue.txt}</span>
+      <span class="plock"><b>🔒</b>Shoot par on ${prev ? prev.name : ''} to open</span>
+      <span class="pstars" aria-label="${st} of 3 stars">${'★'.repeat(st)}<span class="off">${'★'.repeat(3 - st)}</span></span>
+      <span class="pinfo">${c.holes.length} holes · Par ${par}</span>
+      <span class="pbest">${b ? `Best ${b} (${fmtToPar(b - par)})` : 'Not played yet'}</span>
+      <span class="pplay">Tap to play ▶</span></button>`; });
+  for (let k = 0; k < HOME_SOON; k++) cards.push(`<div class="upcoming" data-i="${COURSES.length + k}"><span class="psil">?</span><span class="pname">Coming soon</span></div>`);
+  picker.list.innerHTML = cards.join('');
+  homeUI.dots.innerHTML = Array.from({ length: homeCount() }, (_, i) => `<span class="${i >= COURSES.length ? 'soon' : ''}"></span>`).join('');
+  for (const b of picker.list.children) b.addEventListener('click', () => homeTap(Number(b.dataset.i)));
+  homeLayout(); homeSelect(picker.sel, { instant: true });
+}
+// card size from the screen: big on a portrait phone, the neighbours peek in at the sides
+function homeLayout() {
+  const W = innerWidth, H = innerHeight, land = H < 500;
+  const cw = land ? Math.min(250, W * 0.3) : Math.min(320, W * 0.72), ch = land ? Math.min(240, H - 150) : Math.min(430, Math.max(300, H * 0.5));
+  picker.list.style.setProperty('--cw', cw + 'px'); picker.list.style.setProperty('--ch', ch + 'px'); picker.cw = cw;
+}
+function homeOffset(i, drag = 0) { const gap = 16, vw = homeUI.vp.clientWidth || innerWidth; return vw / 2 - (i * (picker.cw + gap) + picker.cw / 2) + drag; }
+function homeSelect(i, { instant = false } = {}) {
+  const n = homeCount(); i = Math.max(0, Math.min(n - 1, i)); const from = picker.sel; picker.sel = i;
+  if (instant) picker.list.classList.add('dragging');
+  picker.list.style.transform = `translateX(${homeOffset(i)}px)`;
+  if (instant) { void picker.list.offsetWidth; picker.list.classList.remove('dragging'); }
+  [...picker.list.children].forEach((c, k) => c.classList.toggle('sel', k === i));
+  [...homeUI.dots.children].forEach((d, k) => d.classList.toggle('on', k === i));
+  homeUI.prev.disabled = i === 0; homeUI.next.disabled = i === n - 1;
+  const c = COURSES[i], bg = HOME_BG[c ? (WORLDS[c.world] || WORLDS.park).id : 'soon'];
+  picker.el.style.setProperty('--ha', bg[0]); picker.el.style.setProperty('--hb', bg[1]); picker.bg = c ? c.world : 'soon';
+  homeUI.msg.textContent = '';
+  homeDiscHop(instant ? 0 : Math.sign(i - from));
+}
+// the little disc rolls along the ground line from the side it came from, then hops up onto the selected card
+function homeDiscHop(dir) {
+  const d = homeUI.disc; picker.discAt = -1; const target = picker.sel;
+  d.getAnimations?.().forEach(a => a.cancel());
+  if (!d.animate) { picker.discAt = target; return; }
+  const sx = dir ? -dir * 150 : 0;
+  const roll = d.animate([{ transform: `translate(${sx}px, 0) rotate(${dir ? -dir * 540 : 0}deg)` }, { transform: 'translate(0, 0) rotate(0deg)' }], { duration: dir ? 520 : 1, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards' });
+  roll.onfinish = () => { if (picker.sel !== target) return;
+    const hop = d.animate([{ transform: 'translate(0, 0)' }, { transform: 'translate(0, -34px) scale(1.08, .94)', offset: 0.45 }, { transform: 'translate(0, -7px)' }], { duration: 380, easing: 'ease-out', fill: 'forwards' });
+    hop.onfinish = () => { if (picker.sel === target) picker.discAt = target; }; };
+}
+function homeTap(i) {
+  if (picker.dragged) return; // the end of a swipe is not a tap
+  if (i !== picker.sel) return homeSelect(i);
+  homePlay();
+}
+function homePlay() {
+  const i = picker.sel, c = COURSES[i];
+  if (!c) { homeMsg('New worlds are on the way!'); return; }
+  if (!worldUnlocked(i)) { const el = picker.list.children[i]; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); homeMsg(`Shoot par on ${COURSES[i - 1].name} to open ${c.name}`); return; }
+  loadCourse(c.id);
+}
+function homeMsg(t) { homeUI.msg.textContent = t; }
+homeUI.prev.addEventListener('click', () => homeSelect(picker.sel - 1));
+homeUI.next.addEventListener('click', () => homeSelect(picker.sel + 1));
+{ // swipe: the cards follow the finger; let go past ~45 px (or a quick flick) to move one world
+  let x0 = null, t0 = 0, id = null;
+  homeUI.vp.addEventListener('pointerdown', e => { x0 = e.clientX; t0 = performance.now(); id = e.pointerId; picker.dragged = false; });
+  homeUI.vp.addEventListener('pointermove', e => { if (x0 == null || e.pointerId !== id) return; const dx = e.clientX - x0;
+    if (!picker.dragged && Math.abs(dx) > 10) { picker.dragged = true; picker.list.classList.add('dragging'); try { homeUI.vp.setPointerCapture(id); } catch {} }
+    if (picker.dragged) picker.list.style.transform = `translateX(${homeOffset(picker.sel, dx * (picker.sel === 0 && dx > 0 || picker.sel === homeCount() - 1 && dx < 0 ? 0.35 : 1))}px)`; });
+  const up = e => { if (x0 == null || e.pointerId !== id) return; const dx = e.clientX - x0, fast = Math.abs(dx) > 18 && performance.now() - t0 < 250; x0 = null;
+    if (picker.dragged) { picker.list.classList.remove('dragging'); homeSelect(picker.sel + (dx < -45 || (fast && dx < 0) ? 1 : dx > 45 || (fast && dx > 0) ? -1 : 0));
+      setTimeout(() => { picker.dragged = false; }, 0); } };
+  homeUI.vp.addEventListener('pointerup', up); homeUI.vp.addEventListener('pointercancel', up);
+  addEventListener('resize', () => { if (pickerOpen()) { homeLayout(); homeSelect(picker.sel, { instant: true }); } });
 }
 function showPicker(canGoBack = true) {
   endPull(null, true);
+  picker.sel = Math.max(0, COURSES.indexOf(COURSE)); picker.el.classList.remove('hidden'); // shown first so the cards can measure the screen
   renderPicker();
   picker.resume = canGoBack ? S.phase : null;
   picker.back.classList.toggle('hidden', !canGoBack);
@@ -2575,7 +2703,7 @@ function drawPullUI() {
 
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
-  if (pickerOpen()) { if (k === 'escape') closePicker(); return; }
+  if (pickerOpen()) { if (k === 'escape') closePicker(); else if (k === 'arrowleft' || k === 'a') homeSelect(picker.sel - 1); else if (k === 'arrowright' || k === 'd') homeSelect(picker.sel + 1); else if ((k === 'enter' || k === ' ') && !e.repeat) { e.preventDefault(); homePlay(); } return; }
   keys[k] = true;
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) startCharge(); }
   if (k === 'r' && !e.repeat) { e.shiftKey ? restartRound() : restartHole(); }
@@ -3320,6 +3448,7 @@ function frame(now) {
 // Start: ?course=<id> jumps straight in (handy for links and tests); otherwise show the course picker
 {
   const q = new URLSearchParams(location.search), want = q.get('course');
+  S.unlocks = UNLOCK_WORLDS || q.get('unlocks') === '1';
   if (q.get('wind') === 'calm') S.windMode = 'calm';
   if (q.get('seed')) { S.roundSeed = Number(q.get('seed')) || 1; S.fixedSeed = true; }
   if (!(want && loadCourse(want))) { loadCourse(COURSES[0].id); showPicker(false); }
@@ -3347,6 +3476,10 @@ window.__game = {
   course: () => ({ id: COURSE.id, name: COURSE.name, world: COURSE.world, holes: COURSE.holes.map(h => ({ name: h.name, par: h.par, tee: h.tee, basket: h.basket, drop: h.drop || null })), par: roundStats().coursePar }),
   courses: () => COURSES.map(c => ({ id: c.id, name: c.name, holes: c.holes.length, par: coursePar(c), best: loadBest(c.id) })),
   loadCourse, showPicker,
+  homeSelect: (x) => homeSelect(typeof x === 'string' ? COURSES.findIndex(c => c.id === x) : x), homePlay, setUnlocks(on) { S.unlocks = !!on; if (pickerOpen()) renderPicker(); },
+  home: () => ({ open: pickerOpen(), sel: picker.sel, id: COURSES[picker.sel]?.id || null, discAt: picker.discAt, bg: picker.bg, unlocks: !!S.unlocks, unlockConst: UNLOCK_WORLDS, msg: homeUI.msg.textContent,
+    worlds: COURSES.map((c, i) => ({ id: c.id, open: worldUnlocked(i), best: loadBest(c.id), par: coursePar(c), stars: starsFor(loadBest(c.id), coursePar(c)) })), soon: HOME_SOON }),
+  starsFor,
   setWind(mph, deg) { S.wind = makeWind(mph, deg); setFlagWind(); },
   setSeed(seed) { S.roundSeed = seed; S.fixedSeed = true; },
   windFor: (courseId, idx, seed) => { const w = WORLDS[(COURSES.find(c => c.id === courseId) || COURSE).world] || WORLDS.park; return windFor(courseId, idx, seed, w.windMax, w.windMin); },
