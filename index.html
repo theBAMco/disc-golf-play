@@ -869,7 +869,7 @@ const DISCS = {
 };
 const DISC_ORDER = ['driver', 'mid', 'putter'];
 function suggestDisc(dist) { dist /= GRAV.range; return dist > 58 ? 'driver' : dist > 31 ? 'mid' : 'putter'; }
-// Straight full-power carry, measured by tests/play.mjs; drawn as the range ring
+// Straight full-power carry, measured by tests/play.mjs
 const DISC_RANGE = { driver: 97, mid: 62, putter: 33 };
 // Basket geometry used for both visuals and catch detection (heights above the ground at the basket)
 const BK = { trayY: 0.62, trayR: 0.55, poleR: 0.05, bandY: 1.45, edgeHot: 0.8, centreHot: 1.35, poleHot: 1.1 };
@@ -1654,7 +1654,7 @@ function disposeGroup(g) {
   });
 }
 
-// ---------- Shared actors: disc, trail, aim arrow, range ring, confetti ----------
+// ---------- Shared actors: disc, trail, aim arrow, confetti ----------
 const disc = new THREE.Group();
 const discMeshes = {};
 for (const d of Object.values(DISCS)) {
@@ -1671,8 +1671,6 @@ for (const d of Object.values(DISCS)) {
 disc.rotation.order = 'YXZ'; // heading, then nose pitch, then bank around the flight line
 let discHeading = 0, discSpin = 0, discWob = 0;
 scene.add(disc);
-const rangeRing = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.5, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
-rangeRing.rotation.x = -Math.PI / 2; scene.add(rangeRing);
 const TRAIL_N = 90;
 // Flight streak: a camera-facing ribbon that tapers and fades toward the tail, tinted with the disc colour
 const trailGeom = new THREE.BufferGeometry();
@@ -1690,9 +1688,9 @@ const aimArrow = new THREE.Group();
   const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.0, 3), m); head.rotation.x = -Math.PI / 2; head.position.set(0, 0.05, -14.6); aimArrow.add(head);
 }
 scene.add(aimArrow);
-// Flight prediction for the landing ring: simulateThrow (the same physics as a real throw, incl. wind) gives where this throw
-// stops; the ring sits there and updates live while pulling. No dots are drawn (Ben asked for them to go); the sampled path
-// is kept only so the aim camera can turn toward a big curve's landing.
+// Flight prediction for the aim camera only: simulateThrow (the same physics as a real throw, incl. wind) samples the path of a
+// full-power throw with the chosen curve so the camera can turn toward a big curve's landing. Nothing is drawn for it (Ben asked
+// for the dots and then the landing ring to go), and it is only flown while aiming with a curve picked.
 const PREVIEW_N = 38;
 const curvePreview = { key: '', base: '', power: -1, t: 0, sims: 0, pts: [], end: null, maxH: 0, outcome: null };
 function updateCurvePreview(power) {
@@ -1715,6 +1713,7 @@ function updateCurvePreview(power) {
   return curvePreview.end;
 }
 // Aim camera turns part-way toward a big curve so its far end stays on screen (frozen while pulling, like the camera)
+function predictNow() { const r = simulateThrow({ power: S.phase === 'charging' ? Math.max(0.05, S.power) : 1, curve: S.curve }); return { end: { x: r.end.x, z: r.end.z }, outcome: r.outcome }; }
 function previewCamOffset() {
   if (!curvePreview.pts.length || S.curve === 0) return 0;
   const half = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect), d = dirFromYaw(S.yaw), r = new THREE.Vector3(Math.cos(S.yaw), 0, Math.sin(S.yaw));
@@ -3551,16 +3550,7 @@ function frame(now) {
   powerArrow.visible = showPower;
   if (showPower) { powerArrow.position.set(S.lie.x, S.lie.y, S.lie.z); powerArrow.rotation.y = -S.yaw; layoutPowerArrow(S.power); }
   drawPullUI();
-  rangeRing.visible = aiming;
-  if (aiming) {
-    // while charging the ring marks the rough straight carry at this power; otherwise this disc's full range
-    // with a curve picked, dots show the bend and the ring sits where the curved (no-wind) flight lands
-    const rp = TMP.rp.set(Math.sin(S.yaw), 0, -Math.cos(S.yaw)).multiplyScalar((showPower ? Math.max(1.5, DISC_RANGE[S.disc] * S.power) : DISC_RANGE[S.disc]) * GRAV.range * (S.tomahawk ? TOMA.carryK : 1)).add(S.lie);
-    { const e = updateCurvePreview(showPower ? Math.max(0.05, S.power) : 1); if (e) { rp.x = e.x; rp.z = e.z; } }
-    if (!S.pull && S.phase === 'aim') S.camOff = previewCamOffset();
-    rangeRing.position.set(rp.x, H.groundY(rp.x, rp.z) + 0.07 + Math.min(0.25, Math.hypot(rp.x - S.lie.x, rp.z - S.lie.z) / 400), rp.z); rangeRing.scale.setScalar(THREE.MathUtils.clamp(Math.hypot(rp.x - S.lie.x, rp.z - S.lie.z) / 45, 1, 2.4)); // bigger far away so it stays readable
-    rangeRing.material.color.setHex(DISCS[S.disc].color);
-  }
+  if (S.phase === 'aim' && !S.pull) { if (S.curve) updateCurvePreview(1); S.camOff = previewCamOffset(); }
   trail.visible = S.trail.length > 1;
   if (trail.visible) {
     const arr = trailGeom.attributes.position.array, ca = trailGeom.attributes.color.array, n = S.trail.length, T = TRAIL_TMP;
@@ -3620,8 +3610,7 @@ window.__game = {
     yaw: S.yaw, curve: S.curve, curveLevel: curveLevel(S.curve), tomahawk: !!S.tomahawk, power: S.power, maxY: S.maxY,
     pull: S.pull && { valid: S.pull.valid, frac: S.pull.frac, power: S.pull.power, offset: S.pull.offset, baseYaw: S.pull.baseYaw },
     arrow: powerArrow.visible ? { length: PA.shaft.scale.y, color: '#' + PA.fill.color.getHexString(), yaw: S.yaw } : null,
-    ring: rangeRing.visible ? { x: rangeRing.position.x, z: rangeRing.position.z } : null,
-    curvePreview: rangeRing.visible && curvePreview.end ? { end: { ...curvePreview.end }, n: curvePreview.pts.length, maxH: curvePreview.maxH, outcome: curvePreview.outcome, pts: curvePreview.pts.map(q => ({ ...q })) } : null, camOff: S.camOff || 0,
+    curvePreview: (S.phase === 'aim' || S.phase === 'charging') ? predictNow() : null, camOff: S.camOff || 0, // curvePreview: tests only, where this throw would land (never drawn) camOff: S.camOff || 0,
     lie: { x: S.lie.x, y: S.lie.y, z: S.lie.z }, discPos: { x: S.pos.x, y: S.pos.y, z: S.pos.z },
     distToBasket: distToBasket(), result: S.result, hole: S.holeIdx + 1, practice: S.practice,
     banner: ui.banner.classList.contains('hidden') ? null : ui.btext.textContent + ' | ' + ui.bsub.textContent,
@@ -3659,6 +3648,7 @@ window.__game = {
     prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible, creatureVisible: !!(b?.bear || b?.turtle || b?.creature)?.visible || (st?.clue === 'abduct' && !!b?.lifted) } : null,
     revealShown: !!storyReveal && !storyReveal.classList.contains('hidden'), bannerVeiled: ui.banner.classList.contains('veil') }; },
   holeTime: (t) => { S.holeT = t; },
+  sceneRings: () => scene.children.filter(o => o.visible && o.geometry?.type === 'RingGeometry').length, // any ground ring markers shown right now
   mem: () => ({ geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, sharedDisposed: S.sharedDisposed || 0, previewSims: curvePreview.sims, previewLayers: scene.children.filter(o => o.isPoints && o.material.isShaderMaterial).length, aimDots: (() => { let n = 0; scene.traverse(o => { if (o.isPoints && o.visible && ![leaves, snowfall, embers].includes(o) && !H.group.children.includes(o) && o.parent === scene) n++; }); return n; })() }),
   loadHole: (i) => loadHole(i),
   loadPractice: () => loadHole(0, { practice: true }),
