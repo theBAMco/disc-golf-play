@@ -217,11 +217,14 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
 @media (orientation: landscape) and (max-height: 500px) { #storycap { bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); font-size: 13px; } #storyreveal b { font-size: 40px; } #storyreveal { bottom: 96px; } }
 
 /* Mini map: small corner map under Card/Restart (tap = full screen); full screen map with a big Close button */
-#minimap { position: relative; pointer-events: auto; width: 88px; height: 118px; border-radius: 12px; overflow: hidden; cursor: pointer; touch-action: none;
-  border: 2px solid rgba(255,255,255,.85); box-shadow: 0 2px 8px rgba(0,0,0,.35); background: rgba(10,40,20,.55); }
-#minimap canvas, #mapfull canvas { display: block; width: 100%; height: 100%; }
-#minimap .mmlabel { position: absolute; left: 3px; top: 3px; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 6px; background: rgba(0,0,0,.45); padding: 1px 5px; pointer-events: none; }
-#minimap.hidden, #mapfull.hidden { display: none; }
+#hud #minimap { position: relative; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 12px;
+  background: rgba(10,40,20,.55); box-shadow: none; border: 2px solid rgba(255,255,255,.8); }
+#minimap svg { width: 26px; height: 26px; display: block; }
+#minimap .mmdot { position: absolute; top: -4px; right: -4px; width: 12px; height: 12px; border-radius: 50%; background: #ff3b3b; border: 2px solid #fff; display: none; }
+#minimap.blip .mmdot { display: block; animation: mmpulse .9s ease-in-out infinite; }
+@keyframes mmpulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,59,59,.7); } 50% { transform: scale(1.25); box-shadow: 0 0 0 6px rgba(255,59,59,0); } }
+#hud #minimap.hidden, #mapfull.hidden { display: none; }
+#mapfull canvas { display: block; width: 100%; height: 100%; }
 body.charging #minimap { opacity: .55; }
 #mapfull { position: absolute; inset: 0; z-index: 6; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; gap: 8px; background: rgba(6,18,12,.92);
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
@@ -233,7 +236,6 @@ body.charging #minimap { opacity: .55; }
 #mapfull .mapkey .k-tee { border-radius: 2px; background: #d9d2c3; } #mapfull .mapkey .k-bask { background: #ff3b3b; } #mapfull .mapkey .k-disc { background: var(--disc, #ff7a1a); }
 #mapfull .mapkey .k-trail { border: 0; border-radius: 0; height: 0; width: 18px; border-top: 3px dotted #fff; vertical-align: 3px; }
 #mapfull .mapkey .k-danger { background: var(--danger, #1fb4ff); } #mapfull .mapkey .k-drop { background: #ffe066; }
-@media (max-height: 500px) { #minimap { width: 70px; height: 84px; } }
 </style>
 </head>
 <body>
@@ -254,7 +256,7 @@ body.charging #minimap { opacity: .55; }
       <div class="dial"><svg id="windarrow" viewBox="-20 -20 40 40" aria-hidden="true"><path d="M0,-15 L8,-3 L3,-3 L3,14 L-3,14 L-3,-3 L-8,-3 Z" /></svg></div>
       <div class="wtext"><b id="windmph">Calm</b><span id="windband">no wind</span></div>
     </div>
-    <div id="minimap" role="button" aria-label="Map of this hole (tap to enlarge)"><canvas id="minimapcanvas"></canvas><span class="mmlabel">Map</span></div>
+    <button id="minimap" aria-label="Map of this hole" title="Hole map (M)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20Z" fill="#fff8e0" stroke="#143" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 4v13.5M15 6.5V20" stroke="#143" stroke-width="1.4"/><circle cx="12" cy="10.5" r="1.9" fill="#ff3b3b"/></svg><i class="mmdot"></i></button>
     </div>
     <div id="topright">
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
@@ -3380,8 +3382,8 @@ function revealCam() {
   return { pos, look };
 }
 
-// ===== Mini map: a cheap 2D overhead view of the current hole (corner map; tap to blow it up full screen) =====
-// Drawn on 2D canvases, and only when something changed (new hole, disc moved, a trail grew, a blip, open/close, resize).
+// ===== Hole map: a small map icon opens a full-screen 2D overhead view of the current hole =====
+// Drawn on a 2D canvas only while open, and only when something changed (new hole, disc moved, a trail grew, a blip, open/close, resize).
 // The terrain layer (water/lava/rilles, ice, snow, fairway, out of bounds) is rasterised once per hole and size and cached.
 // Tapping the map only opens or closes it: it never aims or throws (the throw input lives on the 3D canvas only).
 const MM_COL = {
@@ -3394,7 +3396,7 @@ const MM_COL = {
 };
 const MM_BLIP = { river: 'turtle', antarctica: 'bear', volcano: 'glow', moon: 'ufo' }; // course id → its monster's blip (never Maple Park)
 const mm = { full: false, dirty: true, last: 0, draws: 0, base: {}, view: null, trails: [], blip: null, phaseSeen: '', lieKey: '' };
-const mmUI = { corner: $('minimap'), cc: $('minimapcanvas'), full: $('mapfull'), fc: $('mapfullcanvas'), close: $('mapclose') };
+const mmUI = { corner: $('minimap'), full: $('mapfull'), fc: $('mapfullcanvas'), close: $('mapclose') };
 // Hole frame: tee at the bottom, basket at the top. u = right, v = down (metres), centred on the hole.
 function mmFrame() {
   if (mm.view && mm.view.H === H) return mm.view;
@@ -3435,7 +3437,7 @@ function mmBase(w, h, dpr, B) { // cached terrain raster for this hole + size + 
 function mmReset() { mm.trails = []; mm.view = null; mm.base = {}; mm.dirty = true; mmPlanBlip(); }
 function mmTrailStart() { mm.trails.push([[S.pos.x, S.pos.z]]); mm.dirty = true; }
 function mmTrailPush() { const t = mm.trails[mm.trails.length - 1]; if (!t) return; const p = t[t.length - 1]; if (Math.hypot(S.pos.x - p[0], S.pos.z - p[1]) > 0.8) t.push([S.pos.x, S.pos.z]); }
-// Monster blips: payoff only, rare. On a story world each hole has a 1-in-3 chance of one brief sighting (3.5 s), at a random
+// Monster blips: payoff only, rare. On a story world each hole has a 1-in-3 chance of one brief sighting (6 s, the map icon pulses meanwhile), at a random
 // moment 8–40 s into the hole; it never touches play. Maple Park never gets one.
 function mmPlanBlip(force = false) {
   const kind = COURSE.story ? MM_BLIP[COURSE.id] : null; mm.blip = null; if (!kind || S.practice) return;
@@ -3450,7 +3452,7 @@ function mmPlanBlip(force = false) {
   if ((kind === 'turtle' || kind === 'glow') && runs.length) { const run = runs[Math.floor(rnd() * runs.length)], n = Math.min(run.length - 1, 7), i = Math.floor(rnd() * (run.length - n)); [a, b] = rnd() < 0.5 ? [run[i], run[i + n]] : [run[i + n], run[i]]; }
   else if (kind === 'glow' && (H.data.ponds || []).some(p => inView([p.x, p.z]))) { const p = H.data.ponds.find(p => inView([p.x, p.z])); a = [p.x - p.r * 0.4, p.z]; b = [p.x + p.r * 0.4, p.z]; }
   else { const u = side * (H.data.width / 2 + 6); a = at(u, along - 10); b = at(u * 1.15, along + 10); } // off the fairway, drifting
-  mm.blip = { kind, a, b, t0: (force ? 0.3 : 8 + 32 * rnd()), dur: 3.5, seen: false, start: performance.now() };
+  mm.blip = { kind, a, b, t0: (force ? 0.3 : 8 + 32 * rnd()), dur: 6, seen: false, start: performance.now() };
 }
 function mmBlipK(now) { const b = mm.blip; if (!b) return -1; const t = (now - b.start) / 1000 - b.t0; return t >= 0 && t <= b.dur ? t / b.dur : -1; }
 function mmDrawBlip(g, T, k, now) {
@@ -3496,12 +3498,12 @@ function mmDraw(cv, full, now) {
   { const flying = S.phase === 'flying', p = flying ? S.pos : S.lie; if (S.phase !== 'splash') dot(p.x, p.z, full ? 5 : 3.4, DISCS[S.disc].css, '#fff', full ? 2 : 1.4); }
   mm.draws++;
 }
-function mmRedraw(now = performance.now()) { mm.last = now; mm.dirty = false; if (!H) return; if (mm.full) mmDraw(mmUI.fc, true, now); else mmDraw(mmUI.cc, false, now); }
+function mmRedraw(now = performance.now()) { mm.last = now; mm.dirty = false; if (H && mm.full) mmDraw(mmUI.fc, true, now); } // nothing is drawn while the map is closed
 function mmUpdate(now) {
   if (!H || !mmUI.corner) return;
   const lk = `${S.lie.x.toFixed(1)},${S.lie.z.toFixed(1)},${S.disc}`; if (S.phase !== mm.phaseSeen || lk !== mm.lieKey) { mm.phaseSeen = S.phase; mm.lieKey = lk; mm.dirty = true; }
-  const bk = mmBlipK(now), live = S.phase === 'flying' || bk >= 0; if (mm.wasBlip && bk < 0) mm.dirty = true; // one last redraw clears the blip
-  mm.wasBlip = bk >= 0; if (mm.dirty || (live && now - mm.last > (mm.full ? 60 : 110))) mmRedraw(now);
+  const bk = mmBlipK(now), live = S.phase === 'flying' || bk >= 0; if (mm.wasBlip !== (bk >= 0)) { mm.dirty = true; mmUI.corner.classList.toggle('blip', bk >= 0); } // the icon pulses during a sighting
+  mm.wasBlip = bk >= 0; if (!mm.full) return; if (mm.dirty || (live && now - mm.last > 60)) mmRedraw(now);
 }
 function mapOpen(on = !mm.full) { mm.full = !!on; if (mm.full) { setText($('mapfulltitle'), S.practice ? 'Practice' : `Hole ${S.holeIdx + 1} · Par ${H.par} · ${Math.round(H.length)} m`);
     setText($('mapdanger'), WORLD.lava ? 'Lava' : WORLD.rille ? 'Rille' : WORLD.id === 'ice' ? 'Water · ice' : 'Water'); mmUI.full.style.setProperty('--danger', (MM_COL[WORLD.id] || MM_COL.park).water); mmUI.full.style.setProperty('--disc', DISCS[S.disc].css); $('mapkeydrop').style.display = H.drop ? '' : 'none'; $('mapkeydanger').style.display = H.hasWater || (H.data.icePatches || []).length ? '' : 'none'; } mmUI.full.classList.toggle('hidden', !mm.full); mmUI.corner.classList.toggle('hidden', mm.full); mm.dirty = true; mmRedraw(); }
@@ -3642,7 +3644,7 @@ window.__game = {
   round: () => ({ ...roundStats(), scores: [...S.scores] }),
   isOB: (x, z) => H.isOB(x, z),
   minimap: () => ({ full: mm.full, cornerShown: !mmUI.corner.classList.contains('hidden') && mmUI.corner.getBoundingClientRect().width > 0, draws: mm.draws,
-    trails: mm.trails.map(t => t.length), blip: mm.blip && { kind: mm.blip.kind, active: mmBlipK(performance.now()) >= 0, seen: mm.blip.seen } }),
+    trails: mm.trails.map(t => t.length), iconPulse: mmUI.corner.classList.contains('blip'), blip: mm.blip && { kind: mm.blip.kind, active: mmBlipK(performance.now()) >= 0, seen: mm.blip.seen } }),
   mapOpen: on => mapOpen(on), mapBlipPath: () => mm.blip && [mm.blip.a, mm.blip.b], mapBlipRate: (n = 100) => { const keep = [S.roundSeed, S.holeIdx, mm.blip]; let hit = 0, tot = 0; // share of (round, hole) pairs that get a sighting
     for (let sd = 1; sd <= n; sd++) for (let h = 0; h < COURSE.holes.length; h++) { S.roundSeed = sd; S.holeIdx = h; mmPlanBlip(); tot++; if (mm.blip) hit++; }
     [S.roundSeed, S.holeIdx, mm.blip] = keep; return hit / tot; },
