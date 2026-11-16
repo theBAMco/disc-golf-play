@@ -215,6 +215,25 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
 @keyframes revealPop { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
 #banner.veil { opacity: 0; } /* during the reveal the hole banner is invisible; tapping Next still skips to the scorecard */
 @media (orientation: landscape) and (max-height: 500px) { #storycap { bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); font-size: 13px; } #storyreveal b { font-size: 40px; } #storyreveal { bottom: 96px; } }
+
+/* Mini map: small corner map under Card/Restart (tap = full screen); full screen map with a big Close button */
+#minimap { position: relative; pointer-events: auto; width: 88px; height: 118px; border-radius: 12px; overflow: hidden; cursor: pointer; touch-action: none;
+  border: 2px solid rgba(255,255,255,.85); box-shadow: 0 2px 8px rgba(0,0,0,.35); background: rgba(10,40,20,.55); }
+#minimap canvas, #mapfull canvas { display: block; width: 100%; height: 100%; }
+#minimap .mmlabel { position: absolute; left: 3px; top: 3px; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 6px; background: rgba(0,0,0,.45); padding: 1px 5px; pointer-events: none; }
+#minimap.hidden, #mapfull.hidden { display: none; }
+body.charging #minimap { opacity: .55; }
+#mapfull { position: absolute; inset: 0; z-index: 6; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; gap: 8px; background: rgba(6,18,12,.92);
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+#mapfull .mapfullhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 18px; }
+#hud #mapclose { font-size: 18px; padding: 12px 20px; min-height: 48px; background: #fff; box-shadow: 0 3px 0 #bbb; }
+#mapfull canvas { flex: 1; min-height: 0; border-radius: 14px; }
+#mapfull .mapkey { font-size: 13px; line-height: 1.9; text-align: center; }
+#mapfull .mapkey i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin: 0 4px 0 10px; border: 1px solid #fff; }
+#mapfull .mapkey .k-tee { border-radius: 2px; background: #d9d2c3; } #mapfull .mapkey .k-bask { background: #ff3b3b; } #mapfull .mapkey .k-disc { background: var(--disc, #ff7a1a); }
+#mapfull .mapkey .k-trail { border: 0; border-radius: 0; height: 0; width: 18px; border-top: 3px dotted #fff; vertical-align: 3px; }
+#mapfull .mapkey .k-danger { background: var(--danger, #1fb4ff); } #mapfull .mapkey .k-drop { background: #ffe066; }
+@media (max-height: 500px) { #minimap { width: 70px; height: 84px; } }
 </style>
 </head>
 <body>
@@ -235,6 +254,7 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
       <div class="dial"><svg id="windarrow" viewBox="-20 -20 40 40" aria-hidden="true"><path d="M0,-15 L8,-3 L3,-3 L3,14 L-3,14 L-3,-3 L-8,-3 Z" /></svg></div>
       <div class="wtext"><b id="windmph">Calm</b><span id="windband">no wind</span></div>
     </div>
+    <div id="minimap" role="button" aria-label="Map of this hole (tap to enlarge)"><canvas id="minimapcanvas"></canvas><span class="mmlabel">Map</span></div>
     </div>
     <div id="topright">
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
@@ -262,6 +282,7 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
       </div>
     </div>
     <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a world</div><div id="homestage"><button id="homeprev" class="homearrow" aria-label="Previous world">◀</button><div id="homeviewport"><div id="picklist"></div></div><button id="homenext" class="homearrow" aria-label="Next world">▶</button></div><div id="homeground"><div id="homedisc"><i></i></div></div><div id="homedots"></div><div id="homemsg"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
+    <div id="mapfull" class="hidden" role="dialog" aria-label="Hole map"><div class="mapfullhead"><b id="mapfulltitle">Hole map</b><button id="mapclose" aria-label="Close map">✕ Close</button></div><canvas id="mapfullcanvas"></canvas><div class="mapkey"><i class="k-tee"></i>Tee <i class="k-bask"></i>Basket <i class="k-disc"></i>Disc <i class="k-trail"></i>Throws <span id="mapkeydanger"><i class="k-danger"></i><span id="mapdanger">Water</span></span> <span id="mapkeydrop"><i class="k-drop"></i>Drop zone</span></div></div>
     <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
     <div id="storycap" class="hidden"></div>
     <div id="storyreveal" class="hidden"><b></b><span></span></div>
@@ -2004,7 +2025,7 @@ function loadHole(idx, { practice = false } = {}) {
   setFlagWind();
   clearConfetti(); hideBanner(); hideCard();
   S.lie.copy(H.tee); S.prevLie.copy(H.tee);
-  resetToLie(true); buildStory(idx); snapCamera();
+  resetToLie(true); buildStory(idx); snapCamera(); mmReset();
   ui.title.textContent = practice ? 'PRACTICE' : `HOLE ${idx + 1}/${COURSE.holes.length} · PAR ${H.par}`;
   if (!practice) flashBanner(`Hole ${idx + 1} · Par ${H.par} · ${Math.round(H.length)} m`, `${H.name} — ${H.tip}\n${windWords(S.wind, yawToward(H.tee, H.teeAim))}`, 3200, true);
 }
@@ -2215,6 +2236,7 @@ function throwDisc(power, curve = S.curve) {
   const sp = toma ? tomaSpeed(speed, q, S.disc) : speed; S.vel.copy(S.dir0).multiplyScalar(sp * Math.cos(launch)); S.vel.y = sp * Math.sin(launch); S.tomaUsed = toma;
   S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.dusted = false; S.ventT = 0; S.vented = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y; S.acc = 0; S.fs = newFlightState(); S.fs.bank = curve * 0.3;
   document.body.classList.add('played');
+  mmTrailStart();
   S.lastThrow = { disc: S.disc, power, curve, speed, from: S.lie.clone(), yaw: S.yaw, tomahawk: toma };
   hideBanner(); hideMenu();
   return true;
@@ -2468,7 +2490,7 @@ function updateFlight(dt) {
     if (r === 'pole') flashBanner('Clang!', S.disc === 'putter' ? 'Off the pole' : tip, 1200);
     if (r === 'spit') flashBanner('Spit out!', tip, 1200);
   }
-  S.trail.push(S.pos.clone()); if (S.trail.length > TRAIL_N) S.trail.shift();
+  S.trail.push(S.pos.clone()); if (S.trail.length > TRAIL_N) S.trail.shift(); mmTrailPush();
   // Way out of play: stop the flight early
   if (H.distToPath(S.pos.x, S.pos.z) > H.inBoundsR + 45) { onLanded(); return; }
   const moving = S.vel.length() > 0.05 || S.pos.y > H.groundY(S.pos.x, S.pos.z) + DISC_R + 0.01;
@@ -2704,6 +2726,8 @@ function drawPullUI() {
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (pickerOpen()) { if (k === 'escape') closePicker(); else if (k === 'arrowleft' || k === 'a') homeSelect(picker.sel - 1); else if (k === 'arrowright' || k === 'd') homeSelect(picker.sel + 1); else if ((k === 'enter' || k === ' ') && !e.repeat) { e.preventDefault(); homePlay(); } return; }
+  if (k === 'm' && !e.repeat && S.phase !== 'charging') { mapOpen(); return; } // M: map full screen on/off
+  if (mm.full) { if (k === 'escape') mapOpen(false); return; } // nothing else (no aiming, no throwing) while the big map is up
   keys[k] = true;
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) startCharge(); }
   if (k === 'r' && !e.repeat) { e.shiftKey ? restartRound() : restartHole(); }
@@ -3356,6 +3380,137 @@ function revealCam() {
   return { pos, look };
 }
 
+// ===== Mini map: a cheap 2D overhead view of the current hole (corner map; tap to blow it up full screen) =====
+// Drawn on 2D canvases, and only when something changed (new hole, disc moved, a trail grew, a blip, open/close, resize).
+// The terrain layer (water/lava/rilles, ice, snow, fairway, out of bounds) is rasterised once per hole and size and cached.
+// Tapping the map only opens or closes it: it never aims or throws (the throw input lives on the 3D canvas only).
+const MM_COL = {
+  park: { rough: '#4f9a3a', fair: '#7cc95a', ob: '#2f5d27', tree: '#1d4a1a', water: '#1fb4ff' },
+  river: { rough: '#4c9440', fair: '#79c45b', ob: '#2d5a28', tree: '#1c4719', water: '#1fb4ff' },
+  ice: { rough: '#c9dcea', fair: '#e9f3fa', ob: '#8ea9bf', tree: '#3d6b5a', water: '#1f8fff', ice: '#38f2ff', snow: '#ffffff' },
+  // (snow zones elsewhere are ash on the volcano, dust in moon craters)
+  lava: { rough: '#3a2a26', fair: '#5a4640', ob: '#1f1513', tree: '#140d0c', water: '#ff5a0a', snow: '#8a7f78' },
+  moon: { rough: '#4a4a52', fair: '#6c6c76', ob: '#26262c', tree: '#1a1a1e', water: '#c06bff', snow: '#9a9aa6' },
+};
+const MM_BLIP = { river: 'turtle', antarctica: 'bear', volcano: 'glow', moon: 'ufo' }; // course id → its monster's blip (never Maple Park)
+const mm = { full: false, dirty: true, last: 0, draws: 0, base: {}, view: null, trails: [], blip: null, phaseSeen: '', lieKey: '' };
+const mmUI = { corner: $('minimap'), cc: $('minimapcanvas'), full: $('mapfull'), fc: $('mapfullcanvas'), close: $('mapclose') };
+// Hole frame: tee at the bottom, basket at the top. u = right, v = down (metres), centred on the hole.
+function mmFrame() {
+  if (mm.view && mm.view.H === H) return mm.view;
+  const a = yawToward(H.tee, H.basket), f = { x: Math.sin(a), z: -Math.cos(a) }, r = { x: Math.cos(a), z: Math.sin(a) };
+  const pad = H.data.width / 2 + Math.min(H.data.ob, 10) + 4, pts = [...H.data.path.map(([x, z]) => ({ x, z })), H.tee, H.basket];
+  const c = { x: (H.tee.x + H.basket.x) / 2, z: (H.tee.z + H.basket.z) / 2 };
+  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+  for (const p of pts) { const dx = p.x - c.x, dz = p.z - c.z, u = dx * r.x + dz * r.z, v = -(dx * f.x + dz * f.z); u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+  return (mm.view = { H, c, f, r, u0: u0 - pad, u1: u1 + pad, v0: v0 - 10, v1: v1 + 10 });
+}
+function mmBounds(full) { // the hole's box; the big map also widens (a little) to keep wild throws in view
+  const fr = mmFrame(); let { u0, u1, v0, v1 } = fr; if (!full) return { u0, u1, v0, v1 };
+  for (const t of mm.trails) for (const [x, z] of t) { const dx = x - fr.c.x, dz = z - fr.c.z, u = dx * fr.r.x + dz * fr.r.z, v = -(dx * fr.f.x + dz * fr.f.z);
+    u0 = Math.max(fr.u0 - 40, Math.min(u0, u - 4)); u1 = Math.min(fr.u1 + 40, Math.max(u1, u + 4)); v0 = Math.max(fr.v0 - 40, Math.min(v0, v - 4)); v1 = Math.min(fr.v1 + 40, Math.max(v1, v + 4)); }
+  const q = n => Math.round(n / 4) * 4; return { u0: q(u0), u1: q(u1), v0: q(v0), v1: q(v1) }; // snapped so the cached terrain is reused
+}
+function mmFit(w, h, B = mmBounds(false)) { // world → canvas pixel transform for a canvas w×h (css px)
+  const fr = mmFrame(), uw = B.u1 - B.u0, vh = B.v1 - B.v0, k = Math.min(w / uw, h / vh), ox = (w - uw * k) / 2 - B.u0 * k, oy = (h - vh * k) / 2 - B.v0 * k;
+  const to = (x, z) => { const dx = x - fr.c.x, dz = z - fr.c.z; return [ox + (dx * fr.r.x + dz * fr.r.z) * k, oy - (dx * fr.f.x + dz * fr.f.z) * k]; };
+  const from = (px, py) => { const u = (px - ox) / k, v = (py - oy) / k; return [fr.c.x + u * fr.r.x - v * fr.f.x, fr.c.z + u * fr.r.z - v * fr.f.z]; };
+  return { k, to, from, w, h };
+}
+function mmBase(w, h, dpr, B) { // cached terrain raster for this hole + size + view box
+  const key = `${H.index}:${COURSE.id}:${w}x${h}@${dpr}:${B.u0},${B.u1},${B.v0},${B.v1}`, hit = mm.base[key]; if (hit && hit.H === H) return hit.c;
+  const T = mmFit(w, h, B), col = MM_COL[WORLD.id] || MM_COL.park, cell = w > 200 ? 3 : 2;
+  const c = document.createElement('canvas'); c.width = Math.ceil(w / cell); c.height = Math.ceil(h / cell); const g = c.getContext('2d');
+  const img = g.createImageData(c.width, c.height), rgb = s => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
+  const C = { rough: rgb(col.rough), fair: rgb(col.fair), ob: rgb(col.ob), water: rgb(col.water), ice: rgb(col.ice || '#38f2ff'), snow: rgb(col.snow || '#f4f8ff') };
+  const half = H.data.width / 2;
+  for (let j = 0; j < c.height; j++) for (let i = 0; i < c.width; i++) {
+    const [x, z] = T.from((i + 0.5) * cell, (j + 0.5) * cell);
+    const s = H.hasWater && H.isWater(x, z) ? 'water' : H.surface?.(x, z) || (H.isOB(x, z) ? 'ob' : H.distToPath(x, z) < half ? 'fair' : 'rough');
+    const p = C[s] || C.rough, o = (j * c.width + i) * 4; img.data[o] = p[0]; img.data[o + 1] = p[1]; img.data[o + 2] = p[2]; img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0); for (const k of Object.keys(mm.base)) if (mm.base[k].H !== H) delete mm.base[k];
+  mm.base[key] = { H, c }; return c;
+}
+function mmReset() { mm.trails = []; mm.view = null; mm.base = {}; mm.dirty = true; mmPlanBlip(); }
+function mmTrailStart() { mm.trails.push([[S.pos.x, S.pos.z]]); mm.dirty = true; }
+function mmTrailPush() { const t = mm.trails[mm.trails.length - 1]; if (!t) return; const p = t[t.length - 1]; if (Math.hypot(S.pos.x - p[0], S.pos.z - p[1]) > 0.8) t.push([S.pos.x, S.pos.z]); }
+// Monster blips: payoff only, rare. On a story world each hole has a 1-in-3 chance of one brief sighting (3.5 s), at a random
+// moment 8–40 s into the hole; it never touches play. Maple Park never gets one.
+function mmPlanBlip(force = false) {
+  const kind = COURSE.story ? MM_BLIP[COURSE.id] : null; mm.blip = null; if (!kind || S.practice) return;
+  const rnd = seeded(1 + ((S.roundSeed || 1) * 31 + (S.holeIdx + 1) * 977) % 2147483646); rnd();
+  if (!force && rnd() > 1 / 3) return;
+  const fr = mmFrame(), side = rnd() < 0.5 ? -1 : 1, along = fr.v0 + (fr.v1 - fr.v0) * (0.3 + 0.4 * rnd());
+  const at = (u, v) => [fr.c.x + u * fr.r.x - v * fr.f.x, fr.c.z + u * fr.r.z - v * fr.f.z];
+  const inView = ([x, z]) => { const dx = x - fr.c.x, dz = z - fr.c.z, u = dx * fr.r.x + dz * fr.r.z, v = -(dx * fr.f.x + dz * fr.f.z); return u > fr.u0 + 2 && u < fr.u1 - 2 && v > fr.v0 + 2 && v < fr.v1 - 2; };
+  const runs = []; for (const rv of H.data.rivers || []) { const run = []; for (let i = 0; i < rv.pts.length - 1; i++) { const [x0, z0] = rv.pts[i], [x1, z1] = rv.pts[i + 1], n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 2);
+    for (let j = 0; j < n; j++) { const q = [x0 + (x1 - x0) * j / n, z0 + (z1 - z0) * j / n]; if (inView(q) && H.isWater(q[0], q[1])) run.push(q); } } if (run.length > 4) runs.push(run); }
+  let a, b;
+  if ((kind === 'turtle' || kind === 'glow') && runs.length) { const run = runs[Math.floor(rnd() * runs.length)], n = Math.min(run.length - 1, 7), i = Math.floor(rnd() * (run.length - n)); [a, b] = rnd() < 0.5 ? [run[i], run[i + n]] : [run[i + n], run[i]]; }
+  else if (kind === 'glow' && (H.data.ponds || []).some(p => inView([p.x, p.z]))) { const p = H.data.ponds.find(p => inView([p.x, p.z])); a = [p.x - p.r * 0.4, p.z]; b = [p.x + p.r * 0.4, p.z]; }
+  else { const u = side * (H.data.width / 2 + 6); a = at(u, along - 10); b = at(u * 1.15, along + 10); } // off the fairway, drifting
+  mm.blip = { kind, a, b, t0: (force ? 0.3 : 8 + 32 * rnd()), dur: 3.5, seen: false, start: performance.now() };
+}
+function mmBlipK(now) { const b = mm.blip; if (!b) return -1; const t = (now - b.start) / 1000 - b.t0; return t >= 0 && t <= b.dur ? t / b.dur : -1; }
+function mmDrawBlip(g, T, k, now) {
+  const b = mm.blip, s = Math.max(1, T.k / 2.2), x = b.a[0] + (b.b[0] - b.a[0]) * k, z = b.a[1] + (b.b[1] - b.a[1]) * k, [px, py] = T.to(x, z);
+  const fade = Math.min(1, k * 5, (1 - k) * 5); g.save(); g.globalAlpha = fade; g.translate(px, py);
+  if (b.kind === 'turtle') { const [qx, qy] = T.to(b.b[0], b.b[1]); g.rotate(Math.atan2(qy - py, qx - px)); g.fillStyle = 'rgba(20,70,40,0.75)';
+    g.beginPath(); g.ellipse(0, 0, 5 * s, 3.6 * s, 0, 0, 7); g.fill(); g.beginPath(); g.arc(6.2 * s, 0, 1.6 * s, 0, 7); g.fill();
+    for (const [fx, fy] of [[2.5, 3.6], [2.5, -3.6], [-3, 3.2], [-3, -3.2]]) { g.beginPath(); g.ellipse(fx * s, fy * s, 1.6 * s, 0.9 * s, fy > 0 ? 0.6 : -0.6, 0, 7); g.fill(); } }
+  else if (b.kind === 'bear') { g.fillStyle = 'rgba(10,20,35,0.45)'; g.beginPath(); g.ellipse(0, 0, 8 * s, 4.5 * s, 0.3, 0, 7); g.fill(); g.beginPath(); g.arc(7 * s, -3 * s, 2.6 * s, 0, 7); g.fill(); }
+  else if (b.kind === 'glow') { const r = (8 + 2.5 * Math.sin(now / 120)) * s, gr = g.createRadialGradient(0, 0, 0, 0, 0, r); gr.addColorStop(0, 'rgba(255,240,160,0.95)'); gr.addColorStop(0.4, 'rgba(255,110,20,0.8)'); gr.addColorStop(1, 'rgba(255,40,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, r, 0, 7); g.fill(); }
+  else { const r = 3 * s; g.strokeStyle = 'rgba(120,255,160,0.9)'; g.lineWidth = 1.2; g.beginPath(); g.arc(0, 0, r * (1 + (now / 300) % 1.5), 0, 7); g.stroke();
+    g.fillStyle = '#9dffb9'; g.beginPath(); g.ellipse(0, 0, r, r * 0.45, 0, 0, 7); g.fill(); g.fillStyle = '#e8fff0'; g.beginPath(); g.ellipse(0, -r * 0.35, r * 0.45, r * 0.35, 0, 0, 7); g.fill(); }
+  g.restore();
+}
+function mmDraw(cv, full, now) {
+  const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+  const dpr = Math.min(2, devicePixelRatio || 1); if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const B = mmBounds(full), g = cv.getContext('2d'), T = mmFit(w, h, B), col = MM_COL[WORLD.id] || MM_COL.park, k = T.k, d = H.data;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.imageSmoothingEnabled = true; g.drawImage(mmBase(w, h, dpr, B), 0, 0, w, h);
+  const dot = (x, z, r, fill, stroke, lw = 1) => { const [px, py] = T.to(x, z); g.beginPath(); g.arc(px, py, r, 0, 7); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); } };
+  const line = (a, b, wd, st) => { const [x0, y0] = T.to(a[0], a[1]), [x1, y1] = T.to(b[0], b[1]); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.lineWidth = wd; g.strokeStyle = st; g.lineCap = 'round'; g.stroke(); };
+  for (const b of d.bridges || []) line(b.from, b.to, Math.max(1.5, b.w * k), '#a8743f');
+  for (const c of d.craters || []) dot(c.x, c.z, c.r * k, null, 'rgba(255,255,255,0.55)', Math.max(1, 1.2 * k)); // crater rims
+  for (const b of d.banks || []) line(b.from, b.to, Math.max(2, (b.w || 2) * k), WORLD.id === 'ice' ? '#ffffff' : '#bdb1a0'); // walls / snow banks
+  for (const t of H.trees) dot(t.x, t.z, Math.max(1.2, 1.6 * (t.s || 1) * k), col.tree);
+  for (const r of d.rocks || []) dot(r.x, r.z, Math.max(1.2, (r.s || 1) * 0.9 * k), '#8d8d8d', '#555', 0.6);
+  for (const o of H.solids || []) dot(o.x, o.z, Math.max(1.3, (o.r || 1) * k), o.kind === 'berg' || o.kind === 'serac' || o.kind === 'pillar' ? '#bff4ff' : '#9a9a9a', '#333', 0.6);
+  for (const a of H.arches || []) { const [px, py] = T.to(a.x, a.z), [qx, qy] = T.to(a.x + a.right.x * a.span / 2, a.z + a.right.y * a.span / 2); const L = Math.max(3, a.span / 2 * k);
+    g.save(); g.translate(px, py); g.rotate(Math.atan2(qy - py, qx - px)); g.strokeStyle = '#f2e6c8'; g.lineWidth = Math.max(1.5, a.tube * k); g.beginPath(); g.moveTo(-L, 0); g.lineTo(L, 0); g.stroke();
+    g.fillStyle = '#6a5a40'; g.fillRect(-L - 1.5, -1.5, 3, 3); g.fillRect(L - 1.5, -1.5, 3, 3); g.restore(); }
+  for (const v of H.vents || []) dot(v.x, v.z, Math.max(1.5, v.r * 0.5 * k), 'rgba(255,255,255,0.35)', '#fff', 0.6);
+  if (H.drop) { const [px, py] = T.to(H.drop.x, H.drop.z), r = Math.max(4, 2.2 * k); g.fillStyle = 'rgba(255,224,102,0.9)'; g.strokeStyle = '#3a2a00'; g.lineWidth = 1;
+    g.beginPath(); g.arc(px, py, r, 0, 7); g.fill(); g.stroke(); if (full) { g.fillStyle = '#3a2a00'; g.font = `800 ${Math.round(r * 1.3)}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('D', px, py + 0.5); } }
+  { const [px, py] = T.to(H.tee.x, H.tee.z), s = Math.max(3, 1.6 * k); g.fillStyle = '#d9d2c3'; g.strokeStyle = '#333'; g.lineWidth = 1; g.fillRect(px - s, py - s * 1.6, s * 2, s * 3.2); g.strokeRect(px - s, py - s * 1.6, s * 2, s * 3.2); }
+  const bk = mmBlipK(now); if (bk >= 0) { mm.blip.seen = true; mmDrawBlip(g, T, bk, now); }
+  // throw trails: dotted, latest brightest
+  g.setLineDash(full ? [2, 5] : [1.5, 3]); g.lineCap = 'round';
+  mm.trails.forEach((t, i) => { if (t.length < 2) return; const late = i === mm.trails.length - 1; g.beginPath(); t.forEach(([x, z], j) => { const [px, py] = T.to(x, z); j ? g.lineTo(px, py) : g.moveTo(px, py); });
+    g.strokeStyle = late ? '#ffffff' : 'rgba(255,255,255,0.6)'; g.lineWidth = full ? (late ? 3 : 2) : (late ? 2 : 1.4); g.stroke(); });
+  g.setLineDash([]);
+  { const [px, py] = T.to(H.basket.x, H.basket.z), r = Math.max(3.5, 1.2 * k); dot(H.basket.x, H.basket.z, r + 1.5, '#ffffff', '#222', 1); dot(H.basket.x, H.basket.z, r * 0.55, '#ff3b3b');
+    g.strokeStyle = '#222'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(px, py); g.lineTo(px, py - r * 2.4); g.stroke(); g.fillStyle = '#ff3b3b'; g.beginPath(); g.moveTo(px, py - r * 2.4); g.lineTo(px + r * 1.6, py - r * 1.95); g.lineTo(px, py - r * 1.5); g.fill(); }
+  { const flying = S.phase === 'flying', p = flying ? S.pos : S.lie; if (S.phase !== 'splash') dot(p.x, p.z, full ? 5 : 3.4, DISCS[S.disc].css, '#fff', full ? 2 : 1.4); }
+  mm.draws++;
+}
+function mmRedraw(now = performance.now()) { mm.last = now; mm.dirty = false; if (!H) return; if (mm.full) mmDraw(mmUI.fc, true, now); else mmDraw(mmUI.cc, false, now); }
+function mmUpdate(now) {
+  if (!H || !mmUI.corner) return;
+  const lk = `${S.lie.x.toFixed(1)},${S.lie.z.toFixed(1)},${S.disc}`; if (S.phase !== mm.phaseSeen || lk !== mm.lieKey) { mm.phaseSeen = S.phase; mm.lieKey = lk; mm.dirty = true; }
+  const bk = mmBlipK(now), live = S.phase === 'flying' || bk >= 0; if (mm.wasBlip && bk < 0) mm.dirty = true; // one last redraw clears the blip
+  mm.wasBlip = bk >= 0; if (mm.dirty || (live && now - mm.last > (mm.full ? 60 : 110))) mmRedraw(now);
+}
+function mapOpen(on = !mm.full) { mm.full = !!on; if (mm.full) { setText($('mapfulltitle'), S.practice ? 'Practice' : `Hole ${S.holeIdx + 1} · Par ${H.par} · ${Math.round(H.length)} m`);
+    setText($('mapdanger'), WORLD.lava ? 'Lava' : WORLD.rille ? 'Rille' : WORLD.id === 'ice' ? 'Water · ice' : 'Water'); mmUI.full.style.setProperty('--danger', (MM_COL[WORLD.id] || MM_COL.park).water); mmUI.full.style.setProperty('--disc', DISCS[S.disc].css); $('mapkeydrop').style.display = H.drop ? '' : 'none'; $('mapkeydanger').style.display = H.hasWater || (H.data.icePatches || []).length ? '' : 'none'; } mmUI.full.classList.toggle('hidden', !mm.full); mmUI.corner.classList.toggle('hidden', mm.full); mm.dirty = true; mmRedraw(); }
+// A tap only opens/closes the map: swallow the event so nothing behind it (the throw input) ever sees it
+const mmTap = (el, fn) => { el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); }); el.addEventListener('pointerup', e => { e.preventDefault(); e.stopPropagation(); fn(); }); el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); }); };
+mmTap(mmUI.corner, () => { if (S.phase === 'charging') return; mapOpen(true); });
+mmTap(mmUI.full, () => mapOpen(false));
+addEventListener('resize', () => { mm.dirty = true; });
+
 function frame(now) {
   const rawDt = (now - last) / 1000, dt = Math.min(0.05, rawDt); last = now;
   adaptQuality(rawDt); { const tt = now / 1000; MAT.lavaGlow.opacity = 0.42 + 0.12 * Math.sin(tt * 1.7) + 0.05 * Math.sin(tt * 4.3); MAT.foam.opacity = WORLD.lava ? 0.75 + 0.2 * Math.sin(tt * 2.4) : 0.45 + 0.12 * Math.sin(tt * 1.3); } SWAY_U.gWind.value = Math.min(1.5, (S.wind?.mph || 0) / 12); scene.userData.sky.material.uniforms.time.value = GROUND_U.gTime.value = now / 1000;
@@ -3441,7 +3596,7 @@ function frame(now) {
 
   updateCamera(dt);
   updateWindKey();
-  updateTreeFade(); renderer.render(scene, camera);
+  updateTreeFade(); renderer.render(scene, camera); mmUpdate(now);
   requestAnimationFrame(frame);
 }
 
@@ -3486,6 +3641,12 @@ window.__game = {
   windWords: () => windWords(S.wind, yawToward(H.tee, H.teeAim)), isWater: (x, z) => H.isWater(x, z), groundY: (x, z) => H.groundY(x, z),
   round: () => ({ ...roundStats(), scores: [...S.scores] }),
   isOB: (x, z) => H.isOB(x, z),
+  minimap: () => ({ full: mm.full, cornerShown: !mmUI.corner.classList.contains('hidden') && mmUI.corner.getBoundingClientRect().width > 0, draws: mm.draws,
+    trails: mm.trails.map(t => t.length), blip: mm.blip && { kind: mm.blip.kind, active: mmBlipK(performance.now()) >= 0, seen: mm.blip.seen } }),
+  mapOpen: on => mapOpen(on), mapBlipPath: () => mm.blip && [mm.blip.a, mm.blip.b], mapBlipRate: (n = 100) => { const keep = [S.roundSeed, S.holeIdx, mm.blip]; let hit = 0, tot = 0; // share of (round, hole) pairs that get a sighting
+    for (let sd = 1; sd <= n; sd++) for (let h = 0; h < COURSE.holes.length; h++) { S.roundSeed = sd; S.holeIdx = h; mmPlanBlip(); tot++; if (mm.blip) hit++; }
+    [S.roundSeed, S.holeIdx, mm.blip] = keep; return hit / tot; },
+  mapBlip: () => { mmPlanBlip(true); mm.dirty = true; return mm.blip && mm.blip.kind; },
   surface: (x, z) => H.surface(x, z) || 'ground',
   obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), banks: H.banks.length, vents: H.vents.map(v => ({ x: v.x, z: v.z, r: v.r, up: v.up, push: v.push })), penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
   fx: () => ({ penguinHops: S.penguinHops || 0, puffs: S.puffs || 0, snow: snowfall.visible, snowN: SNOW_N, sizzles: S.sizzles || 0, ventBoosts: S.ventBoosts || 0, embers: embers.visible, embersN: EMBER_N, plume: H.plume.length, lavaGlow: MAT.water.emissiveMap === lavaTex }),
