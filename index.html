@@ -236,6 +236,14 @@ body.charging #minimap { opacity: .55; }
 #mapfull .mapkey .k-tee { border-radius: 2px; background: #d9d2c3; } #mapfull .mapkey .k-bask { background: #ff3b3b; } #mapfull .mapkey .k-disc { background: var(--disc, #ff7a1a); }
 #mapfull .mapkey .k-trail { border: 0; border-radius: 0; height: 0; width: 18px; border-top: 3px dotted #fff; vertical-align: 3px; }
 #mapfull .mapkey .k-danger { background: var(--danger, #1fb4ff); } #mapfull .mapkey .k-drop { background: #ffe066; }
+
+/* Maple Park ending: a blurry snapshot of Bigfoot running, in a tilted instant-photo frame */
+#storyphoto { position: absolute; left: 50%; top: 17%; transform: translateX(-50%) rotate(-4deg); z-index: 6; pointer-events: none; animation: photoIn .5s cubic-bezier(.2,1.4,.4,1); }
+#storyphoto.hidden { display: none; }
+#storyphoto .ph { background: #fbfaf4; padding: 10px 10px 34px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.5); width: min(74vw, 300px); }
+#storyphoto canvas { display: block; width: 100%; height: auto; filter: blur(2.2px) sepia(.35) contrast(1.15) saturate(.8); }
+#storyphoto span { display: block; margin-top: 8px; text-align: center; color: #333; font: italic 800 18px/1.1 "Comic Sans MS", "Marker Felt", system-ui, sans-serif; text-shadow: none; }
+@keyframes photoIn { from { transform: translateX(-50%) rotate(-14deg) scale(.6); opacity: 0; } to { transform: translateX(-50%) rotate(-4deg) scale(1); opacity: 1; } }
 </style>
 </head>
 <body>
@@ -288,6 +296,7 @@ body.charging #minimap { opacity: .55; }
     <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
     <div id="storycap" class="hidden"></div>
     <div id="storyreveal" class="hidden"><b></b><span></span></div>
+    <div id="storyphoto" class="hidden"><div class="ph"><canvas></canvas><span>Is that… BIGFOOT?!</span></div></div>
     <div id="banner" class="hidden"><div id="bannertext"></div><div id="bannersub"></div><button id="nextbtn" class="hidden">Next hole ▶</button><button id="againbtn" class="hidden">Play again</button></div>
     <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardcourse" class="ghost">Home</button><button id="cardclose" class="ghost">Close</button></div></div></div>
   </div>
@@ -372,6 +381,24 @@ const WORLDS = {
 const PARK_COURSE = {
   id: 'park',
   name: 'Maple Park', world: 'park', blurb: 'Wooded park · tree lines & doglegs',
+  // Story: Bigfoot! Light and friendly, the starter-world mystery. One clue per hole (decoration only, never touches the disc or
+  // the score); after the hole 9 putt he grabs the whole basket and sprints off, and the round ends on a blurry photo of him.
+  // Hole 7 has no real water, so its little pond and cracked bridge are story decoration only (no splash), on the left edge off the line of play.
+  story: {
+    intro: 'Welcome to Maple Park! Nice and quiet… people say there\'s a Bigfoot round here, but that\'s just a silly story. Right?',
+    holes: [
+      { clue: 'flyer', at: [-4.2, -14], face: 0.3, scale: 1.2, caption: 'A "Bigfoot sighting?" flyer on the ranger\'s board. Someone scribbled LOL on it. Everyone laughs it off…' },
+      { clue: 'mudprint', at: [2.6, -6], face: 0.1, scale: 1.4, caption: 'A GIANT muddy footprint right next to the tee. That\'s no hiking boot…' },
+      { clue: 'treedisc', at: [-6, -27], caption: 'A Driver stuck WAY up this pine. Higher than anyone could ever throw…' },
+      { clue: 'snapped', at: [-6.8, -46], scale: 1.3, caption: 'Branches snapped clean off, way up high. Something VERY tall came through here.' },
+      { clue: 'fur', at: [-9.5, -34], to: [12, -40], caption: 'Tufts of brown fur blowing across the fairway… big, shaggy tufts.' },
+      { clue: 'picnic', at: [-1, -20], face: 0.2, caption: 'A picnic table flipped upside down… and the food basket is gone. Just crumbs, heading for the trees.' },
+      { clue: 'pond', at: [-11, -40], r: 4, caption: 'Huge footprints walk right across the pond… and the little bridge is cracked in half!' },
+      { clue: 'woodshadow', at: [-14, -56], to: [-12, -36], caption: 'AROOOOO… a howl from the woods. Was that a shadow between the trees?' },
+      { clue: 'grab', at: [6, -128], caption: 'So quiet by the last basket. Fresh muddy prints… a rustling bush. Sink this putt.' },
+    ],
+    reveal: { creature: 'bigfoot', title: 'BIGFOOT!', sub: 'He grabbed the basket and ran!' },
+  },
   holes: [
     {
       name: 'Maple Gate', par: 3, tip: 'Thread the two giant maples, then it opens up. Driver or Mid.',
@@ -2820,6 +2847,15 @@ const SM = {
     x.fillStyle = 'rgba(20,30,40,0.75)'; x.beginPath(); x.roundRect(4, 4, 248, 70, 18); x.fill(); x.beginPath(); x.moveTo(40, 72); x.lineTo(60, 94); x.lineTo(76, 72); x.fill();
     x.fillStyle = '#d8f3ff'; x.font = 'italic 900 40px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('kssshh…', 128, 52); return new THREE.CanvasTexture(c); })(), transparent: true, depthWrite: false }),
 };
+Object.assign(SM, { // Maple Park (Bigfoot) story
+  bfWood: new THREE.MeshLambertMaterial({ color: 0x8a5a32, flatShading: true }), bfBoard: new THREE.MeshLambertMaterial({ color: 0x6b4526 }), bfPaper: new THREE.MeshLambertMaterial({ color: 0xf4f1e6 }), bfPaper2: new THREE.MeshLambertMaterial({ color: 0xfff3a8 }),
+  mud: layered(new THREE.MeshBasicMaterial({ color: 0x4a3320, transparent: true, opacity: 0.92, depthWrite: false }), 7), mudFaint: layered(new THREE.MeshBasicMaterial({ color: 0x4a3320, transparent: true, opacity: 0.55, depthWrite: false }), 7),
+  bfBark: new THREE.MeshLambertMaterial({ color: 0x5b3a22, flatShading: true }), bfPine: new THREE.MeshLambertMaterial({ color: 0x2f6b34, flatShading: true }), bfDisc: new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.4 }),
+  bfLeaf: new THREE.MeshLambertMaterial({ color: 0xc8462c, flatShading: true }), bfSnap: new THREE.MeshLambertMaterial({ color: 0xf0d7a8 }), bfFur: new THREE.MeshLambertMaterial({ color: 0x6e4b2e, flatShading: true }), bfFurLight: new THREE.MeshLambertMaterial({ color: 0x8c6440, flatShading: true }),
+  bfFace: new THREE.MeshLambertMaterial({ color: 0x9a7556, flatShading: true }), bfEye: new THREE.MeshBasicMaterial({ color: 0x111111 }), bfShadow: new THREE.MeshBasicMaterial({ color: 0x15100c, fog: false, transparent: true, opacity: 0.85 }),
+  bfTable: new THREE.MeshLambertMaterial({ color: 0xa8743f, flatShading: true }), bfCheck: new THREE.MeshLambertMaterial({ color: 0xd8402c }), bfCup: new THREE.MeshLambertMaterial({ color: 0xf0f0f0 }), bfCrumb: new THREE.MeshLambertMaterial({ color: 0xe0b060 }),
+  bfShore: new THREE.MeshLambertMaterial({ color: 0xb9a27a }), bfPond: new THREE.MeshLambertMaterial({ color: 0x3aa0e0 }), bfReed: new THREE.MeshLambertMaterial({ color: 0x6c8a3a, flatShading: true }), bfRipple: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }),
+});
 // A low-poly polar bear (≈3.4 m long, 2.3 m tall). torso pivots at the hips so it can rear up; jaw opens for the roar.
 function makeBear(mat = SM.bear, dark = SM.bearDark, mouth = SM.bearMouth) {
   const g = new THREE.Group(), torso = new THREE.Group(); torso.position.set(0, 1.25, -0.9); g.add(torso);
@@ -2856,6 +2892,7 @@ Object.assign(SM, {
 const SG = { ball: new THREE.SphereGeometry(1, 10, 8), lump: new THREE.IcosahedronGeometry(1, 0), log: new THREE.CylinderGeometry(0.45, 0.5, 1, 9).rotateZ(Math.PI / 2),
   box: new THREE.BoxGeometry(1, 1, 1), ring: new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), disc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 14),
   frond: new THREE.ConeGeometry(0.35, 2.6, 3).rotateX(Math.PI / 2).translate(0, 0, 1.3).scale(1, 0.2, 1), disk: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2) };
+Object.assign(SG, { cyl: new THREE.CylinderGeometry(1, 1, 1, 8), cone: new THREE.ConeGeometry(1, 1, 7), bigDisc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 16) });
 GEO.storyRiver = SG; // shared: never disposed with a hole
 const DISC_MATS = [0xff6b3d, 0xffd23f, 0x5ad1ff, 0xc9a0ff, 0x7dff8a, 0xff5fa2].map(c => new THREE.MeshLambertMaterial({ color: c }));
 MAT.storyDiscs = DISC_MATS;
@@ -2953,6 +2990,28 @@ function makeSaucer() { // classic flying saucer: hull, glass dome, a ring of bl
   const beam = new THREE.Mesh(SG.beam, SM.beam); beam.position.y = -0.6; beam.scale.y = 0.01; g.add(beam);
   g.userData = { lights, beam }; return g;
 }
+// A friendly low-poly Bigfoot (≈2.6 m tall): legs and arms pivot for a loping run; arms raise to carry the basket
+function makeBigfoot(fur = SM.bfFur, face = SM.bfFace) {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const legs = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(s * 0.3, 1.0, 0); body.add(p); sm(SG.box, fur, 0.38, 1.0, 0.42, 0, -0.5, 0, p); sm(SG.box, face, 0.42, 0.14, 0.75, 0, -0.95, 0.14, p); return p; });
+  const torso = new THREE.Group(); torso.position.y = 1.0; body.add(torso);
+  sm(SG.lump, fur, 0.62, 0.78, 0.46, 0, 0.72, 0, torso); sm(SG.lump, fur, 0.78, 0.42, 0.5, 0, 1.22, -0.02, torso); sm(SG.lump, face, 0.34, 0.38, 0.12, 0, 0.62, 0.38, torso); // belly patch
+  const head = new THREE.Group(); head.position.set(0, 1.58, 0.06); torso.add(head);
+  sm(SG.lump, fur, 0.32, 0.36, 0.32, 0, 0.14, 0, head); sm(SG.box, face, 0.34, 0.24, 0.1, 0, 0.08, 0.26, head); sm(SG.box, fur, 0.4, 0.08, 0.14, 0, 0.24, 0.26, head); // face + brow
+  for (const x of [-0.08, 0.08]) sm(SG.ball, SM.bfEye, 0.035, 0.035, 0.02, x, 0.13, 0.32, head);
+  const arms = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(s * 0.74, 1.3, 0); torso.add(p); sm(SG.box, fur, 0.26, 1.25, 0.28, 0, -0.62, 0, p); sm(SG.lump, face, 0.17, 0.2, 0.17, 0, -1.3, 0.03, p); return p; });
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData = { legs, arms, torso, head, body }; return g;
+}
+function bigfootStride(bf, ph, carrying = false) { const u = bf.userData, sw = Math.sin(ph) * (ph ? 0.75 : 0);
+  u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; if (!carrying) { u.arms[0].rotation.x = -sw * 0.8; u.arms[1].rotation.x = sw * 0.8; } u.body.position.y = ph ? Math.abs(Math.cos(ph)) * 0.12 : 0; u.torso.rotation.x = ph ? 0.18 : 0; }
+// The hole 9 ending: a blurry 'photo' of Bigfoot running, grabbed from the 3D view right after a render (cheap: one drawImage)
+const storyPhoto = document.getElementById('storyphoto');
+function storyPhotoGrab(src, focus) { const cv = storyPhoto?.querySelector('canvas'); if (!cv) return; const w = 360, h = 270; cv.width = w; cv.height = h; // 4:3 snapshot
+  const p = focus ? focus.clone().project(camera) : new THREE.Vector3(), fx = (p.x + 1) / 2 * src.width, fy = (1 - p.y) / 2 * src.height; // centred on Bigfoot
+  const sw = Math.min(src.width, src.height * 0.62 * w / h), sh = sw * h / w, sx = THREE.MathUtils.clamp(fx - sw / 2, 0, src.width - sw), sy = THREE.MathUtils.clamp(fy - sh * 0.55, 0, src.height - sh);
+  cv.getContext('2d').drawImage(src, sx, sy, sw, sh, 0, 0, w, h); S.photoTaken = true; }
+function storyPhotoShow(on) { if (storyPhoto) storyPhoto.classList.toggle('hidden', !on); S.photoShown = !!on; }
 const STORY_CLUES = {
   // ----- Riverbend: the snapping turtle -----
   dock(g) { // a short dock out over the river, a whole boat and one snapped in half
@@ -3314,6 +3373,112 @@ const STORY_CLUES = {
     const bear = makeBear(); bear.scale.setScalar(1.35); bear.position.set(0, 0, 2.2); bear.visible = false; g.add(bear);
     return { bear, mouthZ: 5.3 };
   },
+  // ----- Maple Park: Bigfoot (light and friendly: the starter-world mystery) -----
+  flyer(g) { // the ranger's notice board with a 'Bigfoot sighting?' flyer that someone has scribbled LOL on
+    const box = (w, h, d, m, x, y, z) => sm(SG.box, m, w, h, d, x, y, z, g);
+    box(0.16, 2.6, 0.16, SM.bfWood, -1.15, 1.3, 0); box(0.16, 2.6, 0.16, SM.bfWood, 1.15, 1.3, 0); box(2.7, 1.7, 0.12, SM.bfBoard, 0, 1.85, 0); box(3.0, 0.14, 0.5, SM.bfWood, 0, 2.78, 0.05);
+    const c = document.createElement('canvas'); c.width = 256; c.height = 320; const x = c.getContext('2d');
+    x.fillStyle = '#fbf6e4'; x.fillRect(0, 0, 256, 320); x.fillStyle = '#c0392b'; x.font = '900 34px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('BIGFOOT', 128, 44); x.fillText('SIGHTING?', 128, 82);
+    x.filter = 'blur(3px)'; x.fillStyle = '#5a3d26'; x.beginPath(); x.ellipse(128, 168, 30, 46, 0.15, 0, 7); x.fill(); x.beginPath(); x.arc(134, 112, 17, 0, 7); x.fill(); x.fillRect(96, 150, 14, 52); x.fillRect(150, 146, 14, 52); x.fillRect(110, 200, 14, 40); x.fillRect(136, 200, 14, 40); x.filter = 'none';
+    x.fillStyle = '#333'; x.font = '700 18px system-ui, sans-serif'; x.fillText('Seen near hole 9!!', 128, 272); x.font = '600 14px system-ui, sans-serif'; x.fillText('Tell the ranger', 128, 296);
+    x.save(); x.translate(196, 150); x.rotate(-0.4); x.fillStyle = '#1f5fd0'; x.font = 'italic 900 34px system-ui, sans-serif'; x.fillText('LOL', 0, 0); x.restore();
+    x.save(); x.translate(58, 236); x.rotate(0.3); x.fillStyle = '#1f5fd0'; x.font = 'italic 800 22px system-ui, sans-serif'; x.fillText('haha', 0, 0); x.restore();
+    const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 1.2), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(c) })); poster.position.set(-0.5, 1.88, 0.07); poster.rotation.z = 0.05; g.add(poster);
+    box(0.7, 0.5, 0.01, SM.bfPaper, 0.65, 2.1, 0.07); box(0.5, 0.62, 0.01, SM.bfPaper2, 0.75, 1.45, 0.07); // other notices
+    const lol = textSprite('lol, Bigfoot…', 5); lol.position.set(0.4, 4.1, 0.2); g.add(lol);
+    return { update: (dt, t) => { lol.visible = (t % 9) < 5; lol.position.y = 4.1 + Math.sin(t * 2) * 0.08; } };
+  },
+  mudprint(g) { // one giant muddy footprint beside the tee (≈1.9 m long), with splats; a second one heading off into the trees
+    const one = (x, z, yaw, s, m) => { const p = new THREE.Group(); p.position.set(x, 0.03, z); p.rotation.y = yaw; p.scale.setScalar(s); g.add(p);
+      sm(SG.disk, m, 0.45, 1, 0.75, 0, 0, 0.05, p); sm(SG.disk, m, 0.36, 1, 0.4, 0.04, 0, 0.75, p); // sole + heel
+      for (let k = 0; k < 5; k++) sm(SG.disk, m, k === 0 ? 0.17 : 0.12, 1, k === 0 ? 0.2 : 0.15, -0.36 + k * 0.18, 0, -0.98 + Math.abs(k - 0.6) * 0.07, p); };
+    one(0, 0, 0.25, 1.5, SM.mud); one(1.9, -3.2, 0.25, 1.5, SM.mudFaint);
+    for (const [x, z, r] of [[0.9, 0.6, 0.22], [-0.8, -0.5, 0.16], [0.6, -1.4, 0.12], [-0.5, 1.4, 0.18]]) sm(SG.disk, SM.mud, r, 1, r, x, 0.035, z, g);
+    return {};
+  },
+  treedisc(g) { // a lone tall pine with a Driver jammed near the top (≈9.5 m up); a ladder leaning on it reaches 3 m
+    sm(SG.cyl, SM.bfBark, 0.36, 11, 0.36, 0, 5.5, 0, g);
+    for (const [y, s] of [[4.6, 3.0], [6.8, 2.4], [8.8, 1.8], [10.6, 1.2]]) { const c = new THREE.Mesh(SG.cone, SM.bfPine); c.scale.set(s, 2.6, s); c.position.y = y; c.castShadow = true; g.add(c); }
+    const d = new THREE.Mesh(SG.bigDisc, SM.bfDisc); d.position.set(1.0, 9.4, 1.0); d.rotation.set(0.5, 0, 0.9); d.scale.setScalar(2.6); g.add(d); // scaled up so it reads from the tee
+    const lad = new THREE.Group(); lad.position.set(0.3, 0, 1.2); lad.rotation.x = -0.28; g.add(lad);
+    for (const x of [-0.25, 0.25]) sm(SG.box, SM.bfWood, 0.06, 3.1, 0.06, x, 1.55, 0, lad); for (let i = 0; i < 6; i++) sm(SG.box, SM.bfWood, 0.5, 0.05, 0.05, 0, 0.3 + i * 0.5, 0, lad);
+    return { disc: d };
+  },
+  snapped(g) { // a tall maple with fresh breaks way up high (pale snapped ends), one branch dangling, and broken branches on the ground
+    sm(SG.cyl, SM.bfBark, 0.42, 12, 0.42, 0, 6, 0, g);
+    const crown = sm(SG.lump, SM.bfLeaf, 3.0, 2.2, 3.0, 0, 12.4, 0, g); crown.castShadow = true;
+    const br = (y, yaw, len, broken) => { const b = new THREE.Group(); b.position.y = y; b.rotation.set(0, yaw, -1.0); g.add(b); sm(SG.cyl, SM.bfBark, 0.14, len, 0.14, 0, len / 2, 0, b); if (broken) sm(SG.cyl, SM.bfSnap, 0.15, 0.12, 0.15, 0, len, 0, b); return b; };
+    br(4.5, 0.4, 2.6, false); br(5.2, 2.6, 2.2, false); br(8.8, 1.2, 0.9, true); br(9.6, -1.4, 0.8, true); br(10.2, 0.2, 0.7, true); br(9.1, 2.9, 0.8, true);
+    const hang = new THREE.Group(); hang.position.set(0.8, 9.2, 0.3); g.add(hang); sm(SG.cyl, SM.bfBark, 0.1, 2.6, 0.1, 0, -1.3, 0, hang); sm(SG.lump, SM.bfLeaf, 0.7, 0.5, 0.7, 0, -2.6, 0, hang);
+    for (const [x, z, yaw] of [[2.2, 1.0, 0.6], [-1.6, 1.8, -0.9], [0.8, 2.6, 1.9]]) { const f = sm(SG.cyl, SM.bfBark, 0.12, 2.4, 0.12, x, 0.12, z, g); f.rotation.set(Math.PI / 2, 0, yaw); sm(SG.lump, SM.bfLeaf, 0.6, 0.35, 0.6, x + Math.sin(yaw) * 1.1, 0.3, z + Math.cos(yaw) * 1.1, g); }
+    return { update: (dt, t) => { hang.rotation.z = Math.sin(t * 1.3) * 0.12; hang.rotation.x = Math.sin(t * 0.9) * 0.06; } };
+  },
+  fur(g, c) { // tufts of brown fur tumbling across the fairway on the breeze (decoration: nothing touches the disc)
+    const [x0, z0] = c.at, [x1, z1] = c.to, tufts = [];
+    for (let i = 0; i < 7; i++) { const t = new THREE.Group(); for (let k = 0; k < 3; k++) sm(SG.lump, k ? SM.bfFurLight : SM.bfFur, 0.32, 0.22, 0.26, (k - 1) * 0.18, 0.05 * k, (k % 2) * 0.12, t); t.userData.o = i / 7; t.userData.dz = (i % 3 - 1) * 2.2; tufts.push(t); }
+    const st = { world: tufts, tufts, everShown: false };
+    st.update = (dt, t) => { for (const q of tufts) { const f = (t / 7 + q.userData.o) % 1, x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f + q.userData.dz;
+      q.position.set(x, H.groundY(x, z) + 0.25 + Math.abs(Math.sin(f * 30)) * 0.5, z); q.rotation.set(f * 20, f * 7, f * 13); q.visible = f > 0.03 && f < 0.97; } st.everShown = true; };
+    return st;
+  },
+  picnic(g) { // a picnic table flipped upside down, a bench on its side, a crumpled blanket… and where the food basket was: just crumbs, heading for the trees
+    const box = (w, h, d, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const b = sm(SG.box, m, w, h, d, x, y, z, g); b.rotation.set(rx, ry, rz); b.castShadow = true; return b; };
+    box(2.2, 0.1, 0.95, SM.bfTable, 0, 0.06, 0, 0, 0.3, 0); // top, lying upside down
+    for (const s of [-1, 1]) { box(0.1, 0.8, 0.1, SM.bfWood, s * 0.75, 0.5, 0.3, 0.35, 0.3, 0); box(0.1, 0.8, 0.1, SM.bfWood, s * 0.75, 0.5, -0.3, -0.35, 0.3, 0); } // legs in the air
+    box(2.0, 0.08, 0.32, SM.bfTable, -0.6, 0.2, 1.5, Math.PI / 2, 0.5, 0); box(0.95, 0.03, 0.95, SM.bfCheck, 1.6, 0.03, -1.0, 0.05, 0.7, 0.04);
+    box(0.12, 0.16, 0.12, SM.bfCup, 1.1, 0.06, -0.3, Math.PI / 2, 0, 0.4); sm(SG.disk, SM.mud, 0.45, 1, 0.3, 1.6, 0.045, -1.0, g); // the empty spot on the blanket
+    for (let i = 0; i < 12; i++) sm(SG.ball, SM.bfCrumb, 0.05, 0.04, 0.05, 1.9 + i * 0.45, 0.04, -1.3 - i * 0.55 + Math.sin(i) * 0.2, g);
+    const sign = textSprite('Where\'s my lunch?!', 5.4); sign.position.set(0, 2.8, 0); g.add(sign);
+    return {};
+  },
+  pond(g, c) { // decoration only (the real hole has no water): a little pond with a footbridge cracked in the middle, and huge prints that walk straight across it
+    const R = c.r || 6; sm(SG.disk, SM.bfShore, R + 0.9, 1, R + 0.9, 0, 0.02, 0, g); const w = sm(SG.disk, SM.bfPond, R, 1, R, 0, 0.05, 0, g);
+    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.28 + 0.3; sm(SG.cone, SM.bfReed, 0.08, 0.9, 0.08, Math.cos(a) * (R + 0.4), 0.45, Math.sin(a) * (R + 0.4), g); }
+    const half = (s) => { const b = new THREE.Group(); b.position.set(0, 0.35, s * (R + 1.2) / 2); b.rotation.x = s * 0.12; g.add(b); sm(SG.box, SM.bfWood, 1.5, 0.12, R + 1.2, 0, 0, 0, b);
+      for (const x of [-0.72, 0.72]) sm(SG.box, SM.bfWood, 0.08, 0.6, R + 1.2, x, 0.32, 0, b); return b; };
+    half(-1); half(1); sm(SG.box, SM.bfSnap, 1.52, 0.13, 0.12, 0, 0.3, 0, g); // the crack
+    const pr = []; for (let i = -5; i <= 5; i++) { const s = i % 2 ? 0.28 : -0.28, z = i * 1.25; const y = Math.abs(z) < R + 1 ? 0.43 + Math.abs(z) * 0.02 : 0.04;
+      const p = new THREE.Group(); p.position.set(s, y, z); p.scale.setScalar(0.85); g.add(p); sm(SG.disk, SM.mud, 0.32, 1, 0.5, 0, 0, 0, p); for (let k = 0; k < 5; k++) sm(SG.disk, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, p); pr.push(p); }
+    const rip = sm(SG.ring, SM.bfRipple, 1, 1, 1, 1.8, 0.07, 1.5, g);
+    return { prints: pr.length, update: (dt, t) => { const f = (t * 0.4) % 1; rip.scale.setScalar(0.4 + f * 2.5); SM.bfRipple.opacity = 0.7 * (1 - f); w.position.y = 0.05 + Math.sin(t) * 0.005; } };
+  },
+  woodshadow(g, c) { // a howl from the woods ('AROOOO…'), and now and then a big hairy shadow strides between the trees
+    const [x0, z0] = c.at, [x1, z1] = c.to, gy = H.groundY(x0, z0);
+    const howl = textSprite('AROOOOOO…', 6.5, 'rgba(40,30,20,0.8)', '#ffe9c4'); howl.position.set(x0, gy + 7, z0);
+    const bf = makeBigfoot(SM.bfShadow, SM.bfShadow); bf.scale.setScalar(1.25); bf.visible = false;
+    const st = { world: [howl, bf], bf, howl, everShown: false, howled: false };
+    st.update = (dt, t) => { const hk = t % 16; howl.visible = hk > 0.6 && hk < 3.6; howl.scale.set(6.5 * (1 + 0.04 * Math.sin(t * 18)), 6.5 / 4, 1); if (howl.visible) st.howled = true;
+      const k = t % 22, f = (k - 4) / 9, vis = f > 0 && f < 1; bf.visible = vis; if (!vis) return; st.everShown = true;
+      const x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; bf.position.set(x, H.groundY(x, z), z); bf.rotation.y = Math.atan2(x1 - x0, z1 - z0); SM.bfShadow.opacity = 0.85 * Math.min(1, f * 6, (1 - f) * 6); bigfootStride(bf, k * 1.3); };
+    return st;
+  },
+  grab(g, c) { // hole 9: a trail of fresh prints into the trees by the green and a rustling bush… after the putt, Bigfoot dashes out, grabs the whole basket and sprints off
+    const B = H.basket, T = H.tee, back = new THREE.Vector3(T.x - B.x, 0, T.z - B.z).normalize(), side = new THREE.Vector3(-back.z, 0, back.x);
+    const from = B.clone().addScaledVector(side, 16).addScaledVector(back, -4), away = B.clone().addScaledVector(side, -26).addScaledVector(back, -10);
+    const prints = []; for (let i = 0; i < 7; i++) { const p = B.clone().addScaledVector(side, 6 + i * 1.6).addScaledVector(back, -1.5 - i * 0.5).add(new THREE.Vector3(-back.x, 0, -back.z).multiplyScalar(i % 2 ? 0.3 : -0.3));
+      const q = new THREE.Group(); q.position.set(p.x, H.groundY(p.x, p.z) + 0.03, p.z); q.rotation.y = Math.atan2(-side.x, -side.z); sm(SG.disk, SM.mud, 0.32, 1, 0.5, 0, 0, 0, q); for (let k = 0; k < 5; k++) sm(SG.disk, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, q); prints.push(q); }
+    const bush = new THREE.Group(); { const p = B.clone().addScaledVector(side, 15).addScaledVector(back, -4); bush.position.set(p.x, H.groundY(p.x, p.z), p.z); }
+    for (const [x, y, z, s] of [[0, 0.8, 0, 1.3], [0.9, 0.6, 0.3, 0.9], [-0.8, 0.6, 0.2, 1]]) { const l = sm(SG.lump, SM.bfLeaf, s, s * 0.8, s, x, y, z, bush); l.castShadow = true; }
+    const bf = makeBigfoot(); bf.visible = false; const u = bf.userData;
+    const lift = H.group.children.filter(o => o.userData.basketGroup), base = lift.map(o => o.position.clone());
+    const look = B.clone(), st = { world: [...prints, bush, bf], bf, creature: bf, holding: false, prints: prints.length, photoTaken: false };
+    st.update = (dt, t) => { if (!S.reveal) { const r = (t % 5) < 1.2; bush.rotation.z = r ? Math.sin(t * 25) * 0.08 : 0; } };
+    const carry = (on) => { st.holding = on; lift.forEach((o, i) => { if (on) { const hp = bf.localToWorld(new THREE.Vector3(0, 1.75, 0.75)); o.position.set(hp.x, hp.y - 1.0, hp.z); o.rotation.y = bf.rotation.y; } else o.position.copy(base[i]); }); };
+    const place = (p, dir) => { bf.position.set(p.x, H.groundY(p.x, p.z), p.z); bf.rotation.y = Math.atan2(dir.x, dir.z); };
+    st.reveal = {
+      update(t, Rv) { const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x); bf.visible = true;
+        if (t < 1.6) { Rv.stage = 'dash'; const k = ease(t / 1.6), p = from.clone().lerp(B.clone().addScaledVector(side, 1.4), k); place(p, B.clone().sub(from)); bigfootStride(bf, t * 9); bush.rotation.z = Math.sin(t * 30) * 0.15 * (1 - k); }
+        else if (t < 2.5) { Rv.stage = 'grab'; place(B.clone().addScaledVector(side, 1.4), side.clone().negate()); bigfootStride(bf, 0); const k = ease((t - 1.6) / 0.5); u.arms.forEach(a => { a.rotation.x = -1.3 * k; }); if (k > 0.6) carry(true); if (t > 1.9 && !Rv.shown) { Rv.shown = true; showRevealBanner(); } }
+        else if (t < 5.0) { Rv.stage = 'run'; const k = ease((t - 2.5) / 2.5), p0 = B.clone().addScaledVector(side, 1.4), p = p0.clone().lerp(away, k); place(p, away.clone().sub(p0)); bigfootStride(bf, t * 11, true); u.arms.forEach(a => { a.rotation.x = -1.3; }); carry(true);
+          if (t > 3.0 && !st.photoTaken) { st.photoTaken = true; S.photoReq = bf.position.clone().setY(bf.position.y + 1.3); } }
+        else if (t < 8.0) { Rv.stage = 'photo'; bf.visible = false; lift.forEach(o => { o.visible = false; }); storyPhotoShow(true); }
+        else return true;
+        return false; },
+      finish() { bf.visible = false; carry(false); lift.forEach(o => { o.visible = false; }); storyPhotoShow(false); }, // the basket is gone (it comes back with the next round)
+      cam() { const pos = B.clone().addScaledVector(back, 17).addScaledVector(side, -3).setY(B.y + 4.5); const tgt = bf.visible ? bf.position : B; look.lerp(new THREE.Vector3(tgt.x, tgt.y + 1.4, tgt.z), 0.12); return { pos, look }; },
+    };
+    return st;
+  },
 };
 // spooky caption under the HUD; the course intro rides along on hole 1
 const storyCap = document.getElementById('storycap'), storyReveal = document.getElementById('storyreveal');
@@ -3324,10 +3489,10 @@ function showStoryCaption(text, ms = 8000) {
 }
 function hideStoryCaption() { if (storyCap) storyCap.classList.add('hidden'); clearTimeout(storyCapTimer); }
 function buildStory(idx) {
-  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; S.ashfall = false; S.plumeK = 1; storyTint(0); SM.hotMetal.emissiveIntensity = 0; S.discLift = 0; S.discHidden = false; SM.beam.opacity = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil');
+  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; S.ashfall = false; S.plumeK = 1; storyTint(0); SM.hotMetal.emissiveIntensity = 0; S.discLift = 0; S.discHidden = false; SM.beam.opacity = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil'); storyPhotoShow(false); S.photoReq = false; S.photoTaken = false;
   const st = COURSE.story, c = !S.practice && st && st.holes[idx]; if (!c) { hideStoryCaption(); return; }
   const g = new THREE.Group(), rnd = seeded(4242 + idx * 7);
-  if (c.at && !['prints', 'shadow', 'ufoShadow'].includes(c.clue)) { g.position.set(c.at[0], H.groundY(c.at[0], c.at[1]), c.at[1]); g.rotation.y = c.face || 0; g.scale.setScalar(c.scale || 1); }
+  if (c.at && !['prints', 'shadow', 'ufoShadow', 'fur', 'woodshadow', 'grab'].includes(c.clue)) { g.position.set(c.at[0], H.groundY(c.at[0], c.at[1]), c.at[1]); g.rotation.y = c.face || 0; g.scale.setScalar(c.scale || 1); }
   S.plumeK = c.plume ?? 1; storyTint(c.sky || 0);
   const n0 = H.group.children.length, built = STORY_CLUES[c.clue](g, c, rnd) || {}, extra = H.group.children.slice(n0); // pooled bits the clue parented to the hole
   H.group.add(g); for (const o of built.world || []) H.group.add(o);
@@ -3393,7 +3558,7 @@ const MM_COL = {
   lava: { rough: '#3a2a26', fair: '#5a4640', ob: '#1f1513', tree: '#140d0c', water: '#ff5a0a', snow: '#8a7f78' },
   moon: { rough: '#4a4a52', fair: '#6c6c76', ob: '#26262c', tree: '#1a1a1e', water: '#c06bff', snow: '#9a9aa6' },
 };
-const MM_BLIP = { river: 'turtle', antarctica: 'bear', volcano: 'glow', moon: 'ufo' }; // course id → its monster's blip (never Maple Park)
+const MM_BLIP = { park: 'bigfoot', river: 'turtle', antarctica: 'bear', volcano: 'glow', moon: 'ufo' }; // course id → its monster's blip (Maple Park: a Bigfoot shadow)
 const mm = { full: false, dirty: true, last: 0, draws: 0, base: {}, view: null, trails: [], blip: null, phaseSeen: '', lieKey: '' };
 const mmUI = { corner: $('minimap'), full: $('mapfull'), fc: $('mapfullcanvas'), close: $('mapclose') };
 // Hole frame: tee at the bottom, basket at the top. u = right, v = down (metres), centred on the hole.
@@ -3460,6 +3625,8 @@ function mmDrawBlip(g, T, k, now) {
   if (b.kind === 'turtle') { const [qx, qy] = T.to(b.b[0], b.b[1]); g.rotate(Math.atan2(qy - py, qx - px)); g.fillStyle = 'rgba(20,70,40,0.75)';
     g.beginPath(); g.ellipse(0, 0, 5 * s, 3.6 * s, 0, 0, 7); g.fill(); g.beginPath(); g.arc(6.2 * s, 0, 1.6 * s, 0, 7); g.fill();
     for (const [fx, fy] of [[2.5, 3.6], [2.5, -3.6], [-3, 3.2], [-3, -3.2]]) { g.beginPath(); g.ellipse(fx * s, fy * s, 1.6 * s, 0.9 * s, fy > 0 ? 0.6 : -0.6, 0, 7); g.fill(); } }
+  else if (b.kind === 'bigfoot') { const [qx, qy] = T.to(b.b[0], b.b[1]); g.rotate(Math.atan2(qy - py, qx - px) + Math.PI / 2); g.fillStyle = 'rgba(40,24,10,0.55)';
+    g.beginPath(); g.ellipse(0, 0, 3.4 * s, 2.2 * s, 0, 0, 7); g.fill(); g.beginPath(); g.arc(0, -2.8 * s, 1.5 * s, 0, 7); g.fill(); for (const x of [-1.5, 1.5]) { g.beginPath(); g.ellipse(x * s, 2.8 * s, 0.9 * s, 1.4 * s, 0, 0, 7); g.fill(); } }
   else if (b.kind === 'bear') { g.fillStyle = 'rgba(10,20,35,0.45)'; g.beginPath(); g.ellipse(0, 0, 8 * s, 4.5 * s, 0.3, 0, 7); g.fill(); g.beginPath(); g.arc(7 * s, -3 * s, 2.6 * s, 0, 7); g.fill(); }
   else if (b.kind === 'glow') { const r = (8 + 2.5 * Math.sin(now / 120)) * s, gr = g.createRadialGradient(0, 0, 0, 0, 0, r); gr.addColorStop(0, 'rgba(255,240,160,0.95)'); gr.addColorStop(0.4, 'rgba(255,110,20,0.8)'); gr.addColorStop(1, 'rgba(255,40,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, r, 0, 7); g.fill(); }
   else { const r = 3 * s; g.strokeStyle = 'rgba(120,255,160,0.9)'; g.lineWidth = 1.2; g.beginPath(); g.arc(0, 0, r * (1 + (now / 300) % 1.5), 0, 7); g.stroke();
@@ -3588,7 +3755,7 @@ function frame(now) {
 
   updateCamera(dt);
   updateWindKey();
-  updateTreeFade(); renderer.render(scene, camera); mmUpdate(now);
+  updateTreeFade(); renderer.render(scene, camera); if (S.photoReq) { storyPhotoGrab(renderer.domElement, S.photoReq.isVector3 ? S.photoReq : null); S.photoReq = false; } mmUpdate(now);
   requestAnimationFrame(frame);
 }
 
@@ -3642,6 +3809,10 @@ window.__game = {
   obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), banks: H.banks.length, vents: H.vents.map(v => ({ x: v.x, z: v.z, r: v.r, up: v.up, push: v.push })), penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
   fx: () => ({ penguinHops: S.penguinHops || 0, puffs: S.puffs || 0, snow: snowfall.visible, snowN: SNOW_N, sizzles: S.sizzles || 0, ventBoosts: S.ventBoosts || 0, embers: embers.visible, embersN: EMBER_N, plume: H.plume.length, lavaGlow: MAT.water.emissiveMap === lavaTex }),
   setVents(on) { S.noVents = !on; },
+  storyMaple: () => { const b = H.story?.built || {}, bf = b.bf, base = H.group.children.find(o => o.userData.basketGroup);
+    return { clue: H.story?.clue || null, bigfoot: bf ? { visible: bf.visible, x: +bf.position.x.toFixed(2), z: +bf.position.z.toFixed(2) } : null, holding: !!b.holding, howled: !!b.howled, everShown: !!b.everShown,
+      tufts: b.tufts ? b.tufts.filter(q => q.visible).length : 0, tuftX: b.tufts ? +b.tufts[0].position.x.toFixed(2) : null, discY: b.disc ? +b.disc.getWorldPosition(new THREE.Vector3()).y.toFixed(1) : null, prints: b.prints || 0,
+      photoTaken: !!S.photoTaken, photoShown: !!S.photoShown, basketVis: base ? { visible: base.visible, x: +base.position.x.toFixed(2), y: +base.position.y.toFixed(2) } : null, basketPhysY: H.basket.y }; },
   story: () => { const st = H.story, b = st?.built; return { hasStory: !!COURSE.story, intro: COURSE.story?.intro || null, clue: st?.clue || null, meshes: st?.meshes || 0, caption: S.storyCaption || null,
     captionVisible: !!storyCap && !storyCap.classList.contains('hidden'), at: st?.data.at || null, roared: !!S.roared, shake: !!S.shake,
     eyes: b?.eyes ? { visible: b.eyes.visible, everShown: b.everShown } : null, shadow: b?.bear && st.clue === 'shadow' ? { visible: b.bear.visible, everShown: b.everShown } : null,
