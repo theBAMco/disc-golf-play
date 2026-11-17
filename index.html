@@ -209,12 +209,8 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
   white-space: pre-line; text-align: center; font-size: 15px; font-style: italic; line-height: 1.35; color: #e8f4ff; background: rgba(8,18,34,.72);
   border: 1px solid rgba(160,210,255,.35); padding: 8px 14px; border-radius: 14px; pointer-events: none; transition: opacity .8s; z-index: 4; }
 #storycap.fade { opacity: 0; }
-#storyreveal { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 6; animation: revealPop .45s cubic-bezier(.2,1.6,.4,1); }
-#storyreveal b { display: block; font-size: 54px; font-weight: 900; color: #fff; letter-spacing: 2px; text-shadow: 0 0 18px #8fd3ff, 0 4px 0 #1b3a5c, 0 6px 18px rgba(0,0,0,.6); }
-#storyreveal span { display: inline-block; margin-top: 6px; font-size: 17px; font-weight: 700; color: #dff1ff; background: rgba(8,18,34,.7); padding: 6px 12px; border-radius: 12px; }
-@keyframes revealPop { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
 #banner.veil { opacity: 0; } /* during the reveal the hole banner is invisible; tapping Next still skips to the scorecard */
-@media (orientation: landscape) and (max-height: 500px) { #storycap { bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); font-size: 13px; } #storyreveal b { font-size: 40px; } #storyreveal { bottom: 96px; } }
+@media (orientation: landscape) and (max-height: 500px) { #storycap { bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); font-size: 13px; } }
 
 /* Mini map: small corner map under Card/Restart (tap = full screen); full screen map with a big Close button */
 #hud #minimap { position: relative; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 12px;
@@ -295,7 +291,6 @@ body.charging #minimap { opacity: .55; }
     <div id="mapfull" class="hidden" role="dialog" aria-label="Hole map"><div class="mapfullhead"><b id="mapfulltitle">Hole map</b><button id="mapclose" aria-label="Close map">✕ Close</button></div><canvas id="mapfullcanvas"></canvas><div class="mapkey"><i class="k-tee"></i>Tee <i class="k-bask"></i>Basket <i class="k-disc"></i>Disc <i class="k-trail"></i>Throws <span id="mapkeydanger"><i class="k-danger"></i><span id="mapdanger">Water</span></span> <span id="mapkeydrop"><i class="k-drop"></i>Drop zone</span></div></div>
     <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
     <div id="storycap" class="hidden"></div>
-    <div id="storyreveal" class="hidden"><b></b><span></span></div>
     <div id="storyphoto" class="hidden"><div class="ph"><canvas></canvas><span>Is that… BIGFOOT?!</span></div></div>
     <div id="banner" class="hidden"><div id="bannertext"></div><div id="bannersub"></div><button id="nextbtn" class="hidden">Next hole ▶</button><button id="againbtn" class="hidden">Play again</button></div>
     <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardcourse" class="ghost">Home</button><button id="cardclose" class="ghost">Close</button></div></div></div>
@@ -396,7 +391,7 @@ const PARK_COURSE = {
       { clue: 'woodshadow', at: [-14, -56], to: [-12, -36], caption: 'AROOOOO… a howl from the woods. Was that a shadow between the trees?' },
       { clue: 'grab', at: [6, -128] },
     ],
-    reveal: { creature: 'bigfoot', title: 'BIGFOOT!', sub: 'He grabbed the basket and ran!' },
+    reveal: { creature: 'bigfoot' },
   },
   holes: [
     {
@@ -478,7 +473,7 @@ const RIVER_COURSE = {
       { clue: 'silhouette', at: [-11, -89], from: [-30, -89], to: [14, -90] },
       { clue: 'island', at: [-10, -124.5], r: 8.5 },
     ],
-    reveal: { creature: 'turtle', title: 'SNAPPING TURTLE!', sub: 'The island was its shell!' },
+    reveal: { creature: 'turtle' },
   },
   holes: [
     {
@@ -581,7 +576,7 @@ const ICE_COURSE = {
       { clue: 'shadow', at: [-22, -58], to: [-22, -106] },
       { clue: 'cave', at: [-57, -146], face: 0.75 },
     ],
-    reveal: { creature: 'polarBear', title: 'POLAR BEAR!', sub: 'The camp raider! It just wanted the fish.' },
+    reveal: { creature: 'polarBear' },
   },
   holes: [
     {
@@ -690,7 +685,7 @@ const LAVA_COURSE = {
       { clue: 'plume', at: [12, -40], face: -0.3, plume: 1.6, sky: 0.9 },
       { clue: 'peak', at: [46, -120], plume: 1.8, sky: 0.95 },
     ],
-    reveal: { creature: 'eruption', title: 'ERUPTION!', sub: 'You conquered the volcano!' },
+    reveal: { creature: 'eruption' },
   },
   holes: [
     {
@@ -797,7 +792,7 @@ const MOON_COURSE = {
       { clue: 'ufoShadow', at: [0, -48] },
       { clue: 'abduct', at: [-20, -160] },
     ],
-    reveal: { creature: 'ufo', title: 'ABDUCTED!', sub: 'They took the basket!' },
+    reveal: { creature: 'ufo' },
   },
   holes: [
     {
@@ -3162,7 +3157,7 @@ const STORY_CLUES = {
         if (t < 1.1) { Rv.stage = 'rumble'; shakeCamera(0.12, 0.3); st.breathe = Math.sin(t * 25) * 0.08; if (Math.random() < 0.5) { const a = Math.random() * 6.28; pool.spawn(g.position.x + Math.cos(a) * (R + 0.5), 0.1, g.position.z + Math.sin(a) * (R + 0.5), 1.2); } }
         else if (t < 2.1) { Rv.stage = 'rise'; st.breathe = 0; turtle.visible = true; turtle.position.y = -2.2 + 3.1 * ease((t - 1.1) / 0.8); u.neck.rotation.x = -0.35 * ease((t - 1.1) / 0.9); shakeCamera(0.2, 0.3); if (!Rv.splash) { Rv.splash = true; const w = turtle.getWorldPosition(TMP.rp); spawnSplash(w.x, w.z); } }
         else if (t < 4.3) { Rv.stage = 'look'; const k = t - 2.1; u.head.rotation.y = Math.sin(k * 1.6) * 0.35 * Math.max(0, 1 - k / 2.2); u.jaw.rotation.x = k > 1.2 && k < 1.7 ? 0.45 : 0.05; // snap!
-          if (!Rv.shown) { Rv.shown = true; shakeCamera(0.4, 1.2); showRevealBanner(); } }
+          if (!Rv.shown) { Rv.shown = true; shakeCamera(0.4, 1.2); } }
         else if (t < 6.0) { Rv.stage = 'swim'; const k = ease((t - 4.3) / 1.7); st.swim = k * 14; st.breathe = -k * 0.6; u.flips.forEach((f, i) => f.rotation.y = Math.sin(t * 6 + i * 3) * 0.5); turtle.rotation.y = face + Math.PI * k; }
         else return true;
         return false; },
@@ -3241,7 +3236,7 @@ const STORY_CLUES = {
       update(t, Rv) { const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
         if (t < 1.1) { Rv.stage = 'arrive'; saucer.visible = true; saucer.position.y = B.y + 70 - (70 - 13) * ease(t / 1.1); shakeCamera(0.06, 0.2); }
         else if (t < 3.7) { Rv.stage = 'beam'; saucer.position.y = hover + Math.sin(t * 3) * 0.2; const k = ease((t - 1.1) / 0.35); u.beam.scale.set(1, 12.5 * k, 1); SM.beam.opacity = 0.42 * k + Math.sin(t * 20) * 0.04;
-          setLift((hover - B.y - 1) * ease((t - 1.5) / 2.0)); if (t > 2.2 && !Rv.shown) { Rv.shown = true; showRevealBanner(); } }
+          setLift((hover - B.y - 1) * ease((t - 1.5) / 2.0)); if (t > 2.2 && !Rv.shown) { Rv.shown = true; } }
         else if (t < 4.1) { Rv.stage = 'beam'; setLift(hover - B.y); SM.beam.opacity = 0.42 * (1 - (t - 3.7) / 0.4); }
         else if (t < 6.0) { Rv.stage = 'zoom'; SM.beam.opacity = 0; u.beam.scale.y = 0.01; const k = ease((t - 4.1) / 1.4); saucer.position.set(B.x - back.x * 40 * k + side.x * 60 * k, hover + 90 * k * k, B.z - back.z * 40 * k + side.z * 60 * k); saucer.scale.setScalar(1 - 0.5 * k); }
         else return true;
@@ -3324,7 +3319,7 @@ const STORY_CLUES = {
         if (t < 1.0) { Rv.stage = 'rumble'; shakeCamera(0.1, 0.3); storyTint(0.85 + t * 0.1); }
         else if (t < 4.4) { Rv.stage = 'erupt'; creature.visible = true;
           if (!Rv.boom) { Rv.boom = true; shakeCamera(0.24, 0.9); for (let i = 0; i < 6; i++) shoot(true); hot.forEach(([m]) => m.material = SM.hotMetal); }
-          if (t > 1.5 && !Rv.shown) { Rv.shown = true; showRevealBanner(); }
+          if (t > 1.5 && !Rv.shown) { Rv.shown = true; }
           if (Math.random() < 0.6) shoot(true);
           if (Math.random() < 0.45) { const a = Math.random() * 6.28, r = 6 + Math.random() * 20; rain.spawn(B.x + Math.cos(a) * r, B.y + 28 + Math.random() * 10, B.z + Math.sin(a) * r, (Math.random() - 0.5) * 4, -14, (Math.random() - 0.5) * 4, 0.35 + Math.random() * 0.4); }
           SM.hotMetal.emissiveIntensity = Math.min(1.3, (t - 1) * 0.8); halo.scale.setScalar(Math.min(4.5, (t - 1) * 2.4)); }
@@ -3527,7 +3522,7 @@ const STORY_CLUES = {
     st.reveal = {
       update(t, Rv) { const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x); bf.visible = true;
         if (t < 1.6) { Rv.stage = 'dash'; const k = ease(t / 1.6), p = from.clone().lerp(B.clone().addScaledVector(side, 1.4), k); place(p, B.clone().sub(from)); bigfootStride(bf, t * 9); bush.rotation.z = Math.sin(t * 30) * 0.15 * (1 - k); }
-        else if (t < 2.5) { Rv.stage = 'grab'; place(B.clone().addScaledVector(side, 1.4), side.clone().negate()); bigfootStride(bf, 0); const k = ease((t - 1.6) / 0.5); u.arms.forEach(a => { a.rotation.x = -1.3 * k; }); if (k > 0.6) carry(true); if (t > 1.9 && !Rv.shown) { Rv.shown = true; showRevealBanner(); } }
+        else if (t < 2.5) { Rv.stage = 'grab'; place(B.clone().addScaledVector(side, 1.4), side.clone().negate()); bigfootStride(bf, 0); const k = ease((t - 1.6) / 0.5); u.arms.forEach(a => { a.rotation.x = -1.3 * k; }); if (k > 0.6) carry(true); if (t > 1.9 && !Rv.shown) { Rv.shown = true; } }
         else if (t < 5.0) { Rv.stage = 'run'; const k = ease((t - 2.5) / 2.5), p0 = B.clone().addScaledVector(side, 1.4), p = p0.clone().lerp(away, k); place(p, away.clone().sub(p0)); bigfootStride(bf, t * 11, true); u.arms.forEach(a => { a.rotation.x = -1.3; }); carry(true);
           if (t > 3.0 && !st.photoTaken) { st.photoTaken = true; S.photoReq = bf.position.clone().setY(bf.position.y + 1.3); } }
         else if (t < 8.0) { Rv.stage = 'photo'; bf.visible = false; lift.forEach(o => { o.visible = false; }); storyPhotoShow(true); }
@@ -3540,7 +3535,7 @@ const STORY_CLUES = {
   },
 };
 // spooky caption under the HUD; the course intro rides along on hole 1
-const storyCap = document.getElementById('storycap'), storyReveal = document.getElementById('storyreveal');
+const storyCap = document.getElementById('storycap'); // the hole 9 finale has no text box any more (Ben): the animation tells the story
 let storyCapTimer = null;
 function showStoryCaption(text, ms = 8000) {
   if (!storyCap) return; storyCap.textContent = text; storyCap.classList.remove('hidden', 'fade'); S.storyCaption = text;
@@ -3548,7 +3543,7 @@ function showStoryCaption(text, ms = 8000) {
 }
 function hideStoryCaption() { if (storyCap) storyCap.classList.add('hidden'); clearTimeout(storyCapTimer); S.storyCaption = null; }
 function buildStory(idx) {
-  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; S.ashfall = false; S.plumeK = 1; storyTint(0); SM.hotMetal.emissiveIntensity = 0; S.discLift = 0; S.discHidden = false; SM.beam.opacity = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil'); storyPhotoShow(false); S.photoReq = false; S.photoTaken = false;
+  H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; S.ashfall = false; S.plumeK = 1; storyTint(0); SM.hotMetal.emissiveIntensity = 0; S.discLift = 0; S.discHidden = false; SM.beam.opacity = 0; ui.banner.classList.remove('veil'); storyPhotoShow(false); S.photoReq = false; S.photoTaken = false;
   const st = COURSE.story, c = !S.practice && st && st.holes[idx]; if (!c) { hideStoryCaption(); return; }
   const g = new THREE.Group(), rnd = seeded(4242 + idx * 7);
   if (c.at && !['prints', 'shadow', 'ufoShadow', 'fur', 'woodshadow', 'grab'].includes(c.clue)) { g.position.set(c.at[0], H.groundY(c.at[0], c.at[1]), c.at[1]); g.rotation.y = c.face || 0; g.scale.setScalar(c.scale || 1); }
@@ -3571,7 +3566,7 @@ function startReveal() {
   S.reveal = { t: 0, stage: 'rumble', done: false }; ui.banner.classList.add('veil'); hideStoryCaption(); return true;
 }
 function finishReveal() {
-  if (!S.reveal || S.reveal.done) return; S.reveal.done = true; S.reveal.stage = 'done'; ui.banner.classList.remove('veil'); storyReveal?.classList.add('hidden');
+  if (!S.reveal || S.reveal.done) return; S.reveal.done = true; S.reveal.stage = 'done'; ui.banner.classList.remove('veil');
   H.story?.built?.reveal?.finish?.();
   const b = H.story?.built?.bear; if (b) { const u = b.userData; u.torso.rotation.x = -0.2; u.jaw.rotation.x = 0.3; b.position.z = H.story.built.mouthZ + 3.5; b.visible = true; }
 }
@@ -3594,11 +3589,10 @@ function updateStory(dt) {
     if (!R.puff) { R.puff = true; const p = g.localToWorld(new THREE.Vector3(0, 0, st.built.mouthZ)); spawnPuff(p.x, p.z); spawnPuff(p.x + 1, p.z + 0.5); } }
   else if (t < 4.8) { R.stage = 'roar'; b.position.z = Z1; for (const l of [...u.front, ...u.back]) l.rotation.x *= 0.8; const k = ease((t - 2.4) / 0.5);
     u.torso.rotation.x = -0.85 * k; u.jaw.rotation.x = 0.75 * k; u.head.rotation.x = -0.25 * k + Math.sin(t * 30) * 0.03 * k; u.front[0].rotation.x = u.front[1].rotation.x = -0.9 * k;
-    if (!R.roared) { R.roared = true; shakeCamera(0.55, 1.8); showRevealBanner(); } }
+    if (!R.roared) { R.roared = true; shakeCamera(0.55, 1.8); } }
   else if (t < 6.2) { R.stage = 'settle'; const k = ease((t - 4.8) / 0.8); u.torso.rotation.x = -0.85 * (1 - k) - 0.2 * k; u.jaw.rotation.x = 0.75 * (1 - k) + 0.3 * k; u.head.rotation.x = 0; u.front[0].rotation.x = u.front[1].rotation.x = -0.9 * (1 - k); }
   else { finishReveal(); if (S.phase === 'holed') endRound(); }
 }
-function showRevealBanner() { const rv = COURSE.story.reveal; if (storyReveal) { storyReveal.querySelector('b').textContent = rv.title; storyReveal.querySelector('span').textContent = rv.sub; storyReveal.classList.remove('hidden'); } }
 function revealCam() {
   if (H.story.built.reveal) return H.story.built.reveal.cam();
   const st = H.story, g = st.group, m = g.localToWorld(new THREE.Vector3(0, 0, st.built.mouthZ + 3));
@@ -3878,7 +3872,7 @@ window.__game = {
     eyes: b?.eyes ? { visible: b.eyes.visible, everShown: b.everShown } : null, shadow: b?.bear && st.clue === 'shadow' ? { visible: b.bear.visible, everShown: b.everShown } : null,
     prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible, creatureVisible: !!(b?.bear || b?.turtle || b?.creature)?.visible || (st?.clue === 'abduct' && !!b?.lifted) } : null,
     bubbles: (() => { const out = []; H.group.traverse(o => { if (o.userData.text) out.push(o.userData.text); }); return out; })(), // in-world text bubbles on this hole
-    revealShown: !!storyReveal && !storyReveal.classList.contains('hidden'), bannerVeiled: ui.banner.classList.contains('veil') }; },
+    revealShown: !!document.getElementById('storyreveal') || (!!storyCap && !storyCap.classList.contains('hidden')), /* any story text box on screen */ bannerVeiled: ui.banner.classList.contains('veil') }; },
   holeTime: (t) => { S.holeT = t; },
   sceneRings: () => scene.children.filter(o => o.visible && o.geometry?.type === 'RingGeometry').length, // any ground ring markers shown right now
   mem: () => ({ geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, sharedDisposed: S.sharedDisposed || 0, previewSims: curvePreview.sims, previewLayers: scene.children.filter(o => o.isPoints && o.material.isShaderMaterial).length, aimDots: (() => { let n = 0; scene.traverse(o => { if (o.isPoints && o.visible && ![leaves, snowfall, embers].includes(o) && !H.group.children.includes(o) && o.parent === scene) n++; }); return n; })() }),
