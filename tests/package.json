@@ -1,0 +1,9 @@
+{
+  "name": "disc-golf-tests",
+  "private": true,
+  "type": "module",
+  "description": "Browser tests for the live Disc Golf game",
+  "dependencies": {
+    "playwright-core": "^1.65.0"
+  }
+}
