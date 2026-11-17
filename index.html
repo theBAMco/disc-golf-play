@@ -388,7 +388,7 @@ const PARK_COURSE = {
       { clue: 'fur', at: [-9.5, -34], to: [12, -40] },
       { clue: 'picnic', at: [-1, -20], face: 0.2 },
       { clue: 'pond', at: [-11, -40], r: 4 },
-      { clue: 'woodshadow', at: [-14, -56], peekTree: [-13, -30], peekSide: 1, peekScale: 1.2, peekOut: 0.85, caption: 'AROOOOO… a howl from the woods. Was that a shadow between the trees?' },
+      { clue: 'woodshadow', at: [-14, -56], peekTree: [-13, -30], peekSide: 1, peekScale: 1.2, peekOut: 1.45, caption: 'AROOOOO… a howl from the woods. Was that a shadow between the trees?' },
       { clue: 'grab', at: [6, -128] },
     ],
     reveal: { creature: 'bigfoot' },
@@ -445,7 +445,7 @@ const PARK_COURSE = {
       tee: [0, 0], basket: [-4, -64], width: 14, ob: 13,
       path: [[0, 0], [-4, -64]],
       hills: [{ x: -4, z: -64, r: 24, h: 7 }],
-      trees: [{ x: -13, z: -30, s: 1.1 }, { x: 9, z: -36, s: 1.1 }, { x: -16, z: -72, s: 1.2 }, { x: 8, z: -76, s: 1.2 }],
+      trees: [{ x: -13, z: -30, s: 1.1, w: 3.2, cw: 1.4 }, { x: 9, z: -36, s: 1.1 }, { x: -16, z: -72, s: 1.2 }, { x: 8, z: -76, s: 1.2 }],
     },
     {
       name: 'Over the Wall', par: 4, tip: 'A tall maple wall crosses the fairway. Tomahawk over it, or find the gap on the far left.',
@@ -1403,14 +1403,15 @@ function makeHole(data, index) {
     const mats0 = [], cols = [];
     list.forEach(({ t, i }, j) => {
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), (i * 2.39) % 6.28);
-      mtx.compose(ps.set(t.x, t.y, t.z), q, sc.setScalar(t.s));
-      trunk.setMatrixAt(j, mtx); crowns.forEach(c => c.setMatrixAt(j, mtx)); mats0.push(mtx.clone());
+      // optional per-tree shape (data): w = trunk thickness, cw/ch = canopy width/height (collisions use the same factors)
+      mtx.compose(ps.set(t.x, t.y, t.z), q, sc.set(t.s * (t.w || 1), t.s, t.s * (t.w || 1))); trunk.setMatrixAt(j, mtx);
+      mtx.compose(ps, q, sc.set(t.s * (t.cw || 1), t.s * (t.ch || 1), t.s * (t.cw || 1))); crowns.forEach(c => c.setMatrixAt(j, mtx)); mats0.push(mtx.clone());
       if (kind === 'maple') col.setHex(MAPLE[Math.floor(rnd() * MAPLE.length)]); else col.setHSL(0, 0, 1).offsetHSL((rnd() - 0.5) * 0.05, (rnd() - 0.5) * 0.1, (rnd() - 0.5) * 0.12);
       crowns.forEach((c, k) => c.setColorAt(j, k === 1 ? col.clone().offsetHSL(0, 0, 0.05) : col)); ghosts.forEach(g => g.setColorAt(j, col)); cols.push(col.clone());
     });
     for (const m of [trunk, ...crowns]) { m.castShadow = true; m.receiveShadow = false; group.add(m); }
     for (const m of ghosts) group.add(m);
-    treeViz.push({ list: list.map(o => o.t), crowns, ghosts, mats0, cols, faded: new Uint8Array(list.length), zero: new THREE.Matrix4().makeScale(0, 0, 0) });
+    treeViz.push({ list: list.map(o => o.t), trunk, crowns, ghosts, mats0, cols, faded: new Uint8Array(list.length), zero: new THREE.Matrix4().makeScale(0, 0, 0) });
   }
   group.userData.treeViz = treeViz;
   // Water, banks, islands, bridges, reeds and rocks
@@ -1932,7 +1933,7 @@ function updateTreeFade() {
   for (const v of viz) {
     let changed = false;
     for (let j = 0; j < v.list.length; j++) {
-      const t = v.list[j], r = 2.5 * t.s;
+      const t = v.list[j], r = 2.5 * t.s * (t.cw || 1);
       const u = THREE.MathUtils.clamp(((t.x - c.x) * sx + (t.z - c.z) * sz) / L2, 0, 1);
       const dx = c.x + sx * u - t.x, dz = c.z + sz * u - t.z, y = c.y + (fy - c.y) * u;
       const near = Math.hypot(t.x - c.x, t.z - c.z) < r + 1.2 && c.y < t.y + 8 * t.s;
@@ -2338,9 +2339,10 @@ function stepPhysics(dt) {
   let inCanopy = false;
   for (const t of H.trees) {
     const dx = p.x - t.x, dz = p.z - t.z;
-    if (Math.abs(dx) > 3 || Math.abs(dz) > 3) continue;
+    const reach = t.w || t.cw ? Math.max(3, 2.2 * t.s * (t.cw || 1) + 0.2, 0.38 * t.s * (t.w || 1) + 0.3) : 3; // shaped trees reach further
+    if (Math.abs(dx) > reach || Math.abs(dz) > reach) continue;
     const d = Math.hypot(dx, dz), hy = p.y - t.y;
-    const trunkR = 0.38 * t.s + DISC_R, canopyBase = 2.0 * t.s, canopyTop = 7.5 * t.s;
+    const trunkR = 0.38 * t.s * (t.w || 1) + DISC_R, canopyBase = 2.0 * t.s * (t.ch || 1), canopyTop = 7.5 * t.s * (t.ch || 1);
     if (hy >= canopyTop) continue;
     const nx = dx / (d || 1), nz = dz / (d || 1);
     if (d < trunkR) {
@@ -2350,7 +2352,7 @@ function stepPhysics(dt) {
       return 'tree';
     }
     if (hy < canopyBase) continue;
-    const r = 2.2 * t.s * (1 - (hy - canopyBase) / (canopyTop - canopyBase));
+    const r = 2.2 * t.s * (t.cw || 1) * (1 - (hy - canopyBase) / (canopyTop - canopyBase));
     if (d >= r) continue;
     inCanopy = true;
     // deeper in the canopy = thicker leaves; leaves push the disc out sideways and take away its lift
@@ -3496,17 +3498,18 @@ const STORY_CLUES = {
     const rip = sm(SG.ring, SM.bfRipple, 1, 1, 1, 1.8, 0.07, 1.5, g);
     return { prints: pr.length, update: (dt, t) => { const f = (t * 0.4) % 1; rip.scale.setScalar(0.4 + f * 2.5); SM.bfRipple.opacity = 0.7 * (1 - f); w.position.y = 0.05 + Math.sin(t) * 0.005; } };
   },
-  woodshadow(g, c) { // a howl from the woods ('AROOOO…'), and now and then Bigfoot peeks halfway out from behind a pine by the fairway, looks at you, and ducks back out of sight
+  woodshadow(g, c) { // a howl from the woods ('AROOOO…'), and now and then Bigfoot peeks halfway out from behind the big old maple by the fairway, looks at you, and ducks back out of sight
     const [x0, z0] = c.at, gy = H.groundY(x0, z0), T = c.peekTree, tee = H.tee;
     const howl = textSprite('AROOOOOO…', 6.5, 'rgba(40,30,20,0.8)', '#ffe9c4'); howl.position.set(x0, gy + 7, z0);
     const bf = makeBigfoot(SM.bfPeekFur, SM.bfPeekFace); bf.scale.setScalar(c.peekScale || 1.1); bf.visible = false;
     const d = new THREE.Vector2(T[0] - tee.x, T[1] - tee.z).normalize(), side = c.peekSide || -1, perp = new THREE.Vector2(-d.y, d.x).multiplyScalar(side); // perp points toward the fairway
-    const hide = new THREE.Vector2(T[0] + d.x * 1.3, T[1] + d.y * 1.3), out = hide.clone().addScaledVector(perp, c.peekOut || 0.75); // hidden right behind the trunk (seen from the tee) / halfway out
+    const tree = H.trees.find(q => Math.hypot(q.x - T[0], q.z - T[1]) < 0.01), depth = tree ? 0.42 * tree.s * (tree.w || 1) + 0.9 : 1.3; // just behind the (wide) trunk's back
+    const hide = new THREE.Vector2(T[0] + d.x * depth, T[1] + d.y * depth).addScaledVector(perp, 0.15), out = hide.clone().addScaledVector(perp, c.peekOut || 0.75); // fully behind the trunk (seen from the tee) / halfway out
     const st = { world: [howl, bf], bf, howl, everShown: false, howled: false, peekTree: T, peek: 0 };
     const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
     st.update = (dt, t) => { const hk = t % 16; howl.visible = hk > 0.6 && hk < 3.6; howl.scale.set(6.5 * (1 + 0.04 * Math.sin(t * 18)), 6.5 / 4, 1); if (howl.visible) st.howled = true;
-      // every 22 s: 5.0-6.0 s lean out, 6.0-8.0 s pause and turn his head to you, 8.0-8.8 s slip back, then gone
-      const k = t % 22, f = k < 5 ? 0 : k < 6 ? ease(k - 5) : k < 8 ? 1 : 1 - ease((k - 8) / 0.8), vis = k > 5 && k < 8.8; bf.visible = vis; st.peek = vis ? f : 0; if (!vis) return; st.everShown = true;
+      // every 22 s: 5.0-6.0 s lean out from behind the trunk, 6.0-8.0 s pause and turn his head to you, 8.0-8.8 s slip back behind it
+      const k = t % 22, f = k < 5 ? 0 : k < 6 ? ease(k - 5) : k < 8 ? 1 : 1 - ease((k - 8) / 0.8), vis = k > 5 && k < 9.4; /* 8.8-9.4 s: still there, fully behind the trunk, then removed */ bf.visible = vis; st.peek = vis ? f : 0; if (!vis) return; st.everShown = true;
       const x = hide.x + (out.x - hide.x) * f, z = hide.y + (out.y - hide.y) * f; bf.position.set(x, H.groundY(x, z), z);
       bf.rotation.y = Math.atan2(tee.x - x, tee.z - z) - side * 0.5 * (1 - f); bigfootStride(bf, 0);
       const u = bf.userData, look = k < 6 ? 0 : k < 8 ? Math.sin(Math.min(1, (k - 6) / 0.5) * Math.PI / 2) : 0;
@@ -3705,7 +3708,7 @@ function mmDraw(cv, full, now) {
   for (const b of d.bridges || []) line(b.from, b.to, Math.max(1.5, b.w * k), '#a8743f');
   for (const c of d.craters || []) dot(c.x, c.z, c.r * k, null, 'rgba(255,255,255,0.55)', Math.max(1, 1.2 * k)); // crater rims
   for (const b of d.banks || []) line(b.from, b.to, Math.max(2, (b.w || 2) * k), WORLD.id === 'ice' ? '#ffffff' : '#bdb1a0'); // walls / snow banks
-  for (const t of H.trees) dot(t.x, t.z, Math.max(1.2, 1.6 * (t.s || 1) * k), col.tree);
+  for (const t of H.trees) dot(t.x, t.z, Math.max(1.2, 1.6 * (t.s || 1) * (t.cw || 1) * k), col.tree);
   for (const r of d.rocks || []) dot(r.x, r.z, Math.max(1.2, (r.s || 1) * 0.9 * k), '#8d8d8d', '#555', 0.6);
   for (const o of H.solids || []) dot(o.x, o.z, Math.max(1.3, (o.r || 1) * k), o.kind === 'berg' || o.kind === 'serac' || o.kind === 'pillar' ? '#bff4ff' : '#9a9a9a', '#333', 0.6);
   for (const a of H.arches || []) { const [px, py] = T.to(a.x, a.z), [qx, qy] = T.to(a.x + a.right.x * a.span / 2, a.z + a.right.y * a.span / 2); const L = Math.max(3, a.span / 2 * k);
@@ -3847,7 +3850,7 @@ window.__game = {
     cardOpen: !ui.card.classList.contains('hidden'), menuOpen: !ui.menu.classList.contains('hidden'), pickerOpen: pickerOpen(), course: COURSE.id, world: WORLD.id }),
   get basket() { return { x: H.basket.x, y: H.basket.y, z: H.basket.z }; },
   hole: () => ({ n: S.holeIdx + 1, name: H.name, par: H.par, tee: { x: H.tee.x, z: H.tee.z }, basket: { x: H.basket.x, y: H.basket.y, z: H.basket.z }, length: H.length,
-    path: H.data.path, width: H.data.width, inBoundsR: H.inBoundsR, trees: H.trees.map(t => ({ x: t.x, z: t.z, s: t.s, y: t.y, border: !!t.border })) }),
+    path: H.data.path, width: H.data.width, inBoundsR: H.inBoundsR, trees: H.trees.map(t => ({ x: t.x, z: t.z, s: t.s, y: t.y, border: !!t.border, w: t.w || 1, cw: t.cw || 1 })) }),
   course: () => ({ id: COURSE.id, name: COURSE.name, world: COURSE.world, holes: COURSE.holes.map(h => ({ name: h.name, par: h.par, tee: h.tee, basket: h.basket, drop: h.drop || null })), par: roundStats().coursePar }),
   courses: () => COURSES.map(c => ({ id: c.id, name: c.name, holes: c.holes.length, par: coursePar(c), best: loadBest(c.id) })),
   loadCourse, showPicker,
@@ -3871,6 +3874,15 @@ window.__game = {
   obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), banks: H.banks.length, vents: H.vents.map(v => ({ x: v.x, z: v.z, r: v.r, up: v.up, push: v.push })), penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
   fx: () => ({ penguinHops: S.penguinHops || 0, puffs: S.puffs || 0, snow: snowfall.visible, snowN: SNOW_N, sizzles: S.sizzles || 0, ventBoosts: S.ventBoosts || 0, embers: embers.visible, embersN: EMBER_N, plume: H.plume.length, lavaGlow: MAT.water.emissiveMap === lavaTex }),
   setVents(on) { S.noVents = !on; },
+  peekOcclusion: () => { // test: from the current camera, how much of the hole 8 Bigfoot is hidden by trees: raycasts to every body part (centre + both side edges)
+    const bf = H.story?.built?.bf; if (!bf || !bf.visible) return null; bf.updateMatrixWorld(true);
+    const trees = []; for (const v of H.group.userData.treeViz || []) trees.push(v.trunk, ...v.crowns);
+    const ray = new THREE.Raycaster(), box = new THREE.Box3(), c = new THREE.Vector3(), sz = new THREE.Vector3(); let n = 0, hid = 0;
+    bf.traverse(o => { if (!o.isMesh) return; box.setFromObject(o); box.getCenter(c); box.getSize(sz);
+      const toC = c.clone().sub(camera.position).setY(0).normalize(), side = new THREE.Vector3(-toC.z, 0, toC.x), half = (Math.abs(side.x) * sz.x + Math.abs(side.z) * sz.z) / 2 * 0.9;
+      for (const fs of [-1, 0, 1]) { const pt = c.clone().addScaledVector(side, fs * half), dir = pt.clone().sub(camera.position), dist = dir.length();
+        ray.set(camera.position, dir.normalize()); ray.far = dist; n++; if (ray.intersectObjects(trees, false).length) hid++; } });
+    return { points: n, hidden: hid, frac: +(hid / n).toFixed(2), x: +bf.position.x.toFixed(2), z: +bf.position.z.toFixed(2) }; },
   storyMaple: () => { const b = H.story?.built || {}, bf = b.bf, base = H.group.children.find(o => o.userData.basketGroup);
     return { clue: H.story?.clue || null, bigfoot: bf ? { visible: bf.visible, x: +bf.position.x.toFixed(2), z: +bf.position.z.toFixed(2) } : null, holding: !!b.holding, howled: !!b.howled, everShown: !!b.everShown, peek: +(b.peek || 0).toFixed(2), peekTree: b.peekTree || null,
       tufts: b.tufts ? b.tufts.filter(q => q.visible).length : 0, tuftX: b.tufts ? +b.tufts[0].position.x.toFixed(2) : null, discY: b.disc ? +b.disc.getWorldPosition(new THREE.Vector3()).y.toFixed(1) : null, prints: b.prints || 0,
