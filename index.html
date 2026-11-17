@@ -1672,7 +1672,7 @@ function disposeGroup(g) {
   const { geo, mat, tex } = sharedSets();
   g.traverse(o => {
     if (o.geometry && !geo.has(o.geometry)) o.geometry.dispose();
-    for (const m of [].concat(o.material || [])) if (!mat.has(m)) { if (m.map && !tex.has(m.map)) m.map.dispose(); m.dispose(); }
+    for (const m of [].concat(o.material || [])) if (!mat.has(m) && !m.userData.keep) { if (m.map && !tex.has(m.map)) m.map.dispose(); m.dispose(); }
   });
 }
 
@@ -2663,6 +2663,7 @@ function desiredAimCam() {
 }
 function snapCamera() { const c = desiredAimCam(); camPos.copy(c.pos); camLook.copy(c.look); }
 function updateCamera(dt) {
+  if (S.viewProp) { camera.position.copy(S.viewProp.pos); camera.lookAt(S.viewProp.look); return; } // test hook: close-up of the story prop
   let target;
   if (S.phase === 'flying') {
     const hv = new THREE.Vector3(S.vel.x, 0, S.vel.z);
@@ -2827,29 +2828,102 @@ let last = performance.now();
 // ---------- Course stories: one clue prop per hole, a caption, and a reveal after the last hole ----------
 // Story data lives in courses.js (course.story); the clue kinds are built here. Props are decoration only:
 // no physics, placed off the line of play, freed with the hole group. Shared materials are in SM.
+// ----- Story prop smoothing (Ben: "smooth them out"): every story prop is rebuilt rounder after it is made -----
+// Low-poly spheres/cylinders/cones/tori get more segments, faceted polyhedra become softly lumpy blobs, boxes get rounded
+// edges, flat-shaded materials go smooth. Same sizes and positions (the original shape's transform is recovered and
+// reapplied), so stories, captions and play are unchanged. Only story groups are touched (courses/terrain are not).
+function weld(g) { // merge coincident vertices so normals can be smooth (polyhedra come split per face)
+  const p = g.attributes.position, map = new Map(), pos = [], idx = [];
+  for (let i = 0; i < p.count; i++) { const k = `${p.getX(i).toFixed(4)},${p.getY(i).toFixed(4)},${p.getZ(i).toFixed(4)}`; let j = map.get(k);
+    if (j === undefined) { j = pos.length / 3; map.set(k, j); pos.push(p.getX(i), p.getY(i), p.getZ(i)); } idx.push(j); }
+  const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.setIndex(idx); return out;
+}
+function blobGeo(radius = 1, detail = 2, wob = 0.06) { // a smooth, very slightly lumpy ball (rocks, fur tufts, canopy lumps)
+  const g = weld(new THREE.IcosahedronGeometry(1, detail)), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = Math.sin(v.x * 3.1 + 1.3) * Math.sin(v.y * 2.7 + 0.4) * Math.sin(v.z * 3.3 + 2.1) + 0.5 * Math.sin(v.x * 5.3 - v.z * 4.1 + v.y);
+    v.multiplyScalar(radius * (1 + wob * n)); p.setXYZ(i, v.x, v.y, v.z); }
+  g.computeVertexNormals(); return g;
+}
+function roundBox(w, h, d) { // box with rounded edges and corners, built at its real size so the rounding stays round
+  const r = Math.min(Math.min(w, h, d) * 0.2, 0.12), H = [w / 2, h / 2, d / 2], g = new THREE.BoxGeometry(2, 2, 2, 8, 8, 8), p = g.attributes.position, nr = g.attributes.normal;
+  const pos = [0, 0, 0], core = [0, 0, 0];
+  for (let i = 0; i < p.count; i++) { let len = 0;
+    for (let k = 0; k < 3; k++) { const t = p.getComponent(i, k), a = Math.abs(t), m = a <= 0.5 ? a / 0.5 * (H[k] - r) : (H[k] - r) + (a - 0.5) / 0.5 * r;
+      pos[k] = Math.sign(t) * m; core[k] = Math.sign(t) * Math.min(m, H[k] - r); len += (pos[k] - core[k]) ** 2; }
+    len = Math.sqrt(len); if (len < 1e-9) continue;
+    const n = [0, 1, 2].map(k => (pos[k] - core[k]) / len); p.setXYZ(i, core[0] + n[0] * r, core[1] + n[1] * r, core[2] + n[2] * r); nr.setXYZ(i, n[0], n[1], n[2]); }
+  return g;
+}
+function affineOf(base, geo) { // geo = T * base (same vertex order): recover T by least squares, or null if not affine
+  const a = base.attributes.position, b = geo.attributes.position; if (!a || !b || a.count !== b.count || a.count < 4) return null;
+  const AtA = new Array(16).fill(0), BtA = new Array(12).fill(0), av = [0, 0, 0, 1];
+  for (let i = 0; i < a.count; i++) { av[0] = a.getX(i); av[1] = a.getY(i); av[2] = a.getZ(i); const bv = [b.getX(i), b.getY(i), b.getZ(i)];
+    for (let r = 0; r < 4; r++) { for (let c = 0; c < 4; c++) AtA[r * 4 + c] += av[r] * av[c]; if (r < 3) for (let c = 0; c < 4; c++) BtA[r * 4 + c] += bv[r] * av[c]; } }
+  const inv = new THREE.Matrix4().set(...AtA); if (Math.abs(inv.determinant()) < 1e-12) return null; inv.invert(); const e = inv.elements, M = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { let v = 0; for (let k = 0; k < 4; k++) v += BtA[r * 4 + k] * e[c * 4 + k]; M.push(v); }
+  const T = new THREE.Matrix4().set(...M, 0, 0, 0, 1), q = new THREE.Vector3();
+  for (let i = 0; i < a.count; i += Math.max(1, a.count >> 5)) { q.fromBufferAttribute(a, i).applyMatrix4(T); if (Math.abs(q.x - b.getX(i)) + Math.abs(q.y - b.getY(i)) + Math.abs(q.z - b.getZ(i)) > 1e-3) return null; }
+  return T;
+}
+function finerBase(geo) { // the same primitive with more segments (null = already fine, or not a primitive we round)
+  const P = geo.parameters, t = geo.type; if (!P) return null;
+  if (t === 'SphereGeometry' && (P.widthSegments < 20 || P.heightSegments < 14)) return new THREE.SphereGeometry(P.radius, Math.max(20, P.widthSegments), Math.max(14, P.heightSegments), P.phiStart, P.phiLength, P.thetaStart, P.thetaLength);
+  if (t === 'CylinderGeometry' && P.radialSegments > 4 && P.radialSegments < 18) return new THREE.CylinderGeometry(P.radiusTop, P.radiusBottom, P.height, 18, P.heightSegments, P.openEnded, P.thetaStart, P.thetaLength);
+  if (t === 'ConeGeometry' && P.radialSegments > 4 && P.radialSegments < 18) return new THREE.ConeGeometry(P.radius, P.height, 18, P.heightSegments, P.openEnded, P.thetaStart, P.thetaLength);
+  if (t === 'TorusGeometry' && (P.radialSegments < 10 || P.tubularSegments < 36)) return new THREE.TorusGeometry(P.radius, P.tube, Math.max(10, P.radialSegments), Math.max(36, P.tubularSegments), P.arc);
+  if (t === 'CircleGeometry' && P.segments < 40) return new THREE.CircleGeometry(P.radius, 40, P.thetaStart, P.thetaLength);
+  if ((t === 'IcosahedronGeometry' || t === 'DodecahedronGeometry' || t === 'OctahedronGeometry') && P.detail < 2) return blobGeo(P.radius);
+  return null;
+}
+const SMOOTH_MATS = new Map(), SM_SET = new Set();
+function smoothStory(roots) {
+  if (!SM_SET.size) Object.values(SM).forEach(m => SM_SET.add(m));
+  const cache = new Map(), os = new THREE.Vector3(), col = new THREE.Vector3();
+  for (const root of roots) root.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || !o.geometry) return;
+    const g = o.geometry, P = g.parameters, flatKeep = /Cone|Cylinder/.test(g.type) && P && P.radialSegments <= 4; // tents/pyramids stay crisp
+    if (!flatKeep) { const ms = [].concat(o.material).map(m => { if (!m.flatShading || SM_SET.has(m)) return m; let s = SMOOTH_MATS.get(m); if (!s) { s = m.clone(); s.flatShading = false; s.userData.keep = true; SMOOTH_MATS.set(m, s); } return s; }); o.material = Array.isArray(o.material) ? ms : ms[0]; }
+    o.scale.toArray().forEach((v, i) => os.setComponent(i, v));
+    const key = g.uuid + (g.type === 'BoxGeometry' ? os.toArray().map(v => v.toFixed(3)).join() : ''); if (cache.has(key)) { if (cache.get(key)) o.geometry = cache.get(key); return; }
+    let out = null;
+    if (g.type === 'BoxGeometry' && P && Math.abs(os.x * os.y * os.z) > 1e-6) { const T = affineOf(new THREE.BoxGeometry(P.width, P.height, P.depth, P.widthSegments, P.heightSegments, P.depthSegments), g);
+      if (T) { const e = T.elements, dims = [P.width, P.height, P.depth], L = new THREE.Matrix4(), cols = [];
+        for (let k = 0; k < 3; k++) { col.set(e[k * 4], e[k * 4 + 1], e[k * 4 + 2]); const A = col.length(); if (A < 1e-9) { cols.length = 0; break; } col.divideScalar(A); const w = col.clone().multiply(os), wl = w.length(); dims[k] *= A * wl; cols.push(w.divideScalar(wl).divide(os)); }
+        if (cols.length === 3) { L.makeBasis(cols[0], cols[1], cols[2]).setPosition(e[12], e[13], e[14]); out = roundBox(...dims).applyMatrix4(L); } } }
+    else { const fb = finerBase(g); if (fb) { const T = affineOf(rebuildSame(g), g); if (T) out = fb.applyMatrix4(T); else fb.dispose(); } }
+    cache.set(key, out); if (out) o.geometry = out;
+  });
+}
+function rebuildSame(g) { const P = g.parameters, C = THREE[g.type]; // the untransformed primitive, to compare against
+  switch (g.type) { case 'SphereGeometry': return new C(P.radius, P.widthSegments, P.heightSegments, P.phiStart, P.phiLength, P.thetaStart, P.thetaLength);
+    case 'CylinderGeometry': return new C(P.radiusTop, P.radiusBottom, P.height, P.radialSegments, P.heightSegments, P.openEnded, P.thetaStart, P.thetaLength);
+    case 'ConeGeometry': return new C(P.radius, P.height, P.radialSegments, P.heightSegments, P.openEnded, P.thetaStart, P.thetaLength);
+    case 'TorusGeometry': return new C(P.radius, P.tube, P.radialSegments, P.tubularSegments, P.arc);
+    case 'CircleGeometry': return new C(P.radius, P.segments, P.thetaStart, P.thetaLength);
+    default: return new C(P.radius, P.detail); } }
 const SM = {
   tentA: new THREE.MeshLambertMaterial({ color: 0xe2572b, flatShading: true }), tentB: new THREE.MeshLambertMaterial({ color: 0x2f7fd0, flatShading: true }),
   tentC: new THREE.MeshLambertMaterial({ color: 0xf2c230, flatShading: true }), dark: new THREE.MeshBasicMaterial({ color: 0x0a0c10, side: THREE.DoubleSide }),
   log: new THREE.MeshLambertMaterial({ color: 0x5a3a22 }), flame: new THREE.MeshBasicMaterial({ color: 0xffa23a, transparent: true, opacity: 0.92 }),
-  flameCore: new THREE.MeshBasicMaterial({ color: 0xfff0a0 }), crate: new THREE.MeshLambertMaterial({ color: 0xb08350, flatShading: true }),
+  flameCore: new THREE.MeshBasicMaterial({ color: 0xfff0a0 }), crate: new THREE.MeshLambertMaterial({ color: 0xb08350 }),
   fish: new THREE.MeshLambertMaterial({ color: 0xaec4d4 }), fishOrange: new THREE.MeshLambertMaterial({ color: 0xff9a50 }),
   claw: new THREE.MeshBasicMaterial({ color: 0x0b2540 }), print: layered(new THREE.MeshBasicMaterial({ color: 0x86a3bd, transparent: true, opacity: 0.85, depthWrite: false }), 7),
   flagTorn: new THREE.MeshLambertMaterial({ color: 0xd8462b, side: THREE.DoubleSide }), radio: new THREE.MeshLambertMaterial({ color: 0x353c44 }),
   led: new THREE.MeshBasicMaterial({ color: 0x6cff6c }), eyes: new THREE.MeshBasicMaterial({ color: 0xfff27a, fog: false }),
-  bear: new THREE.MeshLambertMaterial({ color: 0xf3efe4, flatShading: true }), bearDark: new THREE.MeshLambertMaterial({ color: 0x1a1a1a }),
+  bear: new THREE.MeshLambertMaterial({ color: 0xf3efe4 }), bearDark: new THREE.MeshLambertMaterial({ color: 0x1a1a1a }),
   bearMouth: new THREE.MeshLambertMaterial({ color: 0x7a2434 }), silhouette: new THREE.MeshBasicMaterial({ color: 0x0d1117, fog: false, transparent: true, opacity: 1 }),
-  staticFx: new THREE.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 96; const x = c.getContext('2d');
+  staticFx: new THREE.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = 512; c.height = 192; const x = c.getContext('2d'); x.scale(2, 2);
     x.fillStyle = 'rgba(20,30,40,0.75)'; x.beginPath(); x.roundRect(4, 4, 248, 70, 18); x.fill(); x.beginPath(); x.moveTo(40, 72); x.lineTo(60, 94); x.lineTo(76, 72); x.fill();
     x.fillStyle = '#d8f3ff'; x.font = 'italic 900 40px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('kssshh…', 128, 52); return new THREE.CanvasTexture(c); })(), transparent: true, depthWrite: false }),
 };
 Object.assign(SM, { // Maple Park (Bigfoot) story
-  bfWood: new THREE.MeshLambertMaterial({ color: 0x8a5a32, flatShading: true }), bfBoard: new THREE.MeshLambertMaterial({ color: 0x6b4526 }), bfPaper: new THREE.MeshLambertMaterial({ color: 0xf4f1e6 }), bfPaper2: new THREE.MeshLambertMaterial({ color: 0xfff3a8 }),
+  bfWood: new THREE.MeshLambertMaterial({ color: 0x8a5a32 }), bfBoard: new THREE.MeshLambertMaterial({ color: 0x6b4526 }), bfPaper: new THREE.MeshLambertMaterial({ color: 0xf4f1e6 }), bfPaper2: new THREE.MeshLambertMaterial({ color: 0xfff3a8 }),
   mud: layered(new THREE.MeshBasicMaterial({ color: 0x4a3320, transparent: true, opacity: 0.92, depthWrite: false }), 7), mudFaint: layered(new THREE.MeshBasicMaterial({ color: 0x4a3320, transparent: true, opacity: 0.55, depthWrite: false }), 7),
-  bfBark: new THREE.MeshLambertMaterial({ color: 0x5b3a22, flatShading: true }), bfPine: new THREE.MeshLambertMaterial({ color: 0x2f6b34, flatShading: true }), bfDisc: new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.4 }),
-  bfLeaf: new THREE.MeshLambertMaterial({ color: 0xc8462c, flatShading: true }), bfSnap: new THREE.MeshLambertMaterial({ color: 0xf0d7a8 }), bfFur: new THREE.MeshLambertMaterial({ color: 0x6e4b2e, flatShading: true }), bfFurLight: new THREE.MeshLambertMaterial({ color: 0x8c6440, flatShading: true }),
-  bfFace: new THREE.MeshLambertMaterial({ color: 0x9a7556, flatShading: true }), bfEye: new THREE.MeshBasicMaterial({ color: 0x111111 }), bfShadow: new THREE.MeshBasicMaterial({ color: 0x15100c, fog: false, transparent: true, opacity: 0.85 }),
-  bfTable: new THREE.MeshLambertMaterial({ color: 0xa8743f, flatShading: true }), bfCheck: new THREE.MeshLambertMaterial({ color: 0xd8402c }), bfCup: new THREE.MeshLambertMaterial({ color: 0xf0f0f0 }), bfCrumb: new THREE.MeshLambertMaterial({ color: 0xe0b060 }),
-  bfShore: new THREE.MeshLambertMaterial({ color: 0xb9a27a }), bfPond: new THREE.MeshLambertMaterial({ color: 0x3aa0e0 }), bfReed: new THREE.MeshLambertMaterial({ color: 0x6c8a3a, flatShading: true }), bfRipple: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }),
+  bfBark: new THREE.MeshLambertMaterial({ color: 0x5b3a22 }), bfPine: new THREE.MeshLambertMaterial({ color: 0x2f6b34 }), bfDisc: new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.4 }),
+  bfLeaf: new THREE.MeshLambertMaterial({ color: 0xc8462c }), bfSnap: new THREE.MeshLambertMaterial({ color: 0xf0d7a8 }), bfFur: new THREE.MeshLambertMaterial({ color: 0x6e4b2e }), bfFurLight: new THREE.MeshLambertMaterial({ color: 0x8c6440 }),
+  bfFace: new THREE.MeshLambertMaterial({ color: 0x9a7556 }), bfEye: new THREE.MeshBasicMaterial({ color: 0x111111 }), bfShadow: new THREE.MeshBasicMaterial({ color: 0x15100c, fog: false, transparent: true, opacity: 0.85 }),
+  bfTable: new THREE.MeshLambertMaterial({ color: 0xa8743f }), bfCheck: new THREE.MeshLambertMaterial({ color: 0xd8402c }), bfCup: new THREE.MeshLambertMaterial({ color: 0xf0f0f0 }), bfCrumb: new THREE.MeshLambertMaterial({ color: 0xe0b060 }),
+  bfShore: new THREE.MeshLambertMaterial({ color: 0xb9a27a }), bfPond: new THREE.MeshLambertMaterial({ color: 0x3aa0e0 }), bfReed: new THREE.MeshLambertMaterial({ color: 0x6c8a3a }), bfRipple: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }),
 });
 // A low-poly polar bear (≈3.4 m long, 2.3 m tall). torso pivots at the hips so it can rear up; jaw opens for the roar.
 function makeBear(mat = SM.bear, dark = SM.bearDark, mouth = SM.bearMouth) {
@@ -2868,32 +2942,32 @@ function makeBear(mat = SM.bear, dark = SM.bearDark, mouth = SM.bearMouth) {
 }
 // Riverbend story: shared materials and shapes (built once), a low-poly snapping turtle, a text-bubble sprite
 Object.assign(SM, {
-  plank: new THREE.MeshLambertMaterial({ color: 0x9a6b3f, flatShading: true }), boatA: new THREE.MeshLambertMaterial({ color: 0xe8e2d2, flatShading: true }),
-  boatB: new THREE.MeshLambertMaterial({ color: 0x3a7fc0, flatShading: true }), boatRed: new THREE.MeshLambertMaterial({ color: 0xd8452b, flatShading: true }),
-  wood: new THREE.MeshLambertMaterial({ color: 0x7a5232, flatShading: true }), woodIn: new THREE.MeshLambertMaterial({ color: 0xd9b27a, flatShading: true }),
+  plank: new THREE.MeshLambertMaterial({ color: 0x9a6b3f }), boatA: new THREE.MeshLambertMaterial({ color: 0xe8e2d2 }),
+  boatB: new THREE.MeshLambertMaterial({ color: 0x3a7fc0 }), boatRed: new THREE.MeshLambertMaterial({ color: 0xd8452b }),
+  wood: new THREE.MeshLambertMaterial({ color: 0x7a5232 }), woodIn: new THREE.MeshLambertMaterial({ color: 0xd9b27a }),
   bite: new THREE.MeshLambertMaterial({ color: 0x3a2414 }), mud: layered(new THREE.MeshLambertMaterial({ color: 0x4a3622, transparent: true, opacity: 0.95 }), 7),
   wet: layered(new THREE.MeshPhongMaterial({ color: 0x3e4a44, specular: 0x99bbcc, shininess: 60, transparent: true, opacity: 0.7, depthWrite: false }), 7),
   ripple: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }),
   bubble: new THREE.MeshPhongMaterial({ color: 0xd8f2ff, specular: 0xffffff, shininess: 120, transparent: true, opacity: 0.55, depthWrite: false }),
-  ice: new THREE.MeshPhongMaterial({ color: 0xbfe6f5, specular: 0xffffff, shininess: 100, transparent: true, opacity: 0.85, flatShading: true }),
-  cliffRock: new THREE.MeshLambertMaterial({ color: 0x7d7a72, flatShading: true }), frog: new THREE.MeshLambertMaterial({ color: 0x5fb83a }),
-  moss: new THREE.MeshLambertMaterial({ color: 0x4f7d2c, flatShading: true }), mossLight: new THREE.MeshLambertMaterial({ color: 0x7aa83c, flatShading: true }),
-  shell: new THREE.MeshLambertMaterial({ color: 0x3f5a2a, flatShading: true }), turtle: new THREE.MeshLambertMaterial({ color: 0x6b8a3a, flatShading: true }),
-  turtleBelly: new THREE.MeshLambertMaterial({ color: 0xc8b46a, flatShading: true }), beak: new THREE.MeshLambertMaterial({ color: 0x5b4a2a, flatShading: true }),
+  ice: new THREE.MeshPhongMaterial({ color: 0xbfe6f5, specular: 0xffffff, shininess: 100, transparent: true, opacity: 0.85 }),
+  cliffRock: new THREE.MeshLambertMaterial({ color: 0x7d7a72 }), frog: new THREE.MeshLambertMaterial({ color: 0x5fb83a }),
+  moss: new THREE.MeshLambertMaterial({ color: 0x4f7d2c }), mossLight: new THREE.MeshLambertMaterial({ color: 0x7aa83c }),
+  shell: new THREE.MeshLambertMaterial({ color: 0x3f5a2a }), turtle: new THREE.MeshLambertMaterial({ color: 0x6b8a3a }),
+  turtleBelly: new THREE.MeshLambertMaterial({ color: 0xc8b46a }), beak: new THREE.MeshLambertMaterial({ color: 0x5b4a2a }),
   eyeW: new THREE.MeshBasicMaterial({ color: 0xffffff }), eyeB: new THREE.MeshBasicMaterial({ color: 0x111111 }),
-  palm: new THREE.MeshLambertMaterial({ color: 0x8a6a42, flatShading: true }), frond: new THREE.MeshLambertMaterial({ color: 0x3f9a3a, flatShading: true, side: THREE.DoubleSide }),
+  palm: new THREE.MeshLambertMaterial({ color: 0x8a6a42 }), frond: new THREE.MeshLambertMaterial({ color: 0x3f9a3a, side: THREE.DoubleSide }),
   shadowFish: new THREE.MeshBasicMaterial({ color: 0x06121a, transparent: true, opacity: 0.72, depthWrite: false }),
 });
-const SG = { ball: new THREE.SphereGeometry(1, 10, 8), lump: new THREE.IcosahedronGeometry(1, 0), log: new THREE.CylinderGeometry(0.45, 0.5, 1, 9).rotateZ(Math.PI / 2),
-  box: new THREE.BoxGeometry(1, 1, 1), ring: new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), disc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 14),
+const SG = { ball: new THREE.SphereGeometry(1, 20, 14), lump: blobGeo(1, 2, 0.07), log: new THREE.CylinderGeometry(0.45, 0.5, 1, 16).rotateZ(Math.PI / 2),
+  box: new THREE.BoxGeometry(1, 1, 1), ring: new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), disc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24),
   frond: new THREE.ConeGeometry(0.35, 2.6, 3).rotateX(Math.PI / 2).translate(0, 0, 1.3).scale(1, 0.2, 1), disk: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2) };
-Object.assign(SG, { cyl: new THREE.CylinderGeometry(1, 1, 1, 8), cone: new THREE.ConeGeometry(1, 1, 7), bigDisc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 16) });
+Object.assign(SG, { cyl: new THREE.CylinderGeometry(1, 1, 1, 16), cone: new THREE.ConeGeometry(1, 1, 16), bigDisc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24) });
 GEO.storyRiver = SG; // shared: never disposed with a hole
 const DISC_MATS = [0xff6b3d, 0xffd23f, 0x5ad1ff, 0xc9a0ff, 0x7dff8a, 0xff5fa2].map(c => new THREE.MeshLambertMaterial({ color: c }));
 MAT.storyDiscs = DISC_MATS;
 const sm = (geo, mat, sx, sy, sz, x, y, z, parent) => { const o = new THREE.Mesh(geo, mat); o.scale.set(sx, sy, sz); o.position.set(x, y, z); parent?.add(o); return o; };
 function textSprite(text, w = 6, bg = 'rgba(20,40,30,0.78)', fg = '#e8ffe0') { // a small speech-bubble caption floating in the world (its texture belongs to the hole)
-  const c = document.createElement('canvas'); c.width = 384; c.height = 96; const x = c.getContext('2d');
+  const c = document.createElement('canvas'); c.width = 768; c.height = 192; const x = c.getContext('2d'); x.scale(2, 2); // 2x for crisp, soft-edged text
   x.fillStyle = bg; x.beginPath(); x.roundRect(4, 4, 376, 70, 18); x.fill(); x.beginPath(); x.moveTo(60, 72); x.lineTo(80, 94); x.lineTo(96, 72); x.fill();
   x.fillStyle = fg; x.font = 'italic 800 36px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(text, 192, 52);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); sp.scale.set(w, w / 4, 1); sp.userData.text = text; return sp;
@@ -2919,14 +2993,14 @@ function bubblePool(parent, n, size = 1) {
 }
 // Volcano story: shared materials/shapes and two pooled particle kinds (no per-frame allocation)
 Object.assign(SM, {
-  fern: new THREE.MeshLambertMaterial({ color: 0x4f9a3a, flatShading: true, side: THREE.DoubleSide }), fernAsh: new THREE.MeshLambertMaterial({ color: 0x8a837e, flatShading: true, side: THREE.DoubleSide }),
+  fern: new THREE.MeshLambertMaterial({ color: 0x4f9a3a, side: THREE.DoubleSide }), fernAsh: new THREE.MeshLambertMaterial({ color: 0x8a837e, side: THREE.DoubleSide }),
   steam: new THREE.MeshLambertMaterial({ color: 0xf2ece8, transparent: true, opacity: 0.55, depthWrite: false }), ember: new THREE.MeshBasicMaterial({ color: 0xffb040 }),
   crack: new THREE.MeshBasicMaterial({ color: 0xff7a1a }), lavaBlob: new THREE.MeshBasicMaterial({ color: 0xffa83a }),
   smoke: new THREE.MeshLambertMaterial({ color: 0x1c1717, transparent: true, opacity: 0.82, depthWrite: false }), smokeLit: new THREE.MeshLambertMaterial({ color: 0x3a2a26, transparent: true, opacity: 0.8, depthWrite: false }),
   fireRock: new THREE.MeshBasicMaterial({ color: 0xff6a1a }), hotMetal: new THREE.MeshLambertMaterial({ color: 0xff6a3a, emissive: 0xff2a00, emissiveIntensity: 0 }),
   halo: new THREE.SpriteMaterial({ map: DOT_TEX, color: 0xff7a2a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
 });
-Object.assign(SG, { vent: new THREE.CylinderGeometry(1, 1.3, 0.4, 9, 1, true), plane: new THREE.PlaneGeometry(1, 1) });
+Object.assign(SG, { vent: new THREE.CylinderGeometry(1, 1.3, 0.4, 18, 1, true), plane: new THREE.PlaneGeometry(1, 1) });
 function fern(g, x, z, s, mat) { const f = new THREE.Group(); f.position.set(x, 0, z); f.scale.setScalar(s); g.add(f);
   for (let i = 0; i < 8; i++) { const m = new THREE.Mesh(SG.frond, mat); m.rotation.set(-0.75 - (i % 2) * 0.25, i / 8 * 6.28, 0); m.scale.setScalar(0.75); f.add(m); } return f; }
 function crackField(g, rnd, n, R, hole = 0) { let k = 0; // zigzag glowing cracks on the ground (inside radius R, outside radius hole)
@@ -2961,18 +3035,18 @@ function storyTint(k) { k = Math.min(1, Math.max(0, k)); if (!k && !S.skyTint) r
   TINT.b.setHex(w.fog).lerp(TINT.a.setHex(0xa8200e), k); scene.fog.color.copy(TINT.b); scene.background.copy(TINT.b); }
 // Moon story: shared materials/shapes, a little rover and a flying saucer
 Object.assign(SM, {
-  metalW: new THREE.MeshLambertMaterial({ color: 0xe6e6ea, flatShading: true }), panel: new THREE.MeshLambertMaterial({ color: 0x24407e, flatShading: true }),
-  gold: new THREE.MeshLambertMaterial({ color: 0xd8a83a, flatShading: true }), tire: new THREE.MeshLambertMaterial({ color: 0x26262a, flatShading: true }),
+  metalW: new THREE.MeshLambertMaterial({ color: 0xe6e6ea }), panel: new THREE.MeshLambertMaterial({ color: 0x24407e }),
+  gold: new THREE.MeshLambertMaterial({ color: 0xd8a83a }), tire: new THREE.MeshLambertMaterial({ color: 0x26262a }),
   lampOn: new THREE.MeshBasicMaterial({ color: 0xfff0b8 }), lampOff: new THREE.MeshLambertMaterial({ color: 0x3a3a40 }),
   scorch: layered(new THREE.MeshBasicMaterial({ color: 0x141416, transparent: true, opacity: 0.85, depthWrite: false }), 8),
   circleDust: layered(new THREE.MeshBasicMaterial({ color: 0x55555c, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }), 8),
-  ufo: new THREE.MeshPhongMaterial({ color: 0xa8b2be, emissive: 0x4a5664, specular: 0xffffff, shininess: 90, flatShading: true }), ufoDome: new THREE.MeshPhongMaterial({ color: 0x8affd2, specular: 0xffffff, shininess: 120, transparent: true, opacity: 0.75 }),
+  ufo: new THREE.MeshPhongMaterial({ color: 0xa8b2be, emissive: 0x4a5664, specular: 0xffffff, shininess: 90 }), ufoDome: new THREE.MeshPhongMaterial({ color: 0x8affd2, specular: 0xffffff, shininess: 120, transparent: true, opacity: 0.75 }),
   ufoLight: new THREE.MeshBasicMaterial({ color: 0x7affd0 }), ufoLight2: new THREE.MeshBasicMaterial({ color: 0xffe36a }),
   beam: new THREE.MeshBasicMaterial({ color: 0x6dff9a, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }),
   zip: new THREE.SpriteMaterial({ map: DOT_TEX, color: 0xc8ffee, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }),
   ufoShadow: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, depthWrite: false }),
 });
-Object.assign(SG, { beam: new THREE.CylinderGeometry(1.3, 5.5, 1, 24, 1, true).translate(0, -0.5, 0), wheel: new THREE.CylinderGeometry(0.42, 0.42, 0.3, 12).rotateZ(Math.PI / 2) });
+Object.assign(SG, { beam: new THREE.CylinderGeometry(1.3, 5.5, 1, 24, 1, true).translate(0, -0.5, 0), wheel: new THREE.CylinderGeometry(0.42, 0.42, 0.3, 20).rotateZ(Math.PI / 2) });
 function makeRover() { // a little six-wheel moon buggy (≈2.6 m), wheels kept for spinning
   const g = new THREE.Group(); sm(SG.box, SM.metalW, 1.6, 0.5, 2.6, 0, 0.75, 0, g); sm(SG.box, SM.gold, 1.2, 0.35, 1.0, 0, 1.15, -0.5, g); sm(SG.box, SM.panel, 1.5, 0.06, 0.9, 0, 1.38, 0.6, g);
   const wheels = []; for (const z of [-0.95, 0, 0.95]) for (const sx of [-1, 1]) wheels.push(sm(SG.wheel, SM.tire, 1, 1, 1, sx * 0.95, 0.42, z, g));
@@ -3068,7 +3142,7 @@ const STORY_CLUES = {
     const palm = new THREE.Group(); palm.position.set(-4.5, 0, -3.2); shellBits.add(palm);
     for (let i = 0; i < 6; i++) sm(SG.ball, SM.palm, 0.22, 0.55, 0.22, i * 0.12, 0.45 + i * 0.85, 0, palm);
     for (let i = 0; i < 7; i++) { const f = new THREE.Mesh(SG.frond, SM.frond); f.position.set(0.7, 5.2, 0); f.rotation.set(0.5, i / 7 * 6.28, 0); palm.add(f); }
-    for (const [x, z, s] of [[4.6, -3, 0.9], [5.5, -1.6, 0.6], [-5.5, 2.5, 0.7], [-3, 5.4, 0.5]]) sm(MAT.rock ? GEO.rock : SG.lump, MAT.rock, s * 1.6, s * 1.4, s * 1.6, x, 0.15, z, shellBits);
+    for (const [x, z, s] of [[4.6, -3, 0.9], [5.5, -1.6, 0.6], [-5.5, 2.5, 0.7], [-3, 5.4, 0.5]]) sm(SG.lump, MAT.rock, s * 1.6, s * 1.4, s * 1.6, x, 0.15, z, shellBits);
     for (let i = 0; i < 10; i++) { const a = rnd() * 6.28, r = rnd() * (R - 2); if (Math.hypot(Math.cos(a) * r, Math.sin(a) * r) < 2.5) continue; sm(SG.lump, SM.mossLight, 0.6, 0.12, 0.5, Math.cos(a) * r, 0.1, Math.sin(a) * r, shellBits); }
     // the island's own meshes (sand, grass, green, basket) breathe with it: tiny, visual only (the basket stays catchable)
     const bob = H.group.children.filter(o => [MAT.islandSand, MAT.islandGrass, MAT.green].includes(o.material) || o.userData.basketGroup);
@@ -3214,7 +3288,7 @@ const STORY_CLUES = {
   },
   flows(g, c, rnd) { // the lava flows are new: a 'NEW FLOW' sign on the bank, and the lava spits blobs up into the air (decoration only)
     sm(SG.box, MAT.wood, 0.14, 1.6, 0.14, 0, 0.8, 0, g);
-    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#f2d24a'; x.fillRect(0, 0, 256, 128); x.strokeStyle = '#2a1a10'; x.lineWidth = 8; x.strokeRect(6, 6, 244, 116);
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; const x = cv.getContext('2d'); x.scale(2, 2); x.fillStyle = '#f2d24a'; x.fillRect(0, 0, 256, 128); x.strokeStyle = '#2a1a10'; x.lineWidth = 8; x.strokeRect(6, 6, 244, 116);
     x.fillStyle = '#2a1a10'; x.font = '900 46px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('NEW FLOW', 128, 60); x.font = '700 28px system-ui, sans-serif'; x.fillText('not on the map!', 128, 100);
     const board = new THREE.Mesh(SG.plane, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), side: THREE.DoubleSide })); board.scale.set(2.2, 1.1, 1); board.position.set(0, 1.9, 0.08); board.rotation.z = 0.08; g.add(board);
     const spots = []; for (const r of H.data.rivers || []) { const P = r.pts; for (let k = 0; k < P.length - 1; k++) for (let f = 0; f < 1; f += 0.1) { const px = P[k][0] + (P[k + 1][0] - P[k][0]) * f, pz = P[k][1] + (P[k + 1][1] - P[k][1]) * f; if (Math.abs(px) < 16) spots.push([px, pz]); } }
@@ -3364,9 +3438,9 @@ const STORY_CLUES = {
   flyer(g) { // the ranger's notice board with a 'Bigfoot sighting?' flyer that someone has scribbled LOL on
     const box = (w, h, d, m, x, y, z) => sm(SG.box, m, w, h, d, x, y, z, g);
     box(0.16, 2.6, 0.16, SM.bfWood, -1.15, 1.3, 0); box(0.16, 2.6, 0.16, SM.bfWood, 1.15, 1.3, 0); box(2.7, 1.7, 0.12, SM.bfBoard, 0, 1.85, 0); box(3.0, 0.14, 0.5, SM.bfWood, 0, 2.78, 0.05);
-    const c = document.createElement('canvas'); c.width = 256; c.height = 320; const x = c.getContext('2d');
+    const c = document.createElement('canvas'); c.width = 512; c.height = 640; const x = c.getContext('2d'); x.scale(2, 2);
     x.fillStyle = '#fbf6e4'; x.fillRect(0, 0, 256, 320); x.fillStyle = '#c0392b'; x.font = '900 34px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('BIGFOOT', 128, 44); x.fillText('SIGHTING?', 128, 82);
-    x.filter = 'blur(3px)'; x.fillStyle = '#5a3d26'; x.beginPath(); x.ellipse(128, 168, 30, 46, 0.15, 0, 7); x.fill(); x.beginPath(); x.arc(134, 112, 17, 0, 7); x.fill(); x.fillRect(96, 150, 14, 52); x.fillRect(150, 146, 14, 52); x.fillRect(110, 200, 14, 40); x.fillRect(136, 200, 14, 40); x.filter = 'none';
+    x.filter = 'blur(6px)'; x.fillStyle = '#5a3d26'; x.beginPath(); x.ellipse(128, 168, 30, 46, 0.15, 0, 7); x.fill(); x.beginPath(); x.arc(134, 112, 17, 0, 7); x.fill(); x.fillRect(96, 150, 14, 52); x.fillRect(150, 146, 14, 52); x.fillRect(110, 200, 14, 40); x.fillRect(136, 200, 14, 40); x.filter = 'none';
     x.fillStyle = '#333'; x.font = '700 18px system-ui, sans-serif'; x.fillText('Seen near hole 9!!', 128, 272); x.font = '600 14px system-ui, sans-serif'; x.fillText('Tell the ranger', 128, 296);
     x.save(); x.translate(196, 150); x.rotate(-0.4); x.fillStyle = '#1f5fd0'; x.font = 'italic 900 34px system-ui, sans-serif'; x.fillText('LOL', 0, 0); x.restore();
     x.save(); x.translate(58, 236); x.rotate(0.3); x.fillStyle = '#1f5fd0'; x.font = 'italic 800 22px system-ui, sans-serif'; x.fillText('haha', 0, 0); x.restore();
@@ -3480,6 +3554,7 @@ function buildStory(idx) {
   if (c.at && !['prints', 'shadow', 'ufoShadow', 'fur', 'woodshadow', 'grab'].includes(c.clue)) { g.position.set(c.at[0], H.groundY(c.at[0], c.at[1]), c.at[1]); g.rotation.y = c.face || 0; g.scale.setScalar(c.scale || 1); }
   S.plumeK = c.plume ?? 1; storyTint(c.sky || 0);
   const n0 = H.group.children.length, built = STORY_CLUES[c.clue](g, c, rnd) || {}, extra = H.group.children.slice(n0); // pooled bits the clue parented to the hole
+  smoothStory([g, ...(built.world || []), ...extra]); // round off the story props (no change to size/position)
   H.group.add(g); for (const o of built.world || []) H.group.add(o);
   let meshes = 0; g.traverse(o => { if (o.isMesh || o.isSprite) meshes++; }); for (const o of [...(built.world || []), ...extra]) o.traverse(q => { if (q.isMesh || q.isSprite) meshes++; });
   H.story = { clue: c.clue, data: c, group: g, built, meshes };
@@ -3821,6 +3896,8 @@ window.__game = {
   storyShadow: () => { const sh = H.story?.built?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2) } : null; },
   storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
   treeFade: () => { const v = H.group.userData.treeViz || []; return { trees: v.reduce((n, g) => n + g.list.length, 0), faded: v.reduce((n, g) => n + g.faded.reduce((a, b) => a + b, 0), 0), styles: v.map(g => g.list.length) }; },
+  viewStory: (d = 6, h = 2.2, side = 0) => { if (!d) { S.viewProp = null; return; } const g = H.story?.group; if (!g) return null; const p = g.getWorldPosition(new THREE.Vector3()), t = H.tee;
+    const dir = new THREE.Vector3(t.x - p.x, 0, t.z - p.z).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), side); S.viewProp = { pos: p.clone().addScaledVector(dir, d).setY(p.y + h), look: p.clone().setY(p.y + 1) }; return { x: p.x, z: p.z }; },
   renderInfo: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, ratio: renderer.getPixelRatio(), geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }),
   // tests only: invisible physics-only obstacles on the current hole (cleared by loading a hole)
   testObstacles: (o) => { if (o.trees) H.trees = o.trees.map(t => ({ y: H.groundY(t.x, t.z), s: 1, ...t })); if (o.solids) H.solids = o.solids.map(q => ({ kind: 'test', y: H.groundY(q.x, q.z), ...q })); },
