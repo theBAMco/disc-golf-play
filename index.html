@@ -385,17 +385,16 @@ const PARK_COURSE = {
   // the score); after the hole 9 putt he grabs the whole basket and sprints off, and the round ends on a blurry photo of him.
   // Hole 7 has no real water, so its little pond and cracked bridge are story decoration only (no splash), on the left edge off the line of play.
   story: {
-    intro: 'Welcome to Maple Park! Nice and quiet… people say there\'s a Bigfoot round here, but that\'s just a silly story. Right?',
     holes: [
-      { clue: 'flyer', at: [-4.2, -14], face: 0.3, scale: 1.2, caption: 'A "Bigfoot sighting?" flyer on the ranger\'s board. Someone scribbled LOL on it. Everyone laughs it off…' },
-      { clue: 'mudprint', at: [2.6, -6], face: 0.1, scale: 1.4, caption: 'A GIANT muddy footprint right next to the tee. That\'s no hiking boot…' },
-      { clue: 'treedisc', at: [-6, -27], caption: 'A Driver stuck WAY up this pine. Higher than anyone could ever throw…' },
-      { clue: 'snapped', at: [-6.8, -46], scale: 1.3, caption: 'Branches snapped clean off, way up high. Something VERY tall came through here.' },
-      { clue: 'fur', at: [-9.5, -34], to: [12, -40], caption: 'Tufts of brown fur blowing across the fairway… big, shaggy tufts.' },
-      { clue: 'picnic', at: [-1, -20], face: 0.2, caption: 'A picnic table flipped upside down… and the food basket is gone. Just crumbs, heading for the trees.' },
-      { clue: 'pond', at: [-11, -40], r: 4, caption: 'Huge footprints walk right across the pond… and the little bridge is cracked in half!' },
+      { clue: 'flyer', at: [-4.2, -14], face: 0.3, scale: 1.2 },
+      { clue: 'mudprint', at: [2.6, -6], face: 0.1, scale: 1.4 },
+      { clue: 'treedisc', at: [-6, -27] },
+      { clue: 'snapped', at: [-6.8, -46], scale: 1.3 },
+      { clue: 'fur', at: [-9.5, -34], to: [12, -40] },
+      { clue: 'picnic', at: [-1, -20], face: 0.2 },
+      { clue: 'pond', at: [-11, -40], r: 4 },
       { clue: 'woodshadow', at: [-14, -56], to: [-12, -36], caption: 'AROOOOO… a howl from the woods. Was that a shadow between the trees?' },
-      { clue: 'grab', at: [6, -128], caption: 'So quiet by the last basket. Fresh muddy prints… a rustling bush. Sink this putt.' },
+      { clue: 'grab', at: [6, -128] },
     ],
     reveal: { creature: 'bigfoot', title: 'BIGFOOT!', sub: 'He grabbed the basket and ran!' },
   },
@@ -468,17 +467,16 @@ const RIVER_COURSE = {
   name: 'Riverbend', world: 'river', blurb: 'Water everywhere · splash = +1',
   // Story: something big lives in this river… one clue per hole (decoration only), the island green is its shell
   story: {
-    intro: 'Strange things keep happening on the river… keep your eyes on the water.',
     holes: [
-      { clue: 'dock', at: [9.5, -31], face: 0, scale: 1.7, caption: 'A peaceful little dock. Calm water, bobbing boats… and one boat snapped clean in half.' },
-      { clue: 'ripples', at: [-11, -47], caption: 'Big rings spreading across the water… but there\'s nothing there.' },
-      { clue: 'logs', at: [-9, -36], face: 0.5, scale: 1.2, caption: 'These logs have HUGE bite marks. Beavers don\'t bite like that.' },
-      { clue: 'nest', at: [-16, -40], face: 0.4, scale: 1.2, caption: 'Dozens of lost discs pushed into the mud… like a nest.' },
-      { clue: 'waterfall', at: [-10, -33], face: 0.3, scale: 1.1, caption: 'The waterfall has gone still. The frogs went quiet…' },
-      { clue: 'bubbles', at: [13.5, -52], track: [[24, 10], [24, -30], [34, -80], [52, -104], [90, -118]], caption: 'Giant bubbles follow your disc… and what is that huge mossy rock in the river?' },
-      { clue: 'dent', at: [-8, -30], face: -0.6, caption: 'The mossy rock from the last hole is GONE. Just a dent, and wet drag marks to the water.' },
-      { clue: 'silhouette', at: [-11, -89], from: [-30, -89], to: [14, -90], caption: 'A huge dark shape glides under the bridge…' },
-      { clue: 'island', at: [-10, -124.5], r: 8.5, caption: 'Turtle Island. Lovely moss, a palm tree… is it breathing? Sink this putt.' },
+      { clue: 'dock', at: [9.5, -31], face: 0, scale: 1.7 },
+      { clue: 'ripples', at: [-11, -47] },
+      { clue: 'logs', at: [-9, -36], face: 0.5, scale: 1.2 },
+      { clue: 'nest', at: [-16, -40], face: 0.4, scale: 1.2 },
+      { clue: 'waterfall', at: [-10, -33], face: 0.3, scale: 1.1 },
+      { clue: 'bubbles', at: [13.5, -52], track: [[24, 10], [24, -30], [34, -80], [52, -104], [90, -118]] },
+      { clue: 'dent', at: [-8, -30], face: -0.6 },
+      { clue: 'silhouette', at: [-11, -89], from: [-30, -89], to: [14, -90] },
+      { clue: 'island', at: [-10, -124.5], r: 8.5 },
     ],
     reveal: { creature: 'turtle', title: 'SNAPPING TURTLE!', sub: 'The island was its shell!' },
   },
@@ -572,17 +570,16 @@ const ICE_COURSE = {
   // Story: one clue per hole (props are decoration only: no collision, placed off the line of play), a caption each, and a reveal after hole 9.
   // clue kinds are built in game.js (buildClue); at = [x, z] anchor, face = yaw the prop faces (0 = toward the tee, i.e. +z)
   story: {
-    intro: 'Something big has been raiding the research camp… follow the clues.',
     holes: [
-      { clue: 'camp', at: [-13, -46], face: 0.35, scale: 1.5, caption: 'Base camp. Cozy tents, a crackling fire… and one tent ripped wide open.' },
-      { clue: 'crates', at: [8, -40], face: -0.3, scale: 1.6, caption: 'The supply crates are smashed. Fish everywhere. Who eats this much fish?' },
-      { clue: 'claws', at: [-11, -34.75], face: 0, caption: 'Giant claw marks in the ice wall — and someone\'s disc is stuck deep in one.' },
-      { clue: 'prints', at: [-3, -6], to: [-10, -46], caption: 'Fresh paw prints. Huge ones. Heading the same way you\'re throwing…' },
-      { clue: 'hut', at: [10, -27], face: -0.4, scale: 1.3, caption: 'The halfway hut is wrecked. The flag is torn and the radio only crackles static.' },
+      { clue: 'camp', at: [-13, -46], face: 0.35, scale: 1.5 },
+      { clue: 'crates', at: [8, -40], face: -0.3, scale: 1.6 },
+      { clue: 'claws', at: [-11, -34.75], face: 0 },
+      { clue: 'prints', at: [-3, -6], to: [-10, -46] },
+      { clue: 'hut', at: [10, -27], face: -0.4, scale: 1.3 },
       { clue: 'roar', ledges: [[-14, -64], [19, -67]], caption: 'Shh. Listen… did the ice just growl?' },
-      { clue: 'eyes', at: [-13, -44], face: 0.35, scale: 1.6, caption: 'Something is watching from the dark ice tunnel…' },
-      { clue: 'shadow', at: [-22, -58], to: [-22, -106], caption: 'A huge shadow on the ridge. It\'s heading for the station…' },
-      { clue: 'cave', at: [-57, -146], face: 0.75, caption: 'The station cave. Sink this putt… if you dare.' },
+      { clue: 'eyes', at: [-13, -44], face: 0.35, scale: 1.6 },
+      { clue: 'shadow', at: [-22, -58], to: [-22, -106] },
+      { clue: 'cave', at: [-57, -146], face: 0.75 },
     ],
     reveal: { creature: 'polarBear', title: 'POLAR BEAR!', sub: 'The camp raider! It just wanted the fish.' },
   },
@@ -682,17 +679,16 @@ const LAVA_COURSE = {
   // Story: Mount Ember wakes up, one clue per hole (decoration only, never touches the disc or the score); it erupts after the last putt.
   // plume = strength of the volcano's smoke on that hole, sky = how red the sky turns (0..1)
   story: {
-    intro: 'Mount Ember has been asleep for 500 years… or has it? Keep an eye on the mountain.',
     holes: [
-      { clue: 'calm', at: [-10, -40], face: 0.4, scale: 2, plume: 0.35, caption: 'Ash Landing. Ferns, warm rocks and a lazy wisp of smoke on the peak. Nice and quiet.' },
-      { clue: 'steam', at: [-7.5, -44], face: 0.3, plume: 0.55, caption: 'Steam is hissing out of the rocks by the lava. Hisss… that\'s new.' },
-      { clue: 'cracks', at: [-8.4, -27], face: 0.3, scale: 1.7, plume: 0.7, caption: 'The ground is splitting open… and it\'s glowing orange underneath.' },
-      { clue: 'ash', at: [-8, -26], face: 0.4, scale: 1.8, plume: 0.9, caption: 'Ash is falling like snow. Even the ferns have gone grey.' },
-      { clue: 'tremor', at: [10.5, -40], face: -0.5, scale: 1.8, plume: 1.0, caption: 'The ground feels jumpy here. Throw… and hold on to something.' },
-      { clue: 'flows', at: [10.5, -30], face: -0.3, scale: 2, plume: 1.15, caption: 'These lava flows weren\'t on the map yesterday. And they\'re spitting.' },
-      { clue: 'rumble', at: [-7, -40], face: 0.3, scale: 1.6, plume: 1.3, sky: 0.8, caption: 'The sky has turned red and the mountain won\'t stop rumbling…' },
-      { clue: 'plume', at: [12, -40], face: -0.3, plume: 1.6, sky: 0.9, caption: 'A HUGE black smoke plume is towering over the course. It\'s going to blow!' },
-      { clue: 'peak', at: [46, -120], plume: 1.8, sky: 0.95, caption: 'The peak is spitting fire. Sink this putt to finish… quickly!' },
+      { clue: 'calm', at: [-10, -40], face: 0.4, scale: 2, plume: 0.35 },
+      { clue: 'steam', at: [-7.5, -44], face: 0.3, plume: 0.55 },
+      { clue: 'cracks', at: [-8.4, -27], face: 0.3, scale: 1.7, plume: 0.7 },
+      { clue: 'ash', at: [-8, -26], face: 0.4, scale: 1.8, plume: 0.9 },
+      { clue: 'tremor', at: [10.5, -40], face: -0.5, scale: 1.8, plume: 1.0 },
+      { clue: 'flows', at: [10.5, -30], face: -0.3, scale: 2, plume: 1.15 },
+      { clue: 'rumble', at: [-7, -40], face: 0.3, scale: 1.6, plume: 1.3, sky: 0.8 },
+      { clue: 'plume', at: [12, -40], face: -0.3, plume: 1.6, sky: 0.9 },
+      { clue: 'peak', at: [46, -120], plume: 1.8, sky: 0.95 },
     ],
     reveal: { creature: 'eruption', title: 'ERUPTION!', sub: 'You conquered the volcano!' },
   },
@@ -790,17 +786,16 @@ const MOON_COURSE = {
   // craters { x, z, r, rim, dust }: a raised rim ring (rolls the disc) with soft deep dust inside (stops it dead), unless dust: false
   // rivers are rilles here: long dark trenches (+1, re-throw), boulders are solid
   story: {
-    intro: 'Moon Base Tranquility stopped answering the radio last night… find out why.',
     holes: [
-      { clue: 'base', at: [-12, -46], face: 0.5, scale: 1.6, caption: 'Moon Base Tranquility. Cozy dome, little rover… but who bent the antenna?' },
-      { clue: 'circles', at: [-12.5, -48], face: 0.3, scale: 1.6, caption: 'Crop circles. In moon dust. Where nothing grows.' },
+      { clue: 'base', at: [-12, -46], face: 0.5, scale: 1.6 },
+      { clue: 'circles', at: [-12.5, -48], face: 0.3, scale: 1.6 },
       { clue: 'radio', at: [11.5, -38], face: -0.4, scale: 1.6, caption: 'The base radio is picking something up… and it isn\'t human. Beep… bzzt…' },
-      { clue: 'rover', at: [-10.5, -52], face: 0.6, scale: 1.5, caption: 'The rover is tipped on its side. One wheel is still spinning…' },
-      { clue: 'flag', at: [-10.5, -42], face: 0.3, scale: 1.5, caption: 'The flag is gone. Just an empty pole and a scorched ring in the dust.' },
-      { clue: 'skylights', at: [11, -40], face: -0.4, scale: 1.6, caption: 'Lights in the sky! Something just zipped across the stars. Look up!' },
-      { clue: 'lamps', at: [-9.5, -32], to: [-9.5, -92], caption: 'The path lights are flickering… and going out one by one.' },
-      { clue: 'ufoShadow', at: [0, -48], caption: 'A HUGE shadow just swept over the fairway. Look up… there\'s nothing there.' },
-      { clue: 'abduct', at: [-20, -160], caption: 'The landing lights on the last green are blinking. Sink this putt… and keep watching the sky.' },
+      { clue: 'rover', at: [-10.5, -52], face: 0.6, scale: 1.5 },
+      { clue: 'flag', at: [-10.5, -42], face: 0.3, scale: 1.5 },
+      { clue: 'skylights', at: [11, -40], face: -0.4, scale: 1.6 },
+      { clue: 'lamps', at: [-9.5, -32], to: [-9.5, -92] },
+      { clue: 'ufoShadow', at: [0, -48] },
+      { clue: 'abduct', at: [-20, -160] },
     ],
     reveal: { creature: 'ufo', title: 'ABDUCTED!', sub: 'They took the basket!' },
   },
@@ -2901,7 +2896,7 @@ function textSprite(text, w = 6, bg = 'rgba(20,40,30,0.78)', fg = '#e8ffe0') { /
   const c = document.createElement('canvas'); c.width = 384; c.height = 96; const x = c.getContext('2d');
   x.fillStyle = bg; x.beginPath(); x.roundRect(4, 4, 376, 70, 18); x.fill(); x.beginPath(); x.moveTo(60, 72); x.lineTo(80, 94); x.lineTo(96, 72); x.fill();
   x.fillStyle = fg; x.font = 'italic 800 36px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(text, 192, 52);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); sp.scale.set(w, w / 4, 1); return sp;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); sp.scale.set(w, w / 4, 1); sp.userData.text = text; return sp;
 }
 // Snapping turtle head + neck + front flippers (the island is its shell). Faces +z, hidden under the water until the reveal.
 function makeTurtle() {
@@ -3044,7 +3039,6 @@ const STORY_CLUES = {
     for (let i = 0; i < 5; i++) sm(SG.box, SM.eyeW, 0.06, 2.6, 0.02, -0.6 + i * 0.3, 1.8, 0.5, g); // still streaks
     sm(SG.disk, MAT.water, 2.6, 1, 1.7, 0, 0.08, 1.8, g);
     for (const [x, z] of [[-1.7, 2.2], [1.6, 2.6], [0.2, 3.3]]) { const f = new THREE.Group(); sm(SG.ball, SM.frog, 0.32, 0.22, 0.36, 0, 0.18, 0, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, -0.13, 0.36, 0.2, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, 0.13, 0.36, 0.2, f); f.position.set(x, 0.05, z); f.rotation.y = -0.4; g.add(f); }
-    const tx = textSprite('the frogs went quiet…'); tx.position.set(0, 4.3, 1); g.add(tx);
   },
   bubbles(g, c) { // the 'mossy rock' in the river (it's the turtle) + giant bubbles that follow your disc along the river
     const rock = new THREE.Group(); sm(SG.ball, SM.moss, 2.6, 1.3, 2.2, 0, 0, 0, rock); for (let i = 0; i < 6; i++) sm(SG.lump, SM.mossLight, 0.5, 0.3, 0.5, Math.cos(i) * 1.6, 0.9, Math.sin(i * 1.3) * 1.3, rock);
@@ -3059,7 +3053,6 @@ const STORY_CLUES = {
     sm(SG.disk, SM.mud, 2.4, 1, 2.0, 0, 0.04, 0, g); sm(SG.disk, SM.wet, 3.2, 1, 2.6, 0, 0.035, 0, g);
     for (const sx of [-1, 1]) sm(SG.box, SM.wet, 0.7, 0.02, 9, sx * 1.4, 0.04, -5.5, g);
     for (let i = 0; i < 7; i++) sm(SG.lump, SM.mossLight, 0.28, 0.12, 0.28, Math.sin(i * 2.3) * 1.8, 0.06, -1 - i * 1.3, g);
-    const tx = textSprite('where did the rock go?', 5.4); tx.position.set(0, 2.6, 0); g.add(tx);
   },
   silhouette(g, c) { // a huge dark turtle shape gliding just under the water, back and forth beneath the bridge
     const sh = new THREE.Group(); sm(SG.ball, SM.shadowFish, 3.2, 0.05, 3.8, 0, 0, 0, sh); sm(SG.ball, SM.shadowFish, 1, 0.05, 1.2, 0, 0, 4.2, sh);
@@ -3111,7 +3104,6 @@ const STORY_CLUES = {
     sm(SG.box, SM.metalW, 0.1, 2.4, 0.1, -1.6, 1.2, -1.6, g); const top = new THREE.Group(); top.position.set(-1.6, 2.4, -1.6); top.rotation.z = 1.1; g.add(top); // the bent antenna
     sm(SG.box, SM.metalW, 0.08, 1.4, 0.08, 0, 0.7, 0, top); sm(SG.ball, SM.metalW, 0.45, 0.12, 0.45, 0, 1.4, 0, top);
     const rover = makeRover(); rover.position.set(-3.6, 0, 1.8); rover.rotation.y = 0.6; g.add(rover);
-    const tx = textSprite('who bent the antenna?', 5.6, 'rgba(14,20,34,0.82)', '#d8ecff'); tx.position.set(0.6, 4.2, 0); g.add(tx);
   },
   circles(g) { // crop circles pressed into the dust: a big ring pattern with little satellite circles joined by lines
     for (const [r, x, z] of [[4.6, 0, 0], [3.4, 0, 0], [1.6, 0, 0], [1.2, 6.2, -1.5], [1.0, -5.8, 2], [0.8, 1.4, 6.0]]) { sm(SG.ring, SM.circleDust, r, 1, r, x, 0.05, z, g); if (r < 2) sm(SG.disk, SM.circleDust, r * 0.55, 1, r * 0.55, x, 0.05, z, g); }
@@ -3128,14 +3120,13 @@ const STORY_CLUES = {
   rover(g) { // the rover, tipped on its side in a skid of dust; one wheel is still spinning
     const rover = makeRover(); rover.rotation.z = 1.75; rover.position.set(0, 0.85, 0); g.add(rover);
     sm(SG.box, SM.circleDust, 1.4, 0.01, 7, 0.6, 0.05, 4.2, g); for (let i = 0; i < 5; i++) sm(SG.lump, MAT.boulder, 0.25, 0.18, 0.25, -1.5 + i * 0.7, 0.1, 1.6 + (i % 2), g);
-    const wheel = rover.userData.wheels[1], tx = textSprite('still spinning…', 4.6, 'rgba(14,20,34,0.82)', '#d8ecff'); tx.position.set(0, 3.2, 0); g.add(tx);
+    const wheel = rover.userData.wheels[1];
     return { wheel, update: (dt) => { wheel.rotation.x += dt * 9; } };
   },
   flag(g) { // the flag is gone: just the empty pole and a scorched ring in the dust
     sm(SG.disk, SM.scorch, 2.2, 1, 2.2, 0, 0.05, 0, g); sm(SG.ring, SM.scorch, 3.4, 1, 3.4, 0, 0.05, 0, g);
     sm(SG.box, SM.metalW, 0.08, 3.2, 0.08, 0, 1.6, 0, g); sm(SG.box, SM.metalW, 1.6, 0.06, 0.06, 0.8, 3.15, 0, g);
     for (let i = 0; i < 6; i++) sm(SG.lump, SM.tire, 0.12, 0.06, 0.12, Math.cos(i) * 1.4, 0.08, Math.sin(i * 1.3) * 1.3, g);
-    const tx = textSprite('where did the flag go?', 5.4, 'rgba(14,20,34,0.82)', '#d8ecff'); tx.position.set(0, 4.2, 0); g.add(tx);
   },
   skylights(g, c) { // a telescope pointed up, and a glowing dot that zips across the stars every few seconds
     for (let i = 0; i < 3; i++) { const l = sm(SG.box, SM.metalW, 0.06, 1.5, 0.06, Math.cos(i * 2.1) * 0.35, 0.7, Math.sin(i * 2.1) * 0.35, g); l.rotation.set(Math.sin(i * 2.1) * 0.3, 0, -Math.cos(i * 2.1) * 0.3); }
@@ -3188,19 +3179,17 @@ const STORY_CLUES = {
     return st;
   },
   // ----- Volcano: Mount Ember wakes up -----
-  calm(g, c, rnd) { // a peaceful base: fern clumps, warm stones, a little 'asleep' sign; the peak's smoke is just a lazy wisp (plume: 0.35)
+  calm(g, c, rnd) { // a peaceful base: fern clumps, warm stones,  the peak's smoke is just a lazy wisp (plume: 0.35)
     for (const [x, z, s] of [[0, 0, 1.1], [-2.2, -1.2, 0.8], [2, -1.5, 0.9], [0.8, 1.8, 0.6]]) fern(g, x, z, s, SM.fern);
     for (const [x, z, k] of [[-1.2, 1.4, 0.5], [1.6, 0.6, 0.4], [-2.8, 0.3, 0.6]]) sm(SG.lump, MAT.rock, k, k * 0.7, k, x, 0.15, z, g);
-    const tx = textSprite('asleep for 500 years', 5.4, 'rgba(40,24,16,0.8)', '#ffe2c4'); tx.position.set(0, 2.6, 0); g.add(tx);
   },
-  steam(g) { // three small steam vents in the rocks by the lava: puffs burst out every couple of seconds with a 'hiss…'
+  steam(g) { // three small steam vents in the rocks by the lava: puffs burst out every couple of seconds
     const spots = [[0, 2.5], [-0.6, 0], [0.2, -2.6]];
     for (const [x, z] of spots) { sm(SG.vent, MAT.ventRim, 0.9, 1, 0.9, x, 0.15, z, g); sm(SG.disk, MAT.ventGlow, 0.55, 1, 0.55, x, 0.2, z, g); }
-    const steam = puffPool(H.group, 18, SM.steam, 2.2, 2.2), hiss = textSprite('hissss…', 4, 'rgba(40,24,16,0.8)', '#fff0e0'); hiss.position.set(0, 3.2, 0); g.add(hiss);
+    const steam = puffPool(H.group, 18, SM.steam, 2.2, 2.2);
     let next = 0.3, burst = -9;
-    return { steam, hiss, update: (dt, t) => { steam.update(dt);
-      if (t > next) { next = t + 2.4; burst = t; } if (t - burst < 0.9 && Math.random() < 0.5) { const [x, z] = spots[Math.floor(Math.random() * 3)], w = g.localToWorld(TMP.rp.set(x, 0.4, z)); steam.spawn(w.x, w.y, w.z, 0.7 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6, 2.2 + Math.random(), (Math.random() - 0.5) * 0.6); }
-      hiss.visible = t - burst < 1.6; hiss.scale.set(4 * (1 + Math.max(0, 0.15 - (t - burst) * 0.3)), 1, 1); } };
+    return { steam, bursts: () => burst > 0, update: (dt, t) => { steam.update(dt);
+      if (t > next) { next = t + 2.4; burst = t; } if (t - burst < 0.9 && Math.random() < 0.5) { const [x, z] = spots[Math.floor(Math.random() * 3)], w = g.localToWorld(TMP.rp.set(x, 0.4, z)); steam.spawn(w.x, w.y, w.z, 0.7 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6, 2.2 + Math.random(), (Math.random() - 0.5) * 0.6); } } };
   },
   cracks(g, c, rnd) { // glowing orange cracks splitting the ground beside the fairway (flat decals, no physics), embers rising out
     const n = crackField(g, rnd, 5, 4.5), sparks = puffPool(H.group, 14, SM.ember, 0.12, 1.6); let last = 0;
@@ -3220,8 +3209,7 @@ const STORY_CLUES = {
     const st = { tremors: 0, rocksMoved: () => rocks.list.filter(m => m.position.distanceTo(m.userData.home) > 1).length };
     st.update = (dt) => { rocks.update(dt);
       if (!st.tremors && S.phase === 'flying' && S.flightTime > 0.5) { st.tremors = 1; S.tremors = (S.tremors || 0) + 1; shakeCamera(0.16, 0.7);
-        rocks.list.forEach((m, i) => { const u = m.userData; u.still = false; u.v.set(out.x * (3 + i * 0.6) + (Math.random() - 0.5), 2 + Math.random() * 2, out.z * (3 + i * 0.6) + (Math.random() - 0.5)); });
-        showStoryCaption('TREMOR! The ground shook and rocks tumbled down. Mount Ember is waking up…', 4000); } };
+        rocks.list.forEach((m, i) => { const u = m.userData; u.still = false; u.v.set(out.x * (3 + i * 0.6) + (Math.random() - 0.5), 2 + Math.random() * 2, out.z * (3 + i * 0.6) + (Math.random() - 0.5)); }); } };
     return st;
   },
   flows(g, c, rnd) { // the lava flows are new: a 'NEW FLOW' sign on the bank, and the lava spits blobs up into the air (decoration only)
@@ -3234,10 +3222,9 @@ const STORY_CLUES = {
     return { spatter, update: (dt, t) => { spatter.update(dt); if (spots.length && t - last > 0.16) { last = t; const [px, pz] = spots[Math.floor(rnd() * spots.length)];
       spatter.spawn(px + (rnd() - 0.5) * 2, 0.2, pz + (rnd() - 0.5) * 2, (rnd() - 0.5) * 2, 4 + rnd() * 4, (rnd() - 0.5) * 2, 0.16 + rnd() * 0.14); } } };
   },
-  rumble(g, c, rnd) { // red sky (sky: 0.6 in the data) and a rumble you can't hear: the camera trembles gently while the disc flies, and a pulsing 'rrrumble…' bubble
+  rumble(g, c, rnd) { // red sky (sky: 0.6 in the data) and a rumble you can't hear: the camera trembles gently while the disc flies, and no text
     sm(SG.lump, MAT.basalt, 1.4, 1.1, 1.2, 0, 0.5, 0, g); sm(SG.lump, MAT.basalt, 0.9, 0.7, 0.8, 1.6, 0.3, 0.6, g); sm(SG.lump, MAT.basalt, 0.7, 0.6, 0.7, -1.4, 0.25, 0.9, g); crackField(g, rnd, 3, 3.5, 1.2);
-    const tx = textSprite('rrrumble…', 4.6, 'rgba(60,10,8,0.82)', '#ffd0a8'); tx.position.set(0, 2.6, 0); g.add(tx);
-    return { hiss: tx, update: (dt, t) => { tx.position.x = Math.sin(t * 40) * 0.04; tx.scale.set(4.6 * (1 + Math.abs(Math.sin(t * 3)) * 0.08), 4.6 / 4, 1); if (S.phase === 'flying') shakeCamera(0.05, 0.25); } };
+    return { update: () => { if (S.phase === 'flying') shakeCamera(0.05, 0.25); } };
   },
   plume(g) { // a huge black smoke plume pours out of a fissure by the tee and towers overhead; the volcano's own plume turns black too
     sm(SG.disk, SM.crack, 1.8, 1, 0.7, 0, 0.06, 0, g); sm(SG.lump, MAT.basalt, 1.2, 0.8, 1, -1.8, 0.3, 0.4, g); sm(SG.lump, MAT.basalt, 1, 0.7, 0.9, 1.9, 0.3, -0.3, g);
@@ -3329,7 +3316,7 @@ const STORY_CLUES = {
     box(0.9, 0.7, 0.9, SM.crate, -0.6, 0.35, 0.3); const radio = box(0.6, 0.35, 0.3, SM.radio, -0.6, 0.88, 0.3);
     const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.7, 4).translate(0, 0.35, 0), MAT.metal); ant.position.set(-0.4, 1.05, 0.3); ant.rotation.z = -0.3; g.add(ant);
     const led = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), SM.led); led.position.set(-0.75, 0.95, 0.46); g.add(led);
-    const fx = new THREE.Sprite(SM.staticFx); fx.scale.set(2.2, 0.82, 1); fx.position.set(-0.2, 2.0, 0.4); g.add(fx);
+    const fx = new THREE.Sprite(SM.staticFx); fx.userData.text = 'kssshh…'; fx.scale.set(2.2, 0.82, 1); fx.position.set(-0.2, 2.0, 0.4); g.add(fx);
     return { update: (dt, t) => { flag.rotation.y = Math.sin(t * 5) * 0.35 + Math.sin(t * 13) * 0.1; led.visible = Math.sin(t * 9) > -0.2;
       const on = (Math.sin(t * 2.3) + Math.sin(t * 7.1)) > 0.2; fx.visible = on; fx.position.x = -0.2 + Math.sin(t * 31) * 0.03; } };
   },
@@ -3385,8 +3372,7 @@ const STORY_CLUES = {
     x.save(); x.translate(58, 236); x.rotate(0.3); x.fillStyle = '#1f5fd0'; x.font = 'italic 800 22px system-ui, sans-serif'; x.fillText('haha', 0, 0); x.restore();
     const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 1.2), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(c) })); poster.position.set(-0.5, 1.88, 0.07); poster.rotation.z = 0.05; g.add(poster);
     box(0.7, 0.5, 0.01, SM.bfPaper, 0.65, 2.1, 0.07); box(0.5, 0.62, 0.01, SM.bfPaper2, 0.75, 1.45, 0.07); // other notices
-    const lol = textSprite('lol, Bigfoot…', 5); lol.position.set(0.4, 4.1, 0.2); g.add(lol);
-    return { update: (dt, t) => { lol.visible = (t % 9) < 5; lol.position.y = 4.1 + Math.sin(t * 2) * 0.08; } };
+    return {};
   },
   mudprint(g) { // one giant muddy footprint beside the tee (≈1.9 m long), with splats; a second one heading off into the trees
     const one = (x, z, yaw, s, m) => { const p = new THREE.Group(); p.position.set(x, 0.03, z); p.rotation.y = yaw; p.scale.setScalar(s); g.add(p);
@@ -3428,7 +3414,6 @@ const STORY_CLUES = {
     box(2.0, 0.08, 0.32, SM.bfTable, -0.6, 0.2, 1.5, Math.PI / 2, 0.5, 0); box(0.95, 0.03, 0.95, SM.bfCheck, 1.6, 0.03, -1.0, 0.05, 0.7, 0.04);
     box(0.12, 0.16, 0.12, SM.bfCup, 1.1, 0.06, -0.3, Math.PI / 2, 0, 0.4); sm(SG.disk, SM.mud, 0.45, 1, 0.3, 1.6, 0.045, -1.0, g); // the empty spot on the blanket
     for (let i = 0; i < 12; i++) sm(SG.ball, SM.bfCrumb, 0.05, 0.04, 0.05, 1.9 + i * 0.45, 0.04, -1.3 - i * 0.55 + Math.sin(i) * 0.2, g);
-    const sign = textSprite('Where\'s my lunch?!', 5.4); sign.position.set(0, 2.8, 0); g.add(sign);
     return {};
   },
   pond(g, c) { // decoration only (the real hole has no water): a little pond with a footbridge cracked in the middle, and huge prints that walk straight across it
@@ -3487,7 +3472,7 @@ function showStoryCaption(text, ms = 8000) {
   if (!storyCap) return; storyCap.textContent = text; storyCap.classList.remove('hidden', 'fade'); S.storyCaption = text;
   clearTimeout(storyCapTimer); storyCapTimer = setTimeout(() => { storyCap.classList.add('fade'); storyCapTimer = setTimeout(() => storyCap.classList.add('hidden'), 900); }, ms);
 }
-function hideStoryCaption() { if (storyCap) storyCap.classList.add('hidden'); clearTimeout(storyCapTimer); }
+function hideStoryCaption() { if (storyCap) storyCap.classList.add('hidden'); clearTimeout(storyCapTimer); S.storyCaption = null; }
 function buildStory(idx) {
   H.story = null; S.roared = false; S.reveal = null; S.holeT = 0; S.ashfall = false; S.plumeK = 1; storyTint(0); SM.hotMetal.emissiveIntensity = 0; S.discLift = 0; S.discHidden = false; SM.beam.opacity = 0; storyReveal?.classList.add('hidden'); ui.banner.classList.remove('veil'); storyPhotoShow(false); S.photoReq = false; S.photoTaken = false;
   const st = COURSE.story, c = !S.practice && st && st.holes[idx]; if (!c) { hideStoryCaption(); return; }
@@ -3498,7 +3483,7 @@ function buildStory(idx) {
   H.group.add(g); for (const o of built.world || []) H.group.add(o);
   let meshes = 0; g.traverse(o => { if (o.isMesh || o.isSprite) meshes++; }); for (const o of [...(built.world || []), ...extra]) o.traverse(q => { if (q.isMesh || q.isSprite) meshes++; });
   H.story = { clue: c.clue, data: c, group: g, built, meshes };
-  showStoryCaption((idx === 0 && st.intro ? st.intro + '\n' : '') + c.caption, idx === 0 ? 11000 : 8000);
+  if (c.caption) showStoryCaption(c.caption, 8000); else hideStoryCaption(); // only radio static / creature sounds still have a caption (Ben)
 }
 function shakeCamera(amp, dur) { if (!S.shake || S.shake.amp * (1 - S.shake.t / S.shake.dur) < amp) S.shake = { amp, dur, t: 0 }; }
 function dumpSnow(x, z, top) { // snow chunks sliding off a ledge
@@ -3813,10 +3798,11 @@ window.__game = {
     return { clue: H.story?.clue || null, bigfoot: bf ? { visible: bf.visible, x: +bf.position.x.toFixed(2), z: +bf.position.z.toFixed(2) } : null, holding: !!b.holding, howled: !!b.howled, everShown: !!b.everShown,
       tufts: b.tufts ? b.tufts.filter(q => q.visible).length : 0, tuftX: b.tufts ? +b.tufts[0].position.x.toFixed(2) : null, discY: b.disc ? +b.disc.getWorldPosition(new THREE.Vector3()).y.toFixed(1) : null, prints: b.prints || 0,
       photoTaken: !!S.photoTaken, photoShown: !!S.photoShown, basketVis: base ? { visible: base.visible, x: +base.position.x.toFixed(2), y: +base.position.y.toFixed(2) } : null, basketPhysY: H.basket.y }; },
-  story: () => { const st = H.story, b = st?.built; return { hasStory: !!COURSE.story, intro: COURSE.story?.intro || null, clue: st?.clue || null, meshes: st?.meshes || 0, caption: S.storyCaption || null,
+  story: () => { const st = H.story, b = st?.built; return { hasStory: !!COURSE.story, intro: null, clue: st?.clue || null, meshes: st?.meshes || 0, caption: S.storyCaption || null,
     captionVisible: !!storyCap && !storyCap.classList.contains('hidden'), at: st?.data.at || null, roared: !!S.roared, shake: !!S.shake,
     eyes: b?.eyes ? { visible: b.eyes.visible, everShown: b.everShown } : null, shadow: b?.bear && st.clue === 'shadow' ? { visible: b.bear.visible, everShown: b.everShown } : null,
     prints: b?.n || 0, reveal: S.reveal ? { t: S.reveal.t, stage: S.reveal.stage, done: S.reveal.done, bearVisible: !!b?.bear?.visible, creatureVisible: !!(b?.bear || b?.turtle || b?.creature)?.visible || (st?.clue === 'abduct' && !!b?.lifted) } : null,
+    bubbles: (() => { const out = []; H.group.traverse(o => { if (o.userData.text) out.push(o.userData.text); }); return out; })(), // in-world text bubbles on this hole
     revealShown: !!storyReveal && !storyReveal.classList.contains('hidden'), bannerVeiled: ui.banner.classList.contains('veil') }; },
   holeTime: (t) => { S.holeT = t; },
   sceneRings: () => scene.children.filter(o => o.visible && o.geometry?.type === 'RingGeometry').length, // any ground ring markers shown right now
