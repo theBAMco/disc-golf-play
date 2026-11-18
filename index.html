@@ -1193,7 +1193,7 @@ const GEO = {
 // dirt or snow creeping up from the foot, chipped paint and painted bands. Shapes: shared geometries made lumpy / ridged / seated
 // a little into the ground, all within ~0.1 m of the old surface (and trunks never thinner, so the Bigfoot peek still hides).
 const DETAIL_U = { dCoat: { value: new THREE.Color(0x4f7d2c) }, dCoatAmt: { value: 0.6 }, dSoil: { value: new THREE.Color(0x3b2b1c) } };
-const DETAIL_WORLD = { park: [0x4f7d2c, 0.6, 0x3b2b1c], river: [0x3f6b2a, 0.75, 0x33291c], ice: [0xf2f8ff, 0.85, 0xe6f0fa], lava: [0x8a817c, 0.55, 0x2e2826], moon: [0xb4b4ba, 0.55, 0x6e6e74] };
+const DETAIL_WORLD = { park: [0x4f7d2c, 0.6, 0x3b2b1c], river: [0x3f6b2a, 0.75, 0x33291c], ice: [0xf2f8ff, 0.85, 0xe6f0fa], lava: [0x8a817c, 0.55, 0x2e2826], moon: [0xb4b4ba, 0.55, 0x7c7c82] };
 function patchDetail(mat, key, o = {}) {
   const own = { dBreak: { value: o.breakup ?? 0.35 }, dScale: { value: o.scale ?? 1.4 }, dStretch: { value: new THREE.Vector3(...(o.stretch || [1, 1, 1])) }, dStreak: { value: o.streak ?? 0 },
     dCoatK: { value: o.coat ?? 0 }, dCoatUp: { value: o.coatUp ?? 0.55 }, dFoot: { value: o.foot ?? 0 }, dFootH: { value: o.footH ?? 0.35 }, dChip: { value: o.chip ?? 0 },
@@ -1319,6 +1319,10 @@ patchDetail(MAT.lavaRock, 'lavaRock', { breakup: 0.35, scale: 1.4, coat: 0.7, co
 patchDetail(MAT.ventRim, 'ventRim', { breakup: 0.4, scale: 2.2, coat: 0.6, coatUp: 0.5 });
 MAT.crust = patchDetail(new THREE.MeshLambertMaterial({ color: 0x2b2321, emissive: 0x2a0a00, flatShading: true }), 'crust', { breakup: 0.4, scale: 3, coat: 0.4, coatUp: 0.8 });
 GEO.basalt = DETAIL.lumpy(new THREE.CylinderGeometry(0.92, 1, 1, 6, 3).translate(0, 0.5, 0), 0.03, 3, { xz: true, minY: 0.02 });
+// Moon: pitted regolith boulders with dust on top and scuffed dust round the foot, ejecta stones on crater rims (own copies: the far border boulders stay as they were)
+MAT.boulderD = patchDetail(MAT.boulder.clone(), 'boulderD', { breakup: 0.35, scale: 2.2, coat: 0.7, coatUp: 0.55, foot: 0.35, footH: 0.25 });
+MAT.craterRimD = patchDetail(MAT.craterRim.clone(), 'craterRimD', { breakup: 0.3, scale: 0.9, coat: 0.5, coatUp: 0.8 });
+GEO.boulderD = DETAIL.lumpy(new THREE.IcosahedronGeometry(1, 1).scale(1, 0.55, 1).translate(0, 0.45, 0), 0.035, 2.6);
 GEO.icicles = mergeGeos([0, 1, 2, 3, 4, 5, 6, 7, 8].map(k => { const h = 0.22 + ((k * 37) % 5) * 0.09; return new THREE.ConeGeometry(0.05 + (k % 2) * 0.025, h, 5).rotateX(Math.PI).translate(-1 + k * 0.25, -h / 2, 0); })); // a row along x, hanging down from y = 0
 // One low-poly penguin (≈1 m tall). Flippers are kept so they can flap.
 function makePenguin() {
@@ -1649,8 +1653,15 @@ function makeHole(data, index) {
   group.add(ribbon(data.width / 2, 0.03, MAT.fairway, 7));
   for (const c of craters) { // the rim: a lathe ring following the terrain, plus a darker floor disc
     const prof = []; for (let i = 0; i <= 16; i++) { const d = c.r + c.w * (1 - i / 8); prof.push(new THREE.Vector2(d, groundY(c.x + d, c.z) + 0.02)); }
-    const m = new THREE.Mesh(new THREE.LatheGeometry(prof, 36), MAT.craterRim); m.position.set(c.x, 0, c.z); m.receiveShadow = true; m.castShadow = true; group.add(m);
+    const m = new THREE.Mesh(new THREE.LatheGeometry(prof, 36), MAT.craterRimD); m.position.set(c.x, 0, c.z); m.receiveShadow = true; m.castShadow = true; group.add(m);
   }
+  if (craters.length) { // ejecta: stones thrown out onto each rim (looks only, no collision; own random stream)
+    const er = seeded(5100 + index * 13), st = [];
+    for (const c of craters) { const n = Math.min(26, Math.round(c.r * 1.6)); for (let i = 0; i < n; i++) { const a = er() * 6.28, d = c.r + c.w * (er() * 1.4 - 0.3), x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d;
+      if (Math.hypot(x - tee.x, z - tee.z) > 3 && Math.hypot(x - basket.x, z - basket.z) > 3) st.push([x, z, 0.4 + er() * er() * 1.4, er() * 6]); } }
+    if (st.length) { const im = new THREE.InstancedMesh(GEO.bankStone, MAT.boulderD, st.length), mtx = new THREE.Matrix4(), q = new THREE.Quaternion();
+      st.forEach(([x, z, sc, yaw], i) => { q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw); mtx.compose(new THREE.Vector3(x, groundY(x, z), z), q, new THREE.Vector3(sc, sc, sc)); im.setMatrixAt(i, mtx); });
+      im.receiveShadow = true; im.castShadow = true; group.add(im); } }
   for (const h of hills) {
     const prof = []; for (let i = 0; i <= 24; i++) { const d = h.r * (1 - i / 24); prof.push(new THREE.Vector2(d, groundY(h.x + d, h.z) + 0.005)); }
     const m = new THREE.Mesh(new THREE.LatheGeometry(prof, 40), MAT.rough); m.position.set(h.x, 0, h.z); m.receiveShadow = true; m.castShadow = true; group.add(m);
@@ -1833,14 +1844,14 @@ function makeHole(data, index) {
   for (const zn of snowZones) group.add(zoneMesh(zn, MAT.deepSnow, 0.06));
   { // solid obstacles
     const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
-    for (const [kind, geo, mat] of [['pillar', GEO.pillar, MAT.iceSolid], ['serac', GEO.serac, MAT.seracD], ['berg', GEO.berg, MAT.bergD], ['basalt', GEO.basalt, MAT.basaltD], ['boulder', GEO.boulder, MAT.boulder]]) {
+    for (const [kind, geo, mat] of [['pillar', GEO.pillar, MAT.iceSolid], ['serac', GEO.serac, MAT.seracD], ['berg', GEO.berg, MAT.bergD], ['basalt', GEO.basalt, MAT.basaltD], ['boulder', GEO.boulderD, MAT.boulderD]]) {
       const list = solids.filter(o => o.kind === kind); if (!list.length) continue;
       const im = new THREE.InstancedMesh(geo, mat, list.length);
       list.forEach((o, i) => { q.setFromAxisAngle(up, (i * 2.1 + o.x) % 6.28);
         if (kind === 'pillar' || kind === 'basalt' || kind === 'boulder') sc.set(o.r, o.h, o.r); else if (kind === 'serac') sc.set(o.r, o.h / 2.8, o.r); else sc.set(o.r * 1.12, o.h / 0.97, o.r * 1.12);
         mtx.compose(ps.set(o.x, o.y, o.z), q, sc); im.setMatrixAt(i, mtx); });
       im.castShadow = true; im.receiveShadow = true; group.add(im);
-      if ((WORLD.snow && kind !== 'basalt' && kind !== 'boulder') || (WORLD.lava && kind === 'basalt')) { // wind-drifted snow / fallen ash and scree banked round each foot (looks only)
+      if ((WORLD.snow && kind !== 'basalt' && kind !== 'boulder') || (WORLD.lava && kind === 'basalt') || (WORLD.id === 'moon' && kind === 'boulder')) { // wind-drifted snow / fallen ash and scree banked round each foot (looks only)
         const sk = new THREE.InstancedMesh(GEO.skirt, MAT.skirt, list.length);
         list.forEach((o, i) => { q.setFromAxisAngle(up, i * 1.9 + o.z); const r = o.r * (kind === 'serac' ? 1.05 : kind === 'basalt' ? 1.1 : 1.15); mtx.compose(ps.set(o.x, o.y + 0.02, o.z), q, sc.set(r * 1.08, Math.min(2.2, 1 + o.r * 0.6), r * 1.08)); sk.setMatrixAt(i, mtx); });
         sk.receiveShadow = true; group.add(sk); }
@@ -1964,7 +1975,9 @@ function makeHole(data, index) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.25, 32).rotateX(-Math.PI / 2), MAT.dropRing); ring.position.set(drop.x, drop.y + 0.1, drop.z); group.add(ring);
     const c = document.createElement('canvas'); c.width = 128; c.height = 48; const x = c.getContext('2d'); x.fillStyle = '#ffe066'; x.fillRect(0, 0, 128, 48); x.fillStyle = '#143'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.fillText('DROP', 64, 35);
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.38), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: THREE.DoubleSide })); sign.position.set(drop.x + 1.8, drop.y + 1.1, drop.z); group.add(sign);
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.0), MAT.wood); post.position.set(drop.x + 1.8, drop.y + 0.45, drop.z); group.add(post);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.3), MAT.wood); post.position.set(drop.x + 1.8, drop.y + 0.3, drop.z); group.add(post); // set into the ground
+    const back = new THREE.Mesh(SG.plank, MAT.wood); back.scale.set(1.1, 0.46, 0.05); back.position.copy(sign.position); back.position.z -= 0.035; back.rotation.copy(sign.rotation); group.add(back); // a real board behind the painted face
+    const sk = new THREE.Mesh(GEO.skirt, MAT.skirt); sk.scale.set(0.2, 0.6, 0.2); sk.position.set(drop.x + 1.8, groundY(drop.x + 1.8, drop.z), drop.z); group.add(sk);
   }
   // Basket + flag
   {
@@ -3474,6 +3487,9 @@ Object.assign(SM, {
   zip: new THREE.SpriteMaterial({ map: DOT_TEX, color: 0xc8ffee, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }),
   ufoShadow: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, depthWrite: false }),
 });
+patchDetail(SM.metalW, 'smMetalW', { breakup: 0.12, scale: 3, chip: 0.2, foot: 0.55, footH: 0.3 }); // scuffed, dusty white metal
+patchDetail(SM.gold, 'smGold', { breakup: 0.45, scale: 9 }); patchDetail(SM.panel, 'smPanel', { breakup: 0.2, scale: 6, streak: -0.3, stretch: [5, 40, 5] });
+patchDetail(SM.tire, 'smTire', { breakup: 0.2, scale: 6, foot: 0.6, footH: 0.15 });
 Object.assign(SG, { beam: new THREE.CylinderGeometry(1.3, 5.5, 1, 24, 1, true).translate(0, -0.5, 0), wheel: new THREE.CylinderGeometry(0.42, 0.42, 0.3, 20).rotateZ(Math.PI / 2) });
 function makeRover() { // a little six-wheel moon buggy (≈2.6 m), wheels kept for spinning
   const g = new THREE.Group(); sm(SG.box, SM.metalW, 1.6, 0.5, 2.6, 0, 0.75, 0, g); sm(SG.box, SM.gold, 1.2, 0.35, 1.0, 0, 1.15, -0.5, g); sm(SG.box, SM.panel, 1.5, 0.06, 0.9, 0, 1.38, 0.6, g);
@@ -3686,7 +3702,7 @@ const STORY_CLUES = {
   },
   // ----- Moon: the UFO abduction -----
   base(g) { // the outpost: habitat dome, a module with solar panels, a bent antenna, and the rover parked outside
-    sm(SG.ball, SM.metalW, 2.4, 1.8, 2.4, 0, 0, 0, g); sm(SG.box, SM.metalW, 2.2, 1.4, 1.6, 2.8, 0.7, 0.3, g); sm(SG.box, SM.gold, 0.9, 0.9, 0.2, 0, 0.5, 2.3, g);
+    sm(SG.ball, SM.metalW, 2.4, 1.8, 2.4, 0, 0, 0, g); { const d = new THREE.Mesh(GEO.skirt, MAT.skirt); d.scale.set(2.5, 1.6, 2.5); d.position.y = 0.02; g.add(d); } /* dust banked round the dome */ sm(SG.box, SM.metalW, 2.2, 1.4, 1.6, 2.8, 0.7, 0.3, g); sm(SG.box, SM.gold, 0.9, 0.9, 0.2, 0, 0.5, 2.3, g);
     for (const sx of [-1, 1]) sm(SG.box, SM.panel, 1.6, 0.06, 1, 2.8 + sx * 1.8, 1.6, 0.3, g).rotation.z = sx * 0.35;
     sm(SG.box, SM.metalW, 0.1, 2.4, 0.1, -1.6, 1.2, -1.6, g); const top = new THREE.Group(); top.position.set(-1.6, 2.4, -1.6); top.rotation.z = 1.1; g.add(top); // the bent antenna
     sm(SG.box, SM.metalW, 0.08, 1.4, 0.08, 0, 0.7, 0, top); sm(SG.ball, SM.metalW, 0.45, 0.12, 0.45, 0, 1.4, 0, top);
@@ -3712,7 +3728,7 @@ const STORY_CLUES = {
   },
   flag(g) { // the flag is gone: just the empty pole and a scorched ring in the dust
     sm(SG.disk, SM.scorch, 2.2, 1, 2.2, 0, 0.05, 0, g); sm(SG.ring, SM.scorch, 3.4, 1, 3.4, 0, 0.05, 0, g);
-    sm(SG.box, SM.metalW, 0.08, 3.2, 0.08, 0, 1.6, 0, g); sm(SG.box, SM.metalW, 1.6, 0.06, 0.06, 0.8, 3.15, 0, g);
+    sm(SG.box, SM.metalW, 0.08, 3.6, 0.08, 0, 1.4, 0, g); sm(SG.box, SM.metalW, 1.6, 0.06, 0.06, 0.8, 3.15, 0, g); { const d = new THREE.Mesh(GEO.skirt, MAT.skirt); d.scale.set(0.25, 0.7, 0.25); g.add(d); }
     for (let i = 0; i < 6; i++) sm(SG.lump, SM.tire, 0.12, 0.06, 0.12, Math.cos(i) * 1.4, 0.08, Math.sin(i * 1.3) * 1.3, g);
   },
   skylights(g, c) { // a telescope pointed up, and a glowing dot that zips across the stars every few seconds
@@ -3728,7 +3744,7 @@ const STORY_CLUES = {
   lamps(g, c) { // a row of path lights along the fairway edge: they flicker and die one by one, then come back and do it again
     const [x0, z0] = c.at, [x1, z1] = c.to, N = 8, heads = [];
     for (let i = 0; i < N; i++) { const x = x0 + (x1 - x0) * i / (N - 1), z = z0 + (z1 - z0) * i / (N - 1), y = H.groundY(x, z) - g.position.y;
-      const l = g.worldToLocal(new THREE.Vector3(x, g.position.y, z)); sm(SG.box, SM.metalW, 0.1, 1.6, 0.1, l.x, y + 0.8, l.z, g); heads.push(sm(SG.ball, SM.lampOn, 0.28, 0.22, 0.28, l.x, y + 1.7, l.z, g)); }
+      const l = g.worldToLocal(new THREE.Vector3(x, g.position.y, z)); sm(SG.box, SM.metalW, 0.1, 1.9, 0.1, l.x, y + 0.65, l.z, g); { const d = new THREE.Mesh(GEO.skirt, MAT.skirt); d.scale.set(0.22, 0.6, 0.22); d.position.set(l.x, y, l.z); g.add(d); } /* post set into the dust */ heads.push(sm(SG.ball, SM.lampOn, 0.28, 0.22, 0.28, l.x, y + 1.7, l.z, g)); }
     const st = { lit: N, heads };
     st.update = (dt, t) => { const k = t % 15; let lit = 0;
       heads.forEach((h, i) => { const off = 1.5 + i * 1.2; const on = k < off ? true : k < off + 0.6 ? Math.sin(t * 40 + i) > 0 : k > 13.5; h.material = on ? SM.lampOn : SM.lampOff; if (on) lit++; }); st.lit = lit; };
@@ -3892,7 +3908,7 @@ const STORY_CLUES = {
     const pad = new THREE.CircleGeometry(0.34, 14).rotateX(-Math.PI / 2).scale(1, 1, 1.3), toe = new THREE.CircleGeometry(0.11, 8).rotateX(-Math.PI / 2), rim = DETAIL.lumpy(new THREE.TorusGeometry(0.4, 0.07, 3, 14).rotateX(Math.PI / 2).scale(1, 0.6, 1.3), 0.02, 6);
     const out = [];
     for (let i = 0; i < n; i++) { const side = i % 2 ? 1 : -1, x = x0 + ux * i * 1.7 - uz * side * 0.45, z = z0 + uz * i * 1.7 + ux * side * 0.45;
-      const p = new THREE.Group(); p.add(new THREE.Mesh(pad, SM.print), new THREE.Mesh(rim, MAT.snowCap)); // pressed print with a packed-snow rim for (let k = 0; k < 4; k++) { const tm = new THREE.Mesh(toe, SM.print); tm.position.set((k - 1.5) * 0.17, 0, -0.5 - Math.abs(k - 1.5) * -0.04); p.add(tm); }
+      const p = new THREE.Group(); p.add(new THREE.Mesh(pad, SM.print), new THREE.Mesh(rim, MAT.snowCap)); /* pressed print with a packed-snow rim */ for (let k = 0; k < 4; k++) { const tm = new THREE.Mesh(toe, SM.print); tm.position.set((k - 1.5) * 0.17, 0, -0.5 - Math.abs(k - 1.5) * -0.04); p.add(tm); }
       p.position.set(x, H.groundY(x, z) + 0.03, z); p.rotation.y = Math.atan2(-ux, -uz); out.push(p); }
     return { world: out, n };
   },
@@ -4435,6 +4451,7 @@ window.__game = {
     beam: +SM.beam.opacity.toFixed(2), discLift: S.discLift || 0, discHidden: !!S.discHidden, basketPhysY: H.basket.y, gravity: GRAV.k, rangeK: GRAV.range, stars: scene.userData.sky.material.uniforms.stars.value, earth: scene.userData.earth.visible,
     basketVis: (() => { const bg = H.group.children.find(o => o.userData.basketGroup); return bg ? { y: +bg.position.y.toFixed(2), visible: bg.visible } : null; })() }; },
   storyProps: () => { const b = H.story?.built || {}; const out = {};
+    if (H.story?.clue === 'prints' || (b.n && b.world?.length && b.world[0].children?.length >= 5)) { const w = (b.world || []).filter(o => o.parent); out.prints = { n: b.n, inScene: w.length, parts: w[0]?.children.length || 0, onGround: w.every(o => Math.abs(o.position.y - H.groundY(o.position.x, o.position.z) - 0.03) < 0.02) }; }
     if (b.slab) { let flat = 0; H.story.group?.traverse?.(o => { if (o.isMesh && o.geometry?.type === 'BoxGeometry') flat++; }); out.claws = { gouges: b.gouges, carved: b.carved, boxes: flat }; }
     if (b.bear && b.world?.[0]?.userData?.crestY) { const r = b.world[0], f = 0.5; out.ridge = { boxes: r.geometry?.type === 'BoxGeometry' ? 1 : 0, crest: +r.userData.crestY(f).toFixed(2), bearY: b.bear.visible ? +b.bear.position.y.toFixed(2) : null, bearZ: +b.bear.position.z.toFixed(2), crestAtBear: b.bear.visible ? +r.userData.crestY((b.bear.position.z - (-58)) / (-48)).toFixed(2) : null }; }
     return out; },
