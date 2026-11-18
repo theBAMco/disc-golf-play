@@ -3289,6 +3289,68 @@ function dipCycle(t, period) { const c = ((t % period) + period) % period, e = x
   if (c < DIP.hold) return { c, stage: 'top', k: 1 };
   if (c < DIP.sink) return { c, stage: 'sink', k: 1 - e((c - DIP.hold) / (DIP.sink - DIP.hold)) };
   return { c, stage: 'hidden', k: 0 }; }
+// Antarctica story: a real ice formation with claw gouges carved into it. One closed mesh: a rounded slab whose horizontal cross-section
+// is a superellipse (dense on the front where the claws are, sparse on the back), leaning back and closing into a snowy crest. The gouges
+// push the front surface in (so they have real depth and follow the wall's curve), dark blue at the bottom, frosted white lips at the edges.
+function carvedIceSlab({ a = 4.6, b = 1.0, h = 5.6, bend = 9, lean = 0.6, gashes = [], seed = 1.3, dense = [-3.9, 3.0, 1.0, 4.8], step = 0.085 }) {
+  const sp = (c, e) => Math.sign(c) * Math.pow(Math.abs(c), e), nz = (x, y) => 0.1 * Math.sin(1.9 * x + 0.7 * y + seed) + 0.06 * Math.sin(4.3 * x - 2.9 * y) + 0.015 * Math.sin(9.1 * x + 6.7 * y + seed * 2);
+  const A = v => a * (1 - 0.22 * v * v), B = v => b * (1 - Math.pow(v, 2.2)), E = 2 / 3;
+  const fr = new Set(); for (let i = 0; i <= 28; i++) fr.add(+(i / 28 * Math.PI).toFixed(5));
+  for (let x = dense[0]; x <= dense[1]; x += step) fr.add(+Math.acos(THREE.MathUtils.clamp(sp(x / a, 1.5), -1, 1)).toFixed(5));
+  const phis = [...fr].sort((p, q) => q - p).reverse(); for (let i = 1; i < 14; i++) phis.push(Math.PI + i / 14 * Math.PI); // front 0..π (dense), back π..2π (sparse)
+  const vs = new Set(); for (let i = 0; i <= 12; i++) vs.add(+(i / 12).toFixed(5)); for (let y = dense[2]; y <= dense[3]; y += step) vs.add(+((y + 0.4) / h).toFixed(5));
+  const rows = [...vs].sort((p, q) => p - q), C = phis.length, pos = [], col = [], idx = [], front = [];
+  for (let r = 0; r < rows.length; r++) { const v = rows[r], y = v * h - 0.4;
+    for (let c = 0; c < C; c++) { const f = phis[c], cs = Math.cos(f), sn = Math.sin(f); let x = A(v) * sp(cs, E), z = B(v) * sp(sn, E);
+      const yy = y + Math.pow(v, 3) * 0.5 * Math.sin(x * 1.3 + seed); z += (sn > 0 ? 1 : -1) * nz(x, yy) * (0.4 + 0.6 * Math.abs(sn)) - x * x / (2 * bend) - lean * v;
+      pos.push(x, yy, z); front.push(sn > 0.3 && v < 0.97); } }
+  for (let r = 0; r < rows.length - 1; r++) for (let c = 0; c < C; c++) { const c2 = (c + 1) % C, i0 = r * C + c, i1 = r * C + c2, i2 = (r + 1) * C + c, i3 = (r + 1) * C + c2; idx.push(i0, i2, i1, i1, i2, i3); }
+  // carve: distance from each front vertex to each claw stroke (in the wall's x/y), tapered at both ends like a real claw rake
+  const ice = new THREE.Color(0xa9dcf5), deep = new THREE.Color(0x0b2540), wallC = new THREE.Color(0x2c6e9e), frost = new THREE.Color(0xf4f9ff), c0 = new THREE.Color();
+  const groove = new Float32Array(pos.length / 3);
+  for (let i = 0; i < pos.length / 3; i++) { if (!front[i]) continue; const x = pos[i * 3], y = pos[i * 3 + 1]; let best = 0, lip = 0;
+    for (const G of gashes) { const dx = G.x1 - G.x0, dy = G.y1 - G.y0, L2 = dx * dx + dy * dy, u = THREE.MathUtils.clamp(((x - G.x0) * dx + (y - G.y0) * dy) / L2, 0, 1), d = Math.hypot(G.x0 + dx * u - x, G.y0 + dy * u - y);
+      const w = G.w * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u * 0.94 + 0.03))), 0.6); if (w <= 0.005) continue;
+      if (d < w) best = Math.max(best, (1 - (d / w) ** 2) * G.depth); else if (d < w * 1.9) lip = Math.max(lip, 1 - (d - w) / (w * 0.9)); }
+    groove[i] = best; pos[i * 3 + 2] -= best; if (!best && lip) pos[i * 3 + 2] += 0.035 * lip; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+  const nrm = geo.attributes.normal;
+  for (let i = 0; i < pos.length / 3; i++) { const ny = nrm.getY(i), x = pos[i * 3], y = pos[i * 3 + 1];
+    c0.copy(ice).offsetHSL(0, 0, nz(x * 1.1, y * 0.9) * 0.25); if (ny > 0.5) c0.lerp(frost, Math.min(1, (ny - 0.5) * 3)); // snow settles on the crest and ledges
+    if (groove[i] > 0) { const k = Math.min(1, groove[i] / 0.16); c0.copy(wallC).lerp(deep, k); }
+    col.push(c0.r, c0.g, c0.b); }
+  // frost on the lips: brighten the vertices right next to a gouge
+  for (let i = 0; i < pos.length / 3; i++) if (front[i] && !groove[i]) { const x = pos[i * 3], y = pos[i * 3 + 1];
+    for (const G of gashes) { const dx = G.x1 - G.x0, dy = G.y1 - G.y0, L2 = dx * dx + dy * dy, u = THREE.MathUtils.clamp(((x - G.x0) * dx + (y - G.y0) * dy) / L2, 0, 1), d = Math.hypot(G.x0 + dx * u - x, G.y0 + dy * u - y);
+      if (d < G.w * 1.9) { col[i * 3] = col[i * 3] * 0.3 + 0.7 * frost.r; col[i * 3 + 1] = col[i * 3 + 1] * 0.3 + 0.7 * frost.g; col[i * 3 + 2] = col[i * 3 + 2] * 0.3 + 0.7 * frost.b; break; } } }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0xdff4ff, shininess: 55 })); mesh.castShadow = true; mesh.receiveShadow = true;
+  // where a point on the front ends up after carving (for things stuck in a gouge)
+  mesh.userData.surfaceZ = (x, y) => { let bi = -1, bd = 1e9; for (let i = 0; i < pos.length / 3; i++) if (front[i]) { const d = (pos[i * 3] - x) ** 2 + (pos[i * 3 + 1] - y) ** 2; if (d < bd) { bd = d; bi = i; } } return pos[bi * 3 + 2]; };
+  mesh.userData.groove = groove.filter(q => q > 0).length; return mesh;
+}
+// Antarctica story: a long natural snow ridge (no flat walls): a rounded, uneven crest that follows the ground, tapers into the snow at both
+// ends, snow on top, blue ice and dark rock on the steep faces. crestAt(t) is the crest height so the bear's feet stay on it.
+function snowRidge(x0, z0, x1, z1, { W = 9.5, H0 = 11.2, pad = 7 } = {}) {
+  const len = Math.hypot(x1 - x0, z1 - z0) + pad * 2, ux = (x1 - x0) / (len - pad * 2), uz = (z1 - z0) / (len - pad * 2), px = -uz, pz = ux, sx = x0 - ux * pad, sz = z0 - uz * pad;
+  const sm = (e0, e1, x) => { const k = THREE.MathUtils.clamp((x - e0) / (e1 - e0), 0, 1); return k * k * (3 - 2 * k); };
+  const crest = t => (H0 + 1.3 * Math.sin(t * 6.1 + 0.5) + 0.6 * Math.sin(t * 15.7)) * sm(0, 0.07, t) * sm(1, 0.93, t);
+  const rough = (al, ac) => 0.35 * Math.sin(ac * 1.7 + al * 0.9) + 0.2 * Math.sin(al * 2.3 - ac * 3.1);
+  const NL = 64, NC = 18, pos = [], idx = [];
+  for (let i = 0; i <= NL; i++) { const t = i / NL, al = t * len, w = W * (1 + 0.12 * Math.sin(t * 9));
+    for (let j = 0; j <= NC; j++) { const s_ = j / NC * 2 - 1, ac = s_ * w / 2, prof = Math.pow(Math.max(0, 1 - Math.pow(Math.abs(s_), 1.7)), 0.8);
+      const x = sx + ux * al + px * ac, z = sz + uz * al + pz * ac; pos.push(x, H.groundY(x, z) - 0.4 + crest(t) * prof + rough(al, ac) * prof * 1.2, z); } }
+  for (let i = 0; i < NL; i++) for (let j = 0; j < NC; j++) { const a0 = i * (NC + 1) + j, a1 = a0 + 1, b0 = a0 + NC + 1, b1 = b0 + 1; idx.push(a0, b0, a1, a1, b0, b1); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+  const n = geo.attributes.normal, col = [], snow = new THREE.Color(0xf6faff), ice = new THREE.Color(0xb9e2f6), rock = new THREE.Color(0x6c7480), c = new THREE.Color();
+  for (let i = 0; i < n.count; i++) { const ny = Math.abs(n.getY(i)), x = pos[i * 3], z = pos[i * 3 + 2], q = Math.sin(x * 0.7 + z * 0.4) + Math.sin(z * 1.3);
+    c.copy(ice).lerp(snow, sm(0.45, 0.75, ny)); if (ny < 0.5 && q > 0.6) c.lerp(rock, 0.75); col.push(c.r, c.g, c.b); }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); mesh.castShadow = true; mesh.receiveShadow = true;
+  // crest height (world y) where the walker is: f = 0..1 from (x0,z0) to (x1,z1)
+  mesh.userData.crestY = f => { const t = (pad + f * (len - pad * 2)) / len, x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; return H.groundY(x, z) - 0.4 + crest(t) + rough(t * len, 0) * 1.2; };
+  return mesh;
+}
 const STORY_CLUES = {
   // ----- Riverbend: the snapping turtle -----
   dock(g) { // a short dock out over the river, a whole boat and one snapped in half
@@ -3584,14 +3646,16 @@ const STORY_CLUES = {
       const a = rnd() * 6.28, r = 0.8 + rnd() * 3.6; f.position.set(1.2 + Math.cos(a) * r, 0.07, 0.6 + Math.sin(a) * r * 0.8); f.rotation.set(0, rnd() * 6.28, Math.PI / 2 * (rnd() < 0.5 ? 1 : -1) * 0.9); g.add(f); }
     return {};
   },
-  claws(g) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(8.5, 5.4, 0.6).translate(0, 2.7, 0), MAT.iceSolid); wall.castShadow = true; g.add(wall);
-    const gash = (x, y, len, tilt) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.2, len, 0.06), SM.claw); m.position.set(x, y, 0.33); m.rotation.z = tilt; g.add(m); };
-    for (let i = 0; i < 4; i++) gash(0.6 + i * 0.55, 3.0 - Math.abs(i - 1.5) * 0.15, 2.8, 0.28); // big set on the fairway side, where you can see it
-    for (let i = 0; i < 4; i++) gash(-3.2 + i * 0.42, 2.2, 1.7, -0.22);
+  claws(g) { // a real ice formation pushed up against the serac wall, with the claw gouges carved into its curved face (decoration: no collision, as before)
+    const gashes = [], stroke = (x, y, len, tilt, w, depth) => { const dx = -Math.sin(tilt) * len / 2, dy = Math.cos(tilt) * len / 2; gashes.push({ x0: x - dx, y0: y - dy, x1: x + dx, y1: y + dy, w, depth }); };
+    for (let i = 0; i < 4; i++) stroke(0.6 + i * 0.55, 3.0 - Math.abs(i - 1.5) * 0.15, 2.8, 0.28, 0.14, 0.24); // big set on the fairway side, where you can see it
+    for (let i = 0; i < 4; i++) stroke(-3.2 + i * 0.42, 2.2, 1.7, -0.22, 0.1, 0.16);
+    const slab = carvedIceSlab({ gashes }); slab.position.z = 0.6; g.add(slab); // its back sinks into the serac wall behind, its face stands just proud of the seracs
+    for (const [x, z, sx, sy, sz] of [[-3.6, 0.3, 2.6, 0.7, 1.6], [3.4, 0.0, 2.4, 0.6, 1.5], [0.2, 0.55, 4.4, 0.45, 1.3]]) { const d = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2), MAT.bank); d.scale.set(sx, sy, sz); d.position.set(x, -0.05, z); d.receiveShadow = true; g.add(d); } // snow drifted against its foot
+    const G2 = gashes[2], gx = G2.x0 + (G2.x1 - G2.x0) * 0.38, gy = G2.y0 + (G2.y1 - G2.y0) * 0.38;
     const d = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R * 1.6, DISC_R * 1.3, 0.035, 24), new THREE.MeshStandardMaterial({ color: 0xc77dff, roughness: 0.4 }));
-    d.rotation.set(0.25, 0, Math.PI / 2); d.position.set(1.35, 2.35, 0.36); g.add(d); // stuck deep in the third gash, half buried
-    return {};
+    d.rotation.set(0.25, 0, Math.PI / 2 - 0.28); d.position.set(gx, gy, slab.position.z + slab.userData.surfaceZ(gx, gy) + 0.05); g.add(d); // stuck deep in the third gouge, half buried
+    return { slab, gouges: gashes.length, carved: slab.userData.groove };
   },
   prints(g, c) {
     const [x0, z0] = c.at, [x1, z1] = c.to, len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len, n = Math.floor(len / 1.7);
@@ -3638,13 +3702,11 @@ const STORY_CLUES = {
   },
   shadow(g, c) {
     const [x0, z0] = c.at, [x1, z1] = c.to, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, len = Math.hypot(x1 - x0, z1 - z0) + 14, gy = H.groundY(mx, mz);
-    const ridge = new THREE.Group(); ridge.position.set(mx, gy, mz); ridge.rotation.y = Math.atan2(x1 - x0, z1 - z0);
-    const rock = new THREE.Mesh(new THREE.BoxGeometry(9, 12, len).translate(0, 6, 0), MAT.cliff); rock.castShadow = true;
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.8, len + 0.6).translate(0, 12.2, 0), MAT.snowCap); ridge.add(rock, cap);
+    const ridge = snowRidge(x0, z0, x1, z1); void mx; void mz; void len; void gy; // a natural snow ridge the bear walks along (decoration: no collision, as before)
     const bear = makeBear(SM.silhouette, SM.silhouette, SM.silhouette); bear.scale.setScalar(1.7); bear.visible = false;
     const st = { world: [ridge, bear], bear, everShown: false };
     st.update = (dt, t) => { const k = t % 30, f = (k - 2) / 12; const vis = f > 0 && f < 1; bear.visible = vis; if (!vis) return; st.everShown = true;
-      const x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; bear.position.set(x, gy + 12.6, z); bear.rotation.y = Math.atan2(x1 - x0, z1 - z0);
+      const x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; bear.position.set(x, ridge.userData.crestY(f) - 0.15, z); bear.rotation.y = Math.atan2(x1 - x0, z1 - z0); // feet on the crest
       SM.silhouette.opacity = Math.min(1, f * 8, (1 - f) * 6); const sw = Math.sin(k * 6) * 0.35, u = bear.userData;
       u.front[0].rotation.x = sw; u.front[1].rotation.x = -sw; u.back[0].rotation.x = -sw; u.back[1].rotation.x = sw; };
     return st;
@@ -4133,6 +4195,10 @@ window.__game = {
     wheel: b.wheel ? +b.wheel.rotation.x.toFixed(2) : null, beep: b.beep ? b.beep.visible : null, lifted: +(b.lifted || 0).toFixed(2), saucer: b.saucer ? { visible: b.saucer.visible, y: +b.saucer.position.y.toFixed(1) } : null,
     beam: +SM.beam.opacity.toFixed(2), discLift: S.discLift || 0, discHidden: !!S.discHidden, basketPhysY: H.basket.y, gravity: GRAV.k, rangeK: GRAV.range, stars: scene.userData.sky.material.uniforms.stars.value, earth: scene.userData.earth.visible,
     basketVis: (() => { const bg = H.group.children.find(o => o.userData.basketGroup); return bg ? { y: +bg.position.y.toFixed(2), visible: bg.visible } : null; })() }; },
+  storyProps: () => { const b = H.story?.built || {}; const out = {};
+    if (b.slab) { let flat = 0; H.story.group?.traverse?.(o => { if (o.isMesh && o.geometry?.type === 'BoxGeometry') flat++; }); out.claws = { gouges: b.gouges, carved: b.carved, boxes: flat }; }
+    if (b.bear && b.world?.[0]?.userData?.crestY) { const r = b.world[0], f = 0.5; out.ridge = { boxes: r.geometry?.type === 'BoxGeometry' ? 1 : 0, crest: +r.userData.crestY(f).toFixed(2), bearY: b.bear.visible ? +b.bear.position.y.toFixed(2) : null, bearZ: +b.bear.position.z.toFixed(2), crestAtBear: b.bear.visible ? +r.userData.crestY((b.bear.position.z - (-58)) / (-48)).toFixed(2) : null }; }
+    return out; },
   sceneryGroup: () => H?.group.userData.scenery || null,
   backdrop: () => { const sc = H?.group.userData.scenery; if (!sc) return null; let tris = 0, meshes = 0; sc.traverse(o => { if (!o.isMesh) return; meshes++; const g = o.geometry, n = (g.index ? g.index.count : g.attributes.position.count) / 3; tris += n * (o.isInstancedMesh ? o.count : 1); });
     const m = sc.userData.marks || {}; return { forest: sc.userData.forest || 0, marks: Object.keys(m), aurora: m.aurora || 0, anger: m.anger ?? null, ruins: m.ruins ?? null, lights: m.lights ?? null, fx: sc.userData.fx.length, tris: Math.round(tris), meshes, fogFar: scene.fog.far }; },
