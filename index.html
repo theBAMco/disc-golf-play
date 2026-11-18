@@ -3268,8 +3268,11 @@ const STORY_CLUES = {
     const pool = bubblePool(H.group, 14, 0.6); let last = 0;
     const turtle = makeTurtle(); turtle.visible = false; g.add(turtle);
     const face = Math.atan2(-c.at[0], -c.at[1]); // toward the tee side
-    turtle.position.set(Math.sin(face) * (R + 1.2), -2.2, Math.cos(face) * (R + 1.2)); turtle.rotation.y = face;
-    const st = { turtle, R, face, bob, base, breathe: 0, island: g };
+    // he comes up in open water just off the island: his back end (neck, flippers) stays clear of the sand, grass and shell plates
+    const TR = R + 2.8; turtle.scale.setScalar(0.85);
+    turtle.userData.flips.forEach(f => { f.position.y = -1.4; }); // flippers paddle under the surface: only the head and neck come up, so nothing lies flat across the beach in the player's view
+    turtle.position.set(Math.sin(face) * TR, -2.2, Math.cos(face) * TR); turtle.rotation.y = face;
+    const st = { turtle, R, TR, face, bob, base, breathe: 0, island: g };
     st.update = (dt, t) => { pool.update(dt); const y = (Math.sin(t * 1.1) * 0.05 + st.breathe); st.y = y;
       bob.forEach((o, i) => { o.position.y = base[i] + y; }); shellBits.position.y = y;
       if (t - last > 0.45) { last = t; const a = Math.random() * 6.28; pool.spawn(g.position.x + Math.cos(a) * (R + 0.6), 0.1, g.position.z + Math.sin(a) * (R + 0.6), 0.6 + Math.random() * 0.6); } };
@@ -3286,7 +3289,7 @@ const STORY_CLUES = {
         else return true;
         return false; },
       finish() { turtle.visible = false; turtle.position.y = -2.2; },
-      cam() { const w = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 10), 3.2, Math.cos(face) * (R + 10))).add(new THREE.Vector3(Math.cos(face) * 6, 0, -Math.sin(face) * 6)), look = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 1), 1.4, Math.cos(face) * (R + 1))); return { pos: w, look }; },
+      cam() { const w = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 11), 3.2, Math.cos(face) * (R + 11))).add(new THREE.Vector3(Math.cos(face) * 6, 0, -Math.sin(face) * 6)), look = g.localToWorld(new THREE.Vector3(Math.sin(face) * (TR + 0.5), 1.2, Math.cos(face) * (TR + 0.5))); return { pos: w, look }; },
     };
     return st;
   },
@@ -4031,7 +4034,7 @@ window.__game = {
     basketVis: (() => { const bg = H.group.children.find(o => o.userData.basketGroup); return bg ? { y: +bg.position.y.toFixed(2), visible: bg.visible } : null; })() }; },
   storyShadow: () => { const b = H.story?.built, sh = b?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2), turtle: !!b.diver?.visible, y: b.diver ? +b.diver.position.y.toFixed(2) : null, tx: b.diver ? +b.diver.position.x.toFixed(2) : null, tz: b.diver ? +b.diver.position.z.toFixed(2) : null, stage: b.stage, k: +(b.k || 0).toFixed(2), foot: b.diver ? (() => { const y = b.diver.position.y, v = b.diver.visible; b.diver.position.y = 0; b.diver.visible = true; const bx = new THREE.Box3().setFromObject(b.diver).union(new THREE.Box3().setFromObject(sh)); b.diver.position.y = y; b.diver.visible = v; return [bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2)); })() : null } : null; },
   storyRock: () => { const b = H.story?.built, r = b?.rock; if (!r) return null; const w = r.getWorldPosition(new THREE.Vector3()); return { visible: r.visible, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2) }; },
-  storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, headY: +b.turtle.position.y.toFixed(2), island: b.island ? [+b.island.position.x.toFixed(2), +b.island.position.z.toFixed(2)] : null, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
+  storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, headY: +b.turtle.position.y.toFixed(2), parts: (() => { const t = b.turtle, y = t.position.y, v = t.visible; t.position.y = 0.9; t.visible = true; t.updateMatrixWorld(true); const o = []; t.traverse(m => { if (m.isMesh) { const bx = new THREE.Box3().setFromObject(m); o.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2))); } }); t.position.y = y; t.visible = v; t.updateMatrixWorld(true); return o; })(), island: b.island ? [+b.island.position.x.toFixed(2), +b.island.position.z.toFixed(2)] : null, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
   treeFade: () => { const v = H.group.userData.treeViz || []; return { trees: v.reduce((n, g) => n + g.list.length, 0), faded: v.reduce((n, g) => n + g.faded.reduce((a, b) => a + b, 0), 0), styles: v.map(g => g.list.length) }; },
   viewStory: (d = 6, h = 2.2, side = 0) => { if (!d) { S.viewProp = null; return; } const g = H.story?.group; if (!g) return null; const p = g.getWorldPosition(new THREE.Vector3()), t = H.tee;
     const dir = new THREE.Vector3(t.x - p.x, 0, t.z - p.z).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), side); S.viewProp = { pos: p.clone().addScaledVector(dir, d).setY(p.y + h), look: p.clone().setY(p.y + 1) }; return { x: p.x, z: p.z }; },
