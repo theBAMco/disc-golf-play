@@ -357,17 +357,26 @@ const WORLDS = {
   // Antarctica: snowfields, glossy ice, dark sea leads, low polar sun, falling snow, no trees (border is ice formations)
   ice: { id: 'ice', sky: [0x6f9cc6, 0xf6e7d6], fog: 0xdde8f1, fogRange: [150, 520], hemi: [0xf4f9ff, 0xd5e4f0, 1.45], sun: [0xffe6c8, 1.9], sunLow: true,
     ground: { ob: 0xcadbe8, rough: 0xe2edf5, fairway: 0xf7fafc, green: 0xd9eefc }, trees: 'none', borderMix: 0, windMin: 8, windMax: 22, leaf: null, snow: true,
-    water: 0x153a57, sand: 0xd3e9f6, reeds: null, rock: 0x5d636c, snowCaps: true, scenery: 'polar', obPost: 0xff7a3d, pick: [0x8fc6ea, 0x1d4a6b] },
+    water: 0x153a57, sand: 0xd3e9f6, reeds: null, rock: 0x5d636c, snowCaps: true, scenery: 'polar', obPost: 0xff7a3d, pick: [0x8fc6ea, 0x1d4a6b],
+    // backdrop: snowy ice ridges far out (behind the existing peaks), ice-shard seracs instead of a forest, icebergs, a frozen shipwreck, aurora on 7-9
+    backdrop: { hills: [[0xe6eff7, 0.2], [0xc9dbea, 0.38], [0xaac3db, 0.55]], rings: [{ d: 210, h: [14, 32], peak: 0.6 }, { d: 290, h: [40, 85], peak: 0.95 }, { d: 370, h: [70, 135], peak: 1 }],
+      forest: 'serac', forestFlat: true, forestN: 380, forestScale: 1.15, pines: [0xdcefff, 0xc4e2f6, 0xeaf6ff, 0xb3d8f0], extras: ['bergs', 'shipwreck', 'aurora'] } },
   // Volcano: basalt and ash, glowing lava rivers, a smoking volcano cone, steam vents, floating embers
-  lava: { id: 'lava', sky: [0x2a1420, 0xff9150], fog: 0x6b4038, fogRange: [160, 720], hemi: [0xffd2b0, 0x4a2a22, 1.3], sun: [0xffb878, 2.1], sunLow: true,
+  lava: { id: 'lava', sky: [0x2a1420, 0xff9150], fog: 0x6b4038, fogRange: [130, 620], hemi: [0xffd2b0, 0x4a2a22, 1.3], sun: [0xffb878, 2.1], sunLow: true,
     ground: { ob: 0x1f1a19, rough: 0x3a3230, fairway: 0x6e6661, green: 0x9a5c3c }, trees: 'none', borderMix: 0, windMin: 9, windMax: 24, leaf: null, embers: true,
-    water: 0xff6a1c, sand: 0x1e1614, reeds: null, rock: 0x302b2b, scenery: 'volcanic', lava: true, obPost: 0xffd23d, pick: [0xff7a2a, 0x3a1010] },
+    water: 0xff6a1c, sand: 0x1e1614, reeds: null, rock: 0x302b2b, scenery: 'volcanic', lava: true, obPost: 0xffd23d, pick: [0xff7a2a, 0x3a1010],
+    // backdrop: dark rocky ridges, dead trees, steaming basalt pillars, and the volcano angrier each hole (warm haze)
+    backdrop: { hills: [[0x2c1f1c, 0.22], [0x412b27, 0.4], [0x5e3c34, 0.58]], rings: [{ d: 190, h: [12, 30], peak: 0.7 }, { d: 275, h: [30, 62], peak: 0.95 }, { d: 360, h: [50, 95], peak: 1 }],
+      forest: 'snag', forestFlat: true, forestN: 300, pines: [0x2a2422, 0x3a302c, 0x1f1a19, 0x463a33], extras: ['pillars'], anger: true } },
   // Moon: grey dust and craters, black starry sky with Earth, no wind, low gravity (the disc floats: gravity scales lift-minus-gravity,
   // latK scales turn/fade so curves stay readable, rangeK is the measured carry gain used for range hints and disc suggestions)
-  moon: { id: 'moon', sky: [0x010103, 0x0a0c16], fog: 0x07080d, fogRange: [220, 900], hemi: [0xc8d0e6, 0x34343c, 0.75], sun: [0xfff8ee, 2.5],
+  moon: { id: 'moon', sky: [0x010103, 0x0a0c16], fog: 0x07080d, fogRange: [420, 1600], hemi: [0xc8d0e6, 0x34343c, 0.75], sun: [0xfff8ee, 2.5],
     ground: { ob: 0x4e4e54, rough: 0x6f6f76, fairway: 0x8e8e95, green: 0xa9adb8 }, trees: 'none', borderMix: 0, windMin: 0, windMax: 0, leaf: null,
     water: 0x0c0c10, sand: 0x3c3c42, reeds: null, rock: 0x7c7c82, scenery: 'moon', stars: true, earth: true, rille: true, dust: true,
-    gravity: 0.5, latK: 0.5, rangeK: 1.42, obPost: 0x7affd0, pick: [0xc4c8d4, 0x0a0c16] },
+    gravity: 0.5, latK: 0.5, rangeK: 1.42, obPost: 0x7affd0, pick: [0xc4c8d4, 0x0a0c16],
+    // backdrop: no air, so almost no haze: crisp grey crater rims and mountains, a huge Earth, a far moon base with blinking lights, glowing alien ruins (brighter each hole)
+    backdrop: { hills: [[0x6e6e76, 0.04], [0x5a5a62, 0.08], [0x4a4a52, 0.12]], feet: 0.04, rings: [{ d: 170, h: [8, 20], peak: 0.5 }, { d: 240, h: [18, 42], peak: 0.85 }, { d: 320, h: [35, 80], peak: 1 }],
+      forest: 'none', earthScale: 44, earthY: 110, extras: ['moonbase', 'ruins'] } },
 };
 
 const PARK_COURSE = {
@@ -1190,15 +1199,15 @@ function seeded(seed) { return () => ((seed = (seed * 16807) % 2147483647) / 214
 // Flat cutout hills: unlit, no shadows, and hazed toward the fog colour by a fixed amount per ring (hazier farther out),
 // with the lower part of each ring melting fully into the fog colour so hills, ground and sky meet without a line.
 const SCENERY = {
-  hillMat: (hex, haze) => { const m = new THREE.MeshBasicMaterial({ color: hex, fog: false, side: THREE.DoubleSide });
-    m.onBeforeCompile = sh => { sh.uniforms.hzCol = { value: scene.fog.color }; sh.uniforms.hzAmt = { value: haze };
+  hillMat: (hex, haze, base = 1) => { const m = new THREE.MeshBasicMaterial({ color: hex, fog: false, side: THREE.DoubleSide });
+    m.onBeforeCompile = sh => { sh.uniforms.hzCol = { value: scene.fog.color }; sh.uniforms.hzAmt = { value: haze }; sh.uniforms.hzBase = { value: base };
       sh.vertexShader = 'attribute float hh;\nvarying float vHh;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvHh = hh;');
-      sh.fragmentShader = 'uniform vec3 hzCol;\nuniform float hzAmt;\nvarying float vHh;\n' + sh.fragmentShader.replace('#include <fog_fragment>',
-        'gl_FragColor.rgb = mix(gl_FragColor.rgb, sRGBTransferOETF(vec4(hzCol, 1.0)).rgb, mix(1.0, hzAmt, smoothstep(0.0, 0.55, vHh)));'); }; // haze in the same colour space as the fog on the ground
+      sh.fragmentShader = 'uniform vec3 hzCol;\nuniform float hzAmt, hzBase;\nvarying float vHh;\n' + sh.fragmentShader.replace('#include <fog_fragment>',
+        'gl_FragColor.rgb = mix(gl_FragColor.rgb, sRGBTransferOETF(vec4(hzCol, 1.0)).rgb, mix(hzBase, hzAmt, smoothstep(0.0, 0.55, vHh)));'); }; // haze in the same colour space as the fog on the ground
     m.customProgramCacheKey = () => 'hill'; m.userData.keep = true; return m; }, // shared by every hole: never disposed
   // a background pine: two stacked open cones (no base, no trunk: they're only seen from afar, skirts down to the grass), 7 sides each
-  pineGeo: () => { const parts = [new THREE.ConeGeometry(2.3, 3.8, 7, 1, true).translate(0, 1.9, 0), new THREE.ConeGeometry(1.6, 2.8, 7, 1, true).translate(0, 4.6, 0)].map(g => g.toNonIndexed()); // 14 triangles a tree
-    const pos = [], nrm = []; for (const g of parts) { pos.push(...g.attributes.position.array); nrm.push(...g.attributes.normal.array); }
+  pineGeo: () => SCENERY.merge([new THREE.ConeGeometry(2.3, 3.8, 7, 1, true).translate(0, 1.9, 0), new THREE.ConeGeometry(1.6, 2.8, 7, 1, true).translate(0, 4.6, 0)]), // 14 triangles a tree
+  merge: (parts, flat) => { const pos = [], nrm = []; for (const g0 of parts) { const g = g0.index ? g0.toNonIndexed() : g0; if (flat) g.computeVertexNormals(); pos.push(...g.attributes.position.array); nrm.push(...g.attributes.normal.array); }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); return geo; },
 };
 // The same backdrop on every course that turns it on with `backdrop` in its world data (courses.js): the shapes are shared,
@@ -1209,9 +1218,29 @@ SCENERY.rings = [ // distance beyond the hole's own extent (m), height range (m)
   { d: 320, h: [55, 110], peak: 0.9 },
 ];
 SCENERY.mats = {}; // per world: one material per ring, made once and shared by every hole
-SCENERY.ringMats = w => SCENERY.mats[w.id] || (SCENERY.mats[w.id] = w.backdrop.hills.map(([c, haze]) => SCENERY.hillMat(c, haze)));
+SCENERY.ringMats = w => SCENERY.mats[w.id] || (SCENERY.mats[w.id] = w.backdrop.hills.map(([c, haze]) => SCENERY.hillMat(c, haze, w.backdrop.feet ?? 1)));
 SCENERY.pine = SCENERY.pineGeo();
 SCENERY.pineMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); SCENERY.pineMat.userData.keep = true;
+SCENERY.flatMat = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }); SCENERY.flatMat.userData.keep = true;
+const keepMat = m => { m.userData.keep = true; return m; };
+// the far 'forest' shape per world (all instanced, one draw call): pines, ice seracs, dead trees; plus shared landmark shapes
+SCENERY.geo = {
+  pine: SCENERY.pine,
+  serac: SCENERY.merge([new THREE.ConeGeometry(1.5, 5.6, 5, 1, true).rotateZ(0.12).translate(0, 2.6, 0), new THREE.ConeGeometry(1.0, 3.6, 4, 1, true).rotateZ(-0.35).translate(1.3, 1.5, 0.4), new THREE.ConeGeometry(0.9, 2.8, 4, 1, true).rotateZ(0.4).translate(-1.1, 1.1, -0.5)]), // 13 tris: a cluster of ice shards
+  snag: SCENERY.merge([new THREE.ConeGeometry(0.45, 7.5, 5, 1, true).translate(0, 3.6, 0), new THREE.ConeGeometry(0.2, 3, 4, 1, true).rotateZ(-0.9).translate(1.0, 4.6, 0), new THREE.ConeGeometry(0.17, 2.4, 4, 1, true).rotateZ(0.85).translate(-0.8, 5.5, 0.2)]), // 13 tris: a dead tree
+  hex: new THREE.CylinderGeometry(1, 1, 1, 6).translate(0, 0.5, 0), // basalt column
+  berg: new THREE.CylinderGeometry(0.9, 1.15, 1, 7).translate(0, 0.5, 0), // tabular iceberg
+  box: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
+  pyramid: new THREE.ConeGeometry(1, 1, 4).translate(0, 0.5, 0).rotateY(Math.PI / 4),
+  dome: new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+  orb: new THREE.SphereGeometry(1, 8, 6),
+};
+SCENERY.mat = {
+  wood: keepMat(new THREE.MeshLambertMaterial({ color: 0x4a3426, flatShading: true })), woodDark: keepMat(new THREE.MeshLambertMaterial({ color: 0x2e211a, flatShading: true })),
+  hull: keepMat(new THREE.MeshLambertMaterial({ color: 0xd9dce3, flatShading: true })), panel: keepMat(new THREE.MeshLambertMaterial({ color: 0x23356e, flatShading: true })),
+  ruin: keepMat(new THREE.MeshLambertMaterial({ color: 0x3a3646, flatShading: true })),
+  sail: keepMat(new THREE.MeshLambertMaterial({ color: 0xcfc6b2, side: THREE.DoubleSide, flatShading: true })), frost: keepMat(new THREE.MeshLambertMaterial({ color: 0xf4f9ff, flatShading: true })),
+};
 function hillRing(R, ring, mat, rnd) {
   const N = 144, pos = [], hh = [], idx = [], ph = [0, 1, 2, 3, 4].map(() => rnd() * 6.28), fq = [2, 3, 5, 9, 14].map(f => f + Math.floor(rnd() * 2));
   for (let i = 0; i <= N; i++) {
@@ -1227,26 +1256,93 @@ function hillRing(R, ring, mat, rnd) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('hh', new THREE.Float32BufferAttribute(hh, 1)); g.setIndex(idx);
   const m = new THREE.Mesh(g, mat); m.frustumCulled = false; m.renderOrder = -1; return m;
 }
-function buildScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, isWater, seed }) {
-  const rnd = seeded(seed);
+const sm0 = (geo, mat, sx, sy, sz, x, y, z, parent) => { const m = new THREE.Mesh(geo, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); parent.add(m); return m; };
+SCENERY.extras = {
+  // Moon: a small far-off moon base (domes, a module, solar panels, an antenna) with blinking red/green lights
+  moonbase({ scen, at, fx, marks, dir }) { const g = new THREE.Group(), G = SCENERY.geo, M = SCENERY.mat;
+    for (const [x, z, r] of [[0, 0, 8], [15, 4, 5.5], [-12, 3, 6]]) sm0(G.dome, M.hull, r, r * 0.8, r, x, 0, z, g);
+    sm0(G.box, M.hull, 9, 2.6, 3, 7.5, 0, 2, g); sm0(G.box, M.hull, 7, 2.6, 3, -6, 0, 1.5, g); sm0(G.box, M.hull, 8, 5, 7, 2, 0, -12, g); // tubes + module
+    for (const x of [-22, -28]) { const p = sm0(G.box, M.panel, 5, 0.3, 8, x, 4, -4, g); p.rotation.z = 0.5; sm0(G.box, M.hull, 0.4, 4, 0.4, x, 0, -4, g); } // solar panels
+    sm0(G.box, M.hull, 0.6, 18, 0.6, 22, 0, -6, g); sm0(G.dome, M.hull, 3, 1.2, 3, 22, 18, -6, g).rotation.x = 2.6; // antenna + dish
+    const red = new THREE.SpriteMaterial({ map: DOT_TEX, color: 0xff3b30, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }), grn = red.clone(); grn.color.setHex(0x5dff8a);
+    const wht = red.clone(); wht.color.setHex(0xfff4d0); const lights = [];
+    for (const [x, y, z, m] of [[22, 19.5, -6, red], [0, 7.2, 0, grn], [15, 5, 4, red], [-12, 5.4, 3, grn], [2, 5.6, -12, wht], [-25, 6, -4, wht]]) { const l = new THREE.Sprite(m); l.scale.setScalar(4.2); l.position.set(x, y, z); g.add(l); lights.push(l); }
+    const p = at(-0.13, 60, 250, 170); g.position.set(p.x, -0.5, p.z); g.rotation.y = Math.atan2(dir.x, dir.y) + 0.4; g.scale.setScalar(1.35); scen.add(g);
+    marks.lights = lights.length; marks.base = g; fx.push((dt, t) => { red.opacity = (t % 1.4) < 0.55 ? 1 : 0.08; grn.opacity = ((t + 0.7) % 1.4) < 0.55 ? 1 : 0.08; wht.opacity = 0.7 + Math.sin(t * 3) * 0.2; }); },
+  // Moon: glowing alien ruins on the horizon (two pyramids and three towers) whose glow builds hole by hole: dim on 1, strongest on 9
+  ruins({ scen, rnd, index, at, fx, marks, dir }) { const g = new THREE.Group(), G = SCENERY.geo, M = SCENERY.mat, k = 0.12 + 0.88 * (index / 8);
+    const glowCol = new THREE.Color(0x101a18).lerp(new THREE.Color(0x7affd0), k), band = new THREE.MeshBasicMaterial({ color: glowCol, fog: false });
+    const halo = new THREE.SpriteMaterial({ map: DOT_TEX, color: 0x5affc8, transparent: true, opacity: 0.1 + 0.75 * k, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+    const glows = [];
+    for (const [x, z, w, h] of [[0, 0, 30, 28], [36, 10, 20, 17]]) { sm0(G.pyramid, M.ruin, w, h, w, x, -1, z, g); sm0(G.orb, band, 1.6, 1.6, 1.6, x, h - 0.5, z, g); for (const f of [0.3, 0.55]) sm0(G.box, band, w * (1 - f) * 1.42, 0.5, 0.5, x, -1 + h * f, z + w * (1 - f) * 0.71, g); const s = new THREE.Sprite(halo); s.position.set(x, h + 1, z); s.scale.setScalar(14 + 22 * k); g.add(s); glows.push(s); }
+    for (const [x, z, h] of [[-24, 6, 44], [-34, -4, 32], [20, -14, 38]]) { sm0(G.hex, M.ruin, 2.6, h, 2.6, x, -1, z, g); sm0(G.pyramid, M.ruin, 4, 7, 4, x, h - 1, z, g); for (const f of [0.35, 0.6, 0.85]) sm0(G.hex, band, 2.75, 0.8, 2.75, x, h * f, z, g); const s = new THREE.Sprite(halo); s.position.set(x, h + 4, z); s.scale.setScalar(10 + 16 * k); g.add(s); glows.push(s); }
+    const p = at(0.14, 150, 340, 300); g.position.set(p.x, 0, p.z); g.rotation.y = Math.atan2(dir.x, dir.y) + 0.3; g.scale.setScalar(0.8); scen.add(g);
+    marks.ruins = +k.toFixed(3); fx.push((dt, t) => { halo.opacity = (0.1 + 0.75 * k) * (0.82 + 0.18 * Math.sin(t * 1.7)); }); },
+  // Volcano: a cluster of tall black hexagonal basalt pillars on the horizon with soft steam rising off their tops
+  pillars({ scen, rnd, at, fx, marks, dir }) { const N = 15, c = at(0.1, 110, 320, 250), side = new THREE.Vector2(-dir.y, dir.x), im = new THREE.InstancedMesh(SCENERY.geo.hex, MAT.basalt, N), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), tops = [];
+    for (let i = 0; i < N; i++) { const u = (i / (N - 1) - 0.5) * 2, x = c.x + side.x * u * 26 + (rnd() - 0.5) * 8, z = c.z + side.y * u * 26 + (rnd() - 0.5) * 8, r = 2.6 + rnd() * 2.4, h = (1 - Math.abs(u) * 0.5) * (26 + rnd() * 30);
+      q.setFromAxisAngle(up, rnd() * 1.05); mtx.compose(new THREE.Vector3(x, -2, z), q, sc.set(r, h, r)); im.setMatrixAt(i, mtx); if (i % 3 === 1) tops.push([x, h - 2, z, r]); }
+    scen.add(im);
+    const SN = 60, geo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(SN * 3), 3)), seed = Array.from({ length: SN }, (_, i) => [((i * 7919) % 997) / 997, ((i * 3571) % 991) / 991]);
+    const steam = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xe9ddd6, size: 14, map: DOT_TEX, transparent: true, opacity: 0.22, depthWrite: false })); steam.frustumCulled = false; scen.add(steam);
+    marks.pillars = N; fx.push((dt, t) => { const a = geo.attributes.position.array; for (let i = 0; i < SN; i++) { const [s0, s1] = seed[i], tp = tops[i % tops.length], life = (t * 0.07 + s0) % 1;
+      a[i * 3] = tp[0] + (s1 - 0.5) * tp[3] * 2 + life * 14; a[i * 3 + 1] = tp[1] + life * 38; a[i * 3 + 2] = tp[2] + (s0 - 0.5) * tp[3] * 2; } geo.attributes.position.needsUpdate = true; }); },
+  // Antarctica: tabular icebergs along the horizon
+  bergs({ scen, rnd, at }) { const N = 11, im = new THREE.InstancedMesh(SCENERY.geo.berg, MAT.berg, N), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    for (let i = 0; i < N; i++) { const p = at(-0.55 + (i / (N - 1)) * 1.1 + (rnd() - 0.5) * 0.06, 150 + rnd() * 80, 400), w = 9 + rnd() * 16; q.setFromAxisAngle(up, rnd() * 6.28); mtx.compose(p.setY(-1.5), q, sc.set(w, 6 + rnd() * 12, w * (0.6 + rnd() * 0.5))); im.setMatrixAt(i, mtx); }
+    scen.add(im); },
+  // Antarctica: an old wooden ship frozen into the ice, tilted, with a snapped mast and a tattered sail
+  shipwreck({ scen, at, marks, dir }) { const g = new THREE.Group(), G = SCENERY.geo, M = SCENERY.mat;
+    sm0(G.box, M.wood, 7, 5, 24, 0, 0, 0, g); // hull
+    const bow = sm0(new THREE.ConeGeometry(3.6, 8, 4).rotateY(Math.PI / 4).rotateX(Math.PI / 2), M.wood, 1.35, 1, 1, 0, 2.5, 15.5, g); bow.scale.set(1.35, 0.9, 1); // pointed bow
+    sm0(G.box, M.woodDark, 7.4, 0.6, 24.4, 0, 4.7, 0, g); sm0(G.box, M.frost, 6.2, 0.5, 20, 0, 5.2, -0.5, g); // gunwale + snow on deck
+    sm0(G.box, M.woodDark, 5.5, 3, 5, 0, 5.2, -9, g); sm0(G.box, M.frost, 5.7, 0.5, 5.2, 0, 8.2, -9, g); // stern cabin, snow roof
+    const mast = sm0(new THREE.CylinderGeometry(0.35, 0.5, 1, 6).translate(0, 0.5, 0), M.woodDark, 1, 17, 1, 0, 5, 2, g);
+    const top = sm0(new THREE.CylinderGeometry(0.28, 0.35, 1, 6).translate(0, 0.5, 0), M.woodDark, 1, 9, 1, 0, 21.6, 2, g); top.rotation.z = -2.1; // the snapped top hanging down
+    sm0(new THREE.CylinderGeometry(0.3, 0.4, 1, 6).translate(0, 0.5, 0), M.woodDark, 1, 7, 1, 0, 5, -5, g).rotation.z = 0.35; // broken stub
+    sm0(new THREE.CylinderGeometry(0.2, 0.2, 1, 5).rotateZ(Math.PI / 2), M.woodDark, 9, 1, 1, 0, 16, 2, g); // yard
+    const sg = new THREE.PlaneGeometry(8, 7, 4, 4), sp = sg.attributes.position; for (let i = 0; i < sp.count; i++) { const y = sp.getY(i); sp.setZ(i, Math.sin(sp.getX(i) * 1.3 + y) * 0.6); if (y < -2 && (i % 3)) sp.setY(i, y + 1.6 + (i % 2) * 0.8); } // ragged lower edge
+    sg.computeVertexNormals(); sm0(sg, M.sail, 1, 1, 1, 0, 12.2, 2.4, g);
+    for (const [x, z, s] of [[-5, 4, 4], [5, -3, 5], [-4, -12, 3.5], [4.5, 11, 3], [0, -14, 4]]) sm0(G.berg, MAT.berg, s * 1.3, s * 0.6, s, x, -1, z, g); // ice heaved up round the hull
+    const p = at(-0.11, 75, 270); g.position.set(p.x, -3.2, p.z); g.rotation.set(-0.08, Math.atan2(dir.x, dir.y) + 1.2, 0.3); g.scale.setScalar(2.1); scen.add(g); marks.ship = g; },
+  // Antarctica holes 7-9: northern lights, slow waving curtains high in the sky (stronger each hole)
+  aurora({ scen, index, fx, marks, cx, cz, dir }) { if (index < 6) return; const k = 0.55 + (index - 6) * 0.22;
+    const mat = new THREE.ShaderMaterial({ uniforms: { t: { value: 0 }, k: { value: k } }, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
+      vertexShader: 'varying vec2 vUv; uniform float t; void main(){ vUv = uv; vec3 p = position; p.y += sin(uv.x * 9.0 + t * 0.5) * 4.0 * uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
+      fragmentShader: 'varying vec2 vUv; uniform float t, k; void main(){ float a = smoothstep(0.0, 0.2, vUv.y) * pow(1.0 - vUv.y, 1.4) * smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x);'
+        + ' float s = 0.55 + 0.45 * sin(vUv.x * 46.0 + t * 1.1 + sin(vUv.x * 6.0 + t * 0.3) * 4.0); vec3 c = mix(vec3(0.2, 1.0, 0.62), vec3(0.62, 0.42, 1.0), smoothstep(0.35, 1.0, vUv.y)); gl_FragColor = vec4(c * 1.15, a * s * k * 0.8); }' });
+    const base = Math.atan2(dir.x, dir.y);
+    [[405, 95, 80, 0.75, -0.04], [425, 112, 90, 0.9, 0.1], [440, 100, 70, 0.65, -0.18]].forEach(([R, y0, hgt, span, off]) => { const geo = new THREE.PlaneGeometry(1, 1, 48, 1), p = geo.attributes.position;
+      for (let i = 0; i < p.count; i++) { const u = p.getX(i) + 0.5, v = p.getY(i) + 0.5, a = base + off + (u - 0.5) * span, r = R + Math.sin(u * 7) * 18; p.setXYZ(i, cx + Math.sin(a) * r, y0 + v * hgt + Math.sin(u * 5) * 6, cz + Math.cos(a) * r); } // out past the far peaks (centred on the hole), so the peaks stand in front
+      const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; m.renderOrder = 1; scen.add(m); });
+    marks.aurora = k; fx.push((dt, t) => { mat.uniforms.t.value = t; }); },
+};
+function buildScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, isWater, seed, index = 0 }) {
+  const rnd = seeded(seed), B = WORLD.backdrop;
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity; for (const p of samples) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minZ = Math.min(minZ, p.y); maxZ = Math.max(maxZ, p.y); }
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2, ext = Math.hypot(maxX - minX, maxZ - minZ) / 2;
-  const scen = new THREE.Group(); scen.userData.scenery = true;
-  const mats = SCENERY.ringMats(WORLD), tints = WORLD.backdrop.pines;
-  SCENERY.rings.forEach((ring, k) => { const m = hillRing(Math.min(ext + ring.d, 440), ring, mats[k], rnd); m.position.set(cx, 0, cz); scen.add(m); });
+  const scen = new THREE.Group(); scen.userData.scenery = true; scen.userData.fx = [];
+  const mats = SCENERY.ringMats(WORLD), tints = B.pines || [0xffffff];
+  (B.rings || SCENERY.rings).forEach((ring, k) => { const m = hillRing(Math.min(ext + ring.d, 440), ring, mats[k], rnd); m.position.set(cx, 0, cz); scen.add(m); });
   // the forest behind the tree walls: from just past the generated border trees out into the haze
   const inner = inBoundsR + 13, outer = inBoundsR + 95, pts = [];
-  for (let tries = 0; tries < 2600 && pts.length < 460; tries++) {
+  const forestN = B.forest === 'none' ? 0 : (B.forestN ?? 460);
+  for (let tries = 0; tries < 2600 && pts.length < forestN; tries++) {
     const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (ext + outer), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, d = distToPlay(x, z);
     if (d < inner || d > outer || inHull(x, z) || (isWater && isWater(x, z))) continue;
-    pts.push({ x, z, s: 1.3 + rnd() * 1.1 + (d - inner) / (outer - inner) * 0.8 });
+    pts.push({ x, z, s: (1.3 + rnd() * 1.1 + (d - inner) / (outer - inner) * 0.8) * (B.forestScale || 1) });
   }
   if (pts.length) {
-    const im = new THREE.InstancedMesh(SCENERY.pine, SCENERY.pineMat, pts.length), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), col = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
+    const im = new THREE.InstancedMesh(SCENERY.geo[B.forest || 'pine'], B.forestFlat ? SCENERY.flatMat : SCENERY.pineMat, pts.length), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), col = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
     pts.forEach((p, i) => { q.setFromAxisAngle(up, rnd() * 6.28); mtx.compose(ps.set(p.x, groundY(p.x, p.z) - 0.2, p.z), q, sc.set(p.s, p.s * (0.9 + rnd() * 0.35), p.s)); im.setMatrixAt(i, mtx);
       col.setHex(tints[i % tints.length]).offsetHSL(0, 0, (rnd() - 0.5) * 0.06); im.setColorAt(i, col); });
     im.castShadow = false; im.receiveShadow = false; scen.add(im); scen.userData.forest = pts.length;
   }
+  // landmarks: placed from the tee looking down the hole (a = angle off the tee-to-basket line, d = distance past the basket), so each one shows from every hole
+  const tee = samples[0], end = samples[samples.length - 1], len = Math.hypot(end.x - tee.x, end.y - tee.y), dir = new THREE.Vector2(end.x - tee.x, end.y - tee.y).divideScalar(len || 1);
+  const at = (a, d, cap = 360, min = 0) => { const r = THREE.MathUtils.clamp(len + d, min, cap), c = Math.cos(a), sn = Math.sin(a); return new THREE.Vector3(tee.x + (dir.x * c - dir.y * sn) * r, 0, tee.y + (dir.y * c + dir.x * sn) * r); };
+  const ctx = { scen, rnd, index, at, dir, tee, len, cx, cz, ext, fx: scen.userData.fx, marks: (scen.userData.marks = {}) };
+  for (const k of B.extras || []) SCENERY.extras[k](ctx);
   group.add(scen); group.userData.scenery = scen;
 }
 function makeHole(data, index) {
@@ -1477,7 +1573,7 @@ function makeHole(data, index) {
   // Backdrop scenery (Maple Park, Riverbend; looks only: no collision, no shadows, not on the map): a deep forest behind the tree
   // walls fading into the haze, and three rings of flat cutout hills, each farther ring hazier and bluer, whose feet melt into the
   // fog colour so there's no hard horizon line. Kept well outside the in-bounds area.
-  if (WORLD.backdrop) buildScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, isWater: (rivers.length || ponds.length) ? isWater : null, seed: 500 + index * 31 });
+  if (WORLD.backdrop) buildScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, isWater: (rivers.length || ponds.length) ? isWater : null, seed: 500 + index * 31, index });
   // Water, banks, islands, bridges, reeds and rocks
   const rockList = (data.rocks || []).map(r => ({ ...r }));
   if (rivers.length || ponds.length) {
@@ -1627,7 +1723,7 @@ function makeHole(data, index) {
     pts.frustumCulled = false; group.add(pts); ventFx.push({ v, pts, N, seed: Array.from({ length: N }, (_, i) => [((i * 7919) % 997) / 997, ((i * 3571) % 991) / 991]) });
   }
   // Volcanic scenery: basalt boulders and ash mounds at the border, dark peaks, and a big smoking volcano behind the basket (scenery only)
-  const plume = []; let volcano = null;
+  const plume = []; let volcano = null, anger = 0;
   if (WORLD.scenery === 'volcanic') {
     const rnd = seeded(8100 + index * 29), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
     if (decor.length) { const blocks = new THREE.InstancedMesh(GEO.iceBlock, MAT.basalt, decor.length), mounds = new THREE.InstancedMesh(GEO.mound, MAT.ashMound, decor.length); let nb = 0, nm = 0;
@@ -1646,6 +1742,10 @@ function makeHole(data, index) {
     prof.push(new THREE.Vector2(R1 - 6, H0 - 6));
     const cone = new THREE.Mesh(new THREE.LatheGeometry(prof, 28), MAT.volcano); cone.position.set(vc.x, -3, vc.y); group.add(cone); volcano = { x: vc.x, z: vc.y, top: H0 - 6 };
     const glow = new THREE.Mesh(new THREE.CircleGeometry(R1 - 5, 24).rotateX(-Math.PI / 2), MAT.craterGlow); glow.position.set(vc.x, H0 - 7, vc.y); group.add(glow);
+    if (WORLD.backdrop?.anger) { // the volcano gets angrier hole by hole: a hotter crater and streaks, and a red glow over the summit (dim on 1, fierce on 9)
+      const k = index / 8, A = new THREE.Color(0xc0602a), B = new THREE.Color(0xffe27a); MAT.craterGlow.color.copy(A).lerp(B, k); MAT.lavaStreak.color.copy(new THREE.Color(0xa8401a)).lerp(new THREE.Color(0xff8a2a), k);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: DOT_TEX, color: 0xff4a18, transparent: true, opacity: 0.2 + 0.6 * k, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      halo.scale.setScalar(70 + 120 * k); halo.position.set(vc.x, H0 + 6, vc.y); group.add(halo); anger = k; if (group.userData.scenery) group.userData.scenery.userData.marks.anger = +k.toFixed(3); }
     for (let i = 0; i < 5; i++) { const a = Math.atan2(-dir.y, -dir.x) + (i - 2) * 0.32 + (rnd() - 0.5) * 0.1, len = 30 + rnd() * 30; // lava streaks down the front face
       const k0 = 0.02, k1 = len / 95, pa = new THREE.Vector3(Math.cos(a) * (R1 + 2), H0 - 4, Math.sin(a) * (R1 + 2)), r1 = R1 + (R0 - R1) * Math.pow(k1, 1 / 0.75), pb = new THREE.Vector3(Math.cos(a) * r1, H0 * (1 - k1), Math.sin(a) * r1); void k0;
       const seg = pb.clone().sub(pa), m = new THREE.Mesh(new THREE.CylinderGeometry(0.9 + rnd() * 0.6, 1.6 + rnd(), seg.length(), 5), MAT.lavaStreak);
@@ -1700,7 +1800,7 @@ function makeHole(data, index) {
   // Sun follows the hole so shadows cover it
   const mid = curve.getPoint(0.5);
   const span = Math.max(70, length * 0.65 + 20);
-  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, banks, penguins, vents, ventFx, plume, volcano };
+  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, banks, penguins, vents, ventFx, plume, anger, volcano };
 }
 
 function convexHull(pts) { // monotone chain, counter-clockwise in (x, z)
@@ -1723,7 +1823,7 @@ function sharedSets() {
   if (SHARED) return SHARED;
   const geo = new Set(), mat = new Set(), tex = new Set([DOT_TEX, rippleTex, lavaTex, snowTex]);
   const walk = v => { if (!v) return; if (v.isBufferGeometry) geo.add(v); else if (Array.isArray(v)) v.forEach(walk); else if (typeof v === 'object') Object.values(v).forEach(walk); };
-  walk(GEO); geo.add(DROP_GEO); geo.add(SCENERY.pine);
+  walk(GEO); walk(SCENERY.geo); geo.add(DROP_GEO);
   for (const g of geo) g.addEventListener('dispose', () => { S.sharedDisposed = (S.sharedDisposed || 0) + 1; }); // must never fire (tests)
   for (const m of [...Object.values(MAT).flat(), ...Object.values(PA), ...Object.values(SM), PUFF_MAT, SPARK_MAT, DROP_MAT, DUST_MAT]) { mat.add(m); for (const k of ['map', 'emissiveMap']) if (m[k]) tex.add(m[k]); }
   return (SHARED = { geo, mat, tex });
@@ -1956,13 +2056,14 @@ function updateEmbers(dt, t) {
 // Steam columns over the vents and the volcano's smoke plume
 function updateVents(dt, t) {
   if (!H) return;
+  const scen = H.group.userData.scenery; if (scen) for (const f of scen.userData.fx) f(dt, t); // backdrop landmarks (lights, steam, aurora)
   for (const f of H.ventFx) { const a = f.pts.geometry.attributes.position.array, v = f.v;
     for (let i = 0; i < f.N; i++) { const [s0, s1] = f.seed[i], life = (t * 0.45 + s0) % 1, h = life * 9, sp = v.r * 0.25 + life * v.r * 0.45, ang = s1 * 6.28 + t * 0.4;
       a[i * 3] = v.x + Math.cos(ang) * sp * s1 + v.push[0] * life * 0.25; a[i * 3 + 1] = v.y + 0.3 + h; a[i * 3 + 2] = v.z + Math.sin(ang) * sp * s1 + v.push[1] * life * 0.25; }
     f.pts.geometry.attributes.position.needsUpdate = true; f.pts.material.opacity = 0.32 + Math.sin(t * 3 + v.x) * 0.08; }
   for (const p of H.plume) { const life = (t * 0.03 + p.ph) % 1, s = 6 + life * 24;
     p.m.position.set(p.base.x + p.sx * life + life * 90 * (S.wind.x / 10), p.base.y + life * 110, p.base.z + p.sz * life + life * 90 * (S.wind.z / 10));
-    const K = S.plumeK ?? 1; p.m.scale.setScalar(s * (0.6 + 0.4 * K)); p.m.material.opacity = Math.min(0.92, 0.6 * K) * Math.min(1, life * 6) * (1 - life * 0.75); }
+    const K = S.plumeK ?? 1; p.m.scale.setScalar(s * (0.6 + 0.4 * K) * (0.85 + 0.4 * (H.anger || 0))); p.m.material.opacity = Math.min(0.92, 0.6 * K) * Math.min(1, life * 6) * (1 - life * 0.75); }
   if (WORLD.lava) { MAT.water.emissiveIntensity = 0.85 + Math.sin(t * 2.2) * 0.12; lavaTex.offset.x = (lavaTex.offset.x + dt * 0.012) % 1; lavaTex.offset.y = (lavaTex.offset.y + dt * 0.006) % 1; }
 }
 // Penguins bob and waddle; when a disc comes down near one it hops out of the way
@@ -2165,7 +2266,7 @@ function applyWorld(w) {
   MAT.deepSnow.color.setHex(L ? 0x7a726d : 0xffffff); MAT.bank.color.setHex(L ? 0x5a514c : 0xf7fbff); PUFF_MAT.color.setHex(L ? 0x8e8580 : 0xffffff); DUST_MAT.color.setHex(L ? 0x6e6661 : w.snow ? 0xf4f8fc : w.ground.rough);
   // Moon: low gravity, black starry sky with Earth, grey dust; rivers are rilles (dark trenches)
   GRAV.k = w.gravity || 1; GRAV.lat = w.latK || 1; GRAV.range = w.rangeK || 1;
-  U.stars.value = w.stars ? 1 : 0; scene.userData.earth.visible = !!w.earth;
+  U.stars.value = w.stars ? 1 : 0; scene.userData.earth.visible = !!w.earth; scene.userData.earth.scale.setScalar(w.backdrop?.earthScale || 19); scene.userData.earth.position.y = w.backdrop?.earthY || 85;
   if (w.rille) { Object.assign(MAT.water, { map: null, emissiveMap: null, shininess: 4 }); MAT.water.emissive.setHex(0x000000); MAT.water.specular.setHex(0x111111); MAT.water.needsUpdate = true; MAT.water.userData.ground.gSparkle.value = 0;
     MAT.foam.color.setHex(0x3a3a40); MAT.foam.opacity = 0.5; MAT.sand.color.setHex(0x3c3c42); MAT.islandSand.color.setHex(0x3c3c42); }
   DROP_MAT.color.setHex(w.rille ? 0x9a9aa0 : 0xe8f6ff); if (w.dust) { MAT.deepSnow.color.setHex(0x505057); PUFF_MAT.color.setHex(0xb0b0b6); DUST_MAT.color.setHex(0xa8a8ae); MAT.bank.color.setHex(0x6a6a70); }
@@ -4032,6 +4133,9 @@ window.__game = {
     wheel: b.wheel ? +b.wheel.rotation.x.toFixed(2) : null, beep: b.beep ? b.beep.visible : null, lifted: +(b.lifted || 0).toFixed(2), saucer: b.saucer ? { visible: b.saucer.visible, y: +b.saucer.position.y.toFixed(1) } : null,
     beam: +SM.beam.opacity.toFixed(2), discLift: S.discLift || 0, discHidden: !!S.discHidden, basketPhysY: H.basket.y, gravity: GRAV.k, rangeK: GRAV.range, stars: scene.userData.sky.material.uniforms.stars.value, earth: scene.userData.earth.visible,
     basketVis: (() => { const bg = H.group.children.find(o => o.userData.basketGroup); return bg ? { y: +bg.position.y.toFixed(2), visible: bg.visible } : null; })() }; },
+  sceneryGroup: () => H?.group.userData.scenery || null,
+  backdrop: () => { const sc = H?.group.userData.scenery; if (!sc) return null; let tris = 0, meshes = 0; sc.traverse(o => { if (!o.isMesh) return; meshes++; const g = o.geometry, n = (g.index ? g.index.count : g.attributes.position.count) / 3; tris += n * (o.isInstancedMesh ? o.count : 1); });
+    const m = sc.userData.marks || {}; return { forest: sc.userData.forest || 0, marks: Object.keys(m), aurora: m.aurora || 0, anger: m.anger ?? null, ruins: m.ruins ?? null, lights: m.lights ?? null, fx: sc.userData.fx.length, tris: Math.round(tris), meshes, fogFar: scene.fog.far }; },
   storyShadow: () => { const b = H.story?.built, sh = b?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2), turtle: !!b.diver?.visible, y: b.diver ? +b.diver.position.y.toFixed(2) : null, tx: b.diver ? +b.diver.position.x.toFixed(2) : null, tz: b.diver ? +b.diver.position.z.toFixed(2) : null, stage: b.stage, k: +(b.k || 0).toFixed(2), foot: b.diver ? (() => { const y = b.diver.position.y, v = b.diver.visible; b.diver.position.y = 0; b.diver.visible = true; const bx = new THREE.Box3().setFromObject(b.diver).union(new THREE.Box3().setFromObject(sh)); b.diver.position.y = y; b.diver.visible = v; return [bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2)); })() : null } : null; },
   storyRock: () => { const b = H.story?.built, r = b?.rock; if (!r) return null; const w = r.getWorldPosition(new THREE.Vector3()); return { visible: r.visible, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2) }; },
   storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, headY: +b.turtle.position.y.toFixed(2), parts: (() => { const t = b.turtle, y = t.position.y, v = t.visible; t.position.y = 0.9; t.visible = true; t.updateMatrixWorld(true); const o = []; t.traverse(m => { if (m.isMesh) { const bx = new THREE.Box3().setFromObject(m); o.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2))); } }); t.position.y = y; t.visible = v; t.updateMatrixWorld(true); return o; })(), island: b.island ? [+b.island.position.x.toFixed(2), +b.island.position.z.toFixed(2)] : null, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
