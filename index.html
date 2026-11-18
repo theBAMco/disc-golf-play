@@ -1502,7 +1502,7 @@ SCENERY.extras = {
     bakeStatic(g); // the hull / panel parts: one draw per material
     const LT = [[22, 19.5, -6, 0xff3b30], [0, 7.2, 0, 0x5dff8a], [15, 5, 4, 0xff3b30], [-12, 5.4, 3, 0x5dff8a], [2, 5.6, -12, 0xfff4d0], [-25, 6, -4, 0xfff4d0]];
     const lights = glowBatch(LT.map(([x, y, z, c]) => [x, y, z, 4.2, 4.2, c]), { key: 'moonLights' }); g.add(lights); // all six blinking lights: one draw
-    const p = at(-0.13, 60, 250, 170); g.position.set(p.x, -0.5, p.z); g.rotation.y = Math.atan2(dir.x, dir.y) + 0.4; g.scale.setScalar(1.35); scen.add(g);
+    const [a0, d0, r0] = SPOT(marks, 'base', [[-0.13, 60, 0.4], [0.24, 80, -0.6], [-0.32, 45, 1.1]]), p = at(a0, d0, 250, 170); g.position.set(p.x, -0.5, p.z); g.rotation.y = Math.atan2(dir.x, dir.y) + r0; g.scale.setScalar(1.35); scen.add(g);
     marks.lights = LT.length; marks.base = g; fx.push((dt, t) => { const a = [(t % 1.4) < 0.55 ? 1 : 0.08, ((t + 0.7) % 1.4) < 0.55 ? 1 : 0.08, 0.7 + Math.sin(t * 3) * 0.2];
       LT.forEach(([, , , c], i) => lights.glowSet(i, c, a[c === 0xff3b30 ? 0 : c === 0x5dff8a ? 1 : 2])); }); },
   // Moon: glowing alien ruins on the horizon (two pyramids and three towers) whose glow builds hole by hole: dim on 1, strongest on 9
@@ -1512,10 +1512,10 @@ SCENERY.extras = {
     for (const [x, z, w, h] of [[0, 0, 30, 28], [36, 10, 20, 17]]) { sm0(G.pyramid, M.ruin, w, h, w, x, -1, z, g); sm0(G.orb, band, 1.6, 1.6, 1.6, x, h - 0.5, z, g); for (const f of [0.3, 0.55]) sm0(G.box, band, w * (1 - f) * 1.42, 0.5, 0.5, x, -1 + h * f, z + w * (1 - f) * 0.71, g); glows.push([x, h + 1, z, 14 + 22 * k, 14 + 22 * k, 0x5affc8]); }
     for (const [x, z, h] of [[-24, 6, 44], [-34, -4, 32], [20, -14, 38]]) { sm0(G.hex, M.ruin, 2.6, h, 2.6, x, -1, z, g); sm0(G.pyramid, M.ruin, 4, 7, 4, x, h - 1, z, g); for (const f of [0.35, 0.6, 0.85]) sm0(G.hex, band, 2.75, 0.8, 2.75, x, h * f, z, g); glows.push([x, h + 4, z, 10 + 16 * k, 10 + 16 * k, 0x5affc8]); }
     bakeStatic(g); const halo = glowBatch(glows, { opacity: 0.1 + 0.75 * k, key: 'ruinHalo' }); g.add(halo); // stone + glow bands: one draw per material; the five halos: one draw
-    const p = at(0.14, 150, 340, 300); g.position.set(p.x, 0, p.z); g.rotation.y = Math.atan2(dir.x, dir.y) + 0.3; g.scale.setScalar(0.8); scen.add(g);
+    const [a0, d0, r0] = SPOT(marks, 'ruins', [[0.14, 150, 0.3], [-0.24, 170, -0.4], [0.3, 140, 0.9]]), p = at(a0, d0, 340, 300); g.position.set(p.x, 0, p.z); g.rotation.y = Math.atan2(dir.x, dir.y) + r0; g.scale.setScalar(0.8); scen.add(g);
     marks.ruins = +k.toFixed(3); fx.push((dt, t) => { halo.material.uniforms.opacity.value = (0.1 + 0.75 * k) * (0.82 + 0.18 * Math.sin(t * 1.7)); }); },
   // Volcano: a cluster of tall black hexagonal basalt pillars on the horizon with soft steam rising off their tops
-  pillars({ scen, rnd, at, fx, marks, dir }) { const N = 15, c = at(0.1, 110, 320, 250), side = new THREE.Vector2(-dir.y, dir.x), im = new THREE.InstancedMesh(SCENERY.geo.hex, MAT.basalt, N), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), tops = [];
+  pillars({ scen, rnd, at, fx, marks, dir }) { const N = 15, [a0, d0] = SPOT(marks, 'pillars', [[0.1, 110], [-0.26, 90], [0.32, 130]]), c = at(a0, d0, 320, 250), side = new THREE.Vector2(-dir.y, dir.x), im = new THREE.InstancedMesh(SCENERY.geo.hex, MAT.basalt, N), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), tops = [];
     for (let i = 0; i < N; i++) { const u = (i / (N - 1) - 0.5) * 2, x = c.x + side.x * u * 26 + (rnd() - 0.5) * 8, z = c.z + side.y * u * 26 + (rnd() - 0.5) * 8, r = 2.6 + rnd() * 2.4, h = (1 - Math.abs(u) * 0.5) * (26 + rnd() * 30);
       q.setFromAxisAngle(up, rnd() * 1.05); mtx.compose(new THREE.Vector3(x, -2, z), q, sc.set(r, h, r)); im.setMatrixAt(i, mtx); if (i % 3 === 1) tops.push([x, h - 2, z, r]); }
     scen.add(im);
@@ -1541,7 +1541,7 @@ SCENERY.extras = {
     sg.computeVertexNormals(); sm0(sg, M.sail, 1, 1, 1, 0, 12.2, 2.4, g);
     for (const [x, z, s] of [[-5, 4, 4], [5, -3, 5], [-4, -12, 3.5], [4.5, 11, 3], [0, -14, 4]]) sm0(G.berg, MAT.berg, s * 1.3, s * 0.6, s, x, -1, z, g); // ice heaved up round the hull
     bakeStatic(g); // ~16 parts → one draw per material
-    const p = at(0.3, 75, 270); g.position.set(p.x, -3.2, p.z); g.rotation.set(-0.08, Math.atan2(dir.x, dir.y) + 1.2, 0.3); g.scale.setScalar(2.1); scen.add(g); marks.ship = g; }, // 0.3 rad off the line of play (was 0.11 rad: parked right behind the basket and the hole 3 arch)
+    const [a0, d0, r0] = SPOT(marks, 'ship', [[0.3, 75, 1.2], [-0.38, 60, -0.9], [0.46, 95, 2.0]]), p = at(a0, d0, 270); g.position.set(p.x, -3.2, p.z); g.rotation.set(-0.08, Math.atan2(dir.x, dir.y) + r0, 0.3); g.scale.setScalar(2.1); scen.add(g); marks.ship = g; }, // 0.3 rad off the line of play (was 0.11 rad: parked right behind the basket and the hole 3 arch)
   // Antarctica holes 7-9: northern lights, slow waving curtains high in the sky (stronger each hole)
   aurora({ scen, index, fx, marks, cx, cz, dir }) { if (index < 6) return; const k = 0.55 + (index - 6) * 0.22;
     const mat = new THREE.ShaderMaterial({ uniforms: { t: { value: 0 }, k: { value: k } }, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
@@ -1579,9 +1579,13 @@ function buildScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, 
   const tee = samples[0], end = samples[samples.length - 1], len = Math.hypot(end.x - tee.x, end.y - tee.y), dir = new THREE.Vector2(end.x - tee.x, end.y - tee.y).divideScalar(len || 1);
   const at = (a, d, cap = 360, min = 0) => { const r = THREE.MathUtils.clamp(len + d, min, cap), c = Math.cos(a), sn = Math.sin(a); return new THREE.Vector3(tee.x + (dir.x * c - dir.y * sn) * r, 0, tee.y + (dir.y * c + dir.x * sn) * r); };
   const ctx = { scen, rnd, index, at, dir, tee, len, cx, cz, ext, fx: scen.userData.fx, marks: (scen.userData.marks = {}) };
-  for (const k of B.extras || []) SCENERY.extras[k](ctx);
+  for (const k of B.extras || []) { const on = SPECIAL_HOLES[k]; if (on) { if (!on.includes(index)) continue; ctx.marks.slot = on.indexOf(index); } SCENERY.extras[k](ctx); } delete ctx.marks.slot;
   group.add(scen); group.userData.scenery = scen;
 }
+// Background specials show on only 3 of the 9 holes of a course, each time somewhere else (angle off the line of play, distance, turn).
+// Moon: the base and the ruins never share a hole; the ruins' glow still builds by hole number on the three holes they appear (3, 6, 9).
+const SPECIAL_HOLES = { shipwreck: [0, 3, 7], pillars: [1, 4, 7], moonbase: [0, 3, 6], ruins: [2, 5, 8] };
+function SPOT(marks, name, spots) { const v = spots[marks.slot || 0]; (marks.spots || (marks.spots = {}))[name] = [v[0], v[1]]; return v; }
 function makeHole(data, index) {
   const v2 = ([x, z]) => new THREE.Vector2(x, z);
   const hills = data.hills || [], craters = (data.craters || []).map(c => ({ rim: 1, ...c, w: c.r * 0.32 }));
@@ -3794,22 +3798,69 @@ function makeRover() { // a little six-wheel moon buggy (≈2.6 m), wheels kept 
   sm(SG.box, SM.metalW, 0.06, 1.1, 0.06, 0.5, 1.6, -1.0, g); sm(SG.ball, SM.metalW, 0.3, 0.08, 0.3, 0.5, 2.15, -1.0, g);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.userData.wheels = wheels; return g;
 }
-function makeSaucer() { // classic flying saucer: hull, glass dome, a ring of blinking lights, and the tractor beam hanging under it
-  const g = new THREE.Group(); sm(SG.ball, SM.ufo, 5, 0.9, 5, 0, 0, 0, g); sm(SG.ball, SM.ufo, 2.6, 0.7, 2.6, 0, -0.45, 0, g); sm(SG.ball, SM.ufoDome, 2, 1.5, 2, 0, 0.55, 0, g);
-  const lights = []; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28; lights.push(sm(SG.ball, i % 2 ? SM.ufoLight : SM.ufoLight2, 0.32, 0.32, 0.32, Math.cos(a) * 4.4, -0.1, Math.sin(a) * 4.4, g)); }
+// Flying saucer: a lathed, panelled hull (seams, a dark rim band, vents, an antenna), an engine ring glowing underneath, a glass dome with a
+// little grey-green pilot inside (big head, black almond eyes), the ring of blinking lights, and the tractor beam hanging under it
+Object.assign(SM, { ufoHull: new THREE.MeshPhongMaterial({ vertexColors: true, emissive: 0x2a323c, specular: 0xffffff, shininess: 90 }), alienSkin: new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x1a3a22 }) });
+function makeSaucer() {
+  const g = new THREE.Group(), prof = [[0.01, -1.0], [1.6, -0.98], [2.5, -0.85], [3.5, -0.55], [4.7, -0.18], [5.25, -0.04], [5.3, 0.1], [4.9, 0.28], [3.6, 0.55], [2.4, 0.78], [2.0, 0.8]].map(([r, y]) => new THREE.Vector2(r, y));
+  const hull = new THREE.LatheGeometry(prof, 48), p = hull.attributes.position, col = [], M = new THREE.Color(0xb8c0cc), D = new THREE.Color(0x5c6470), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r = Math.hypot(x, z), a = Math.atan2(z, x), seam = Math.abs(Math.sin(a * 8)) < 0.12 || Math.abs(r - 3.6) < 0.12;
+    c.copy(Math.abs(y) < 0.12 && r > 4.8 ? D : M); if (seam) c.multiplyScalar(0.72); if (y < -0.5) c.multiplyScalar(0.8); col.push(c.r, c.g, c.b); }
+  hull.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const extras = [[Y_(0.05, 0.05, 1.4, 0, 2.9, 0), 0x8a929c], [E_(0.14, 1, 1, 1, 0, 3.65, 0), 0xff5a4a, { ao: 0 }]]; // antenna (on top of the dome) + its tip
+  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.2; extras.push([new THREE.BoxGeometry(0.7, 0.14, 0.3).rotateY(-a).translate(Math.cos(a) * 3.0, 0.68, Math.sin(a) * 3.0), 0x3a4048]); } // vents
+  const hm = new THREE.Mesh(mergeKeep([hull.toNonIndexed(), partGeo(extras)]), SM.ufoHull); hm.castShadow = true; g.add(hm);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.22, 6, 32).rotateX(Math.PI / 2).translate(0, -0.95, 0), SM.ufoLight); g.add(ring); // engine ring
+  const pilot = partMesh([[E_(0.62, 1, 1.15, 0.95, 0, 1.35, 0), 0x9ad89a, { ao: 0.25 }], [Y_(0.12, 0.16, 0.5, 0, 0.75, 0), 0x86c486], [E_(0.5, 1.4, 0.55, 0.9, 0, 0.45, 0), 0x6a8a9a], // head, neck, suit shoulders
+    [E_(0.2, 1.5, 0.75, 0.5, -0.24, 1.32, 0.48, 0, -0.35, 0.45), 0x050508, { ao: 0 }], [E_(0.2, 1.5, 0.75, 0.5, 0.24, 1.32, 0.48, 0, 0.35, -0.45), 0x050508, { ao: 0 }], // black almond eyes
+    [E_(0.04, 1, 1, 1, -0.3, 1.4, 0.56), 0xffffff, { ao: 0 }], [E_(0.04, 1, 1, 1, 0.18, 1.4, 0.58), 0xffffff, { ao: 0 }], [E_(0.08, 1.6, 0.3, 0.5, 0, 0.98, 0.56), 0x4a7a4a, { ao: 0 }]], SM.alienSkin, g); // glints, little mouth
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(2, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 1.15, 1).translate(0, 0.75, 0), SM.ufoDome); g.add(dome);
+  const lights = []; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28; lights.push(sm(SG.ball, i % 2 ? SM.ufoLight : SM.ufoLight2, 0.3, 0.3, 0.3, Math.cos(a) * 4.75, 0.02, Math.sin(a) * 4.75, g)); }
   const beam = new THREE.Mesh(SG.beam, SM.beam); beam.position.y = -0.6; beam.scale.y = 0.01; g.add(beam);
-  g.userData = { lights, beam }; return g;
+  g.userData = { lights, beam, pilot }; return g;
+}
+// Volcano finale monster: a magma golem that heaves itself up out of the ground behind the basket during the eruption. Basalt plates over a
+// molten core (the glow shows through the gaps), burning eyes and mouth, huge plated arms that rise as it roars. Looks only: it appears after
+// the putt has dropped, and touches nothing.
+Object.assign(SM, { golemRock: new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), golemCore: new THREE.MeshBasicMaterial({ vertexColors: true }) });
+function makeLavaGolem() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const plates = (list, cx, cy, cz, rx, ry, rz, n, sz, seed) => { const r = seeded(seed); for (let k = 0; k < n; k++) { const u = r() * 2 - 1, a = r() * Math.PI * 2, q = Math.sqrt(1 - u * u), nx = q * Math.cos(a), ny = u, nz = q * Math.sin(a);
+      if (nz < -0.6 && r() < 0.5) continue; if (ny > 0.15 && Math.abs(nx) < 0.5 && nz > 0.55 && cy > 4) continue; /* keep the face open */ const s = sz * (0.8 + r() * 0.6); list.push([DETAIL.lumpy(new THREE.DodecahedronGeometry(s, 0).scale(1.2, 0.55, 1.1), 0.1 * s, 2, { seed: k }).lookAt(new THREE.Vector3(nx, ny, nz)).translate(cx + nx * rx, cy + ny * ry, cz + nz * rz), r() < 0.5 ? 0x2c2422 : 0x3a302c]); } return list; };
+  partMesh([[E_(1, 1.85, 2.25, 1.45, 0, 2.2, 0), 0xd2480c, { ao: 0 }], [E_(1, 1.0, 0.92, 0.9, 0, 4.9, 0.3), 0xe0601a, { ao: 0 }], // molten core: torso + head
+    [E_(0.28, 1.2, 0.6, 0.5, -0.38, 5.05, 1.22), 0xfff2a0, { ao: 0 }], [E_(0.28, 1.2, 0.6, 0.5, 0.38, 5.05, 1.22), 0xfff2a0, { ao: 0 }], [E_(0.45, 1.5, 0.45, 0.4, 0, 4.45, 1.18), 0xffd060, { ao: 0 }]], SM.golemCore, body); // eyes, mouth
+  partMesh(plates(plates([], 0, 2.2, 0, 1.95, 2.35, 1.55, 90, 0.78, 11), 0, 4.95, 0.3, 1.05, 0.95, 0.95, 26, 0.5, 12).concat([[DETAIL.lumpy(new THREE.DodecahedronGeometry(0.6, 0).scale(2.4, 0.5, 1.1), 0.06, 2).translate(0, 5.55, 0.75), 0x231c1a]]), SM.golemRock, body); // plates + brow ridge
+  const arms = [-1, 1].map(sx => { const a = new THREE.Group(); a.position.set(sx * 2.1, 3.6, 0); body.add(a);
+    partMesh([[E_(0.62, 1, 2.1, 1, 0, -1.4, 0), 0xc8400a, { ao: 0 }], [E_(0.78, 1.2, 0.9, 1.2, 0, -3.1, 0.2), 0xd85010, { ao: 0 }]], SM.golemCore, a); // molten arm + fist
+    partMesh(plates(plates([], 0, -1.4, 0, 0.7, 1.6, 0.7, 30, 0.5, 20 + sx), 0, -3.1, 0.2, 0.95, 0.75, 0.95, 18, 0.55, 30 + sx), SM.golemRock, a); return a; });
+  g.traverse(o => { if (o.isMesh && o.material === SM.golemRock) o.castShadow = true; });
+  g.userData = { body, arms }; return g;
 }
 // A friendly low-poly Bigfoot (≈2.6 m tall): legs and arms pivot for a loping run; arms raise to carry the basket
-function makeBigfoot(fur = SM.bfFur, face = SM.bfFace) {
+// Bigfoot: shaggy (long hair clumps hanging off the shoulders, arms and calves over a strand-textured coat), a leathery face with a heavy brow,
+// deep-set eyes, broad nose and a mouth line, big hands with fingers, huge feet. Same pivots as before (legs, arms, torso, head) so every
+// animation is unchanged; one merged mesh per pivot.
+const SHAG_TEX = strandTex(7373, '#e6d8c6', 'rgba(255,246,232,0.5)', 'rgba(70,46,24,0.4)', 3200, [5, 12], 0.25); SHAG_TEX.repeat.set(3, 2);
+Object.assign(SM, { bfShag: new THREE.MeshLambertMaterial({ map: SHAG_TEX, vertexColors: true }), bfShagPeek: new THREE.MeshLambertMaterial({ map: SHAG_TEX, vertexColors: true, emissive: 0x2e1a0c }) });
+function makeBigfoot(fur = SM.bfFur) {
+  const mat = fur === SM.bfPeekFur ? SM.bfShagPeek : SM.bfShag, F = fur === SM.bfPeekFur ? 0x8a5a34 : 0x7a5434, Fd = 0x5a3c24, FL = 0x9a7048, FC = 0xb08866, K = 0x120c08, sh = { lump: 0.04, freq: 6 };
+  const clumps = (list, n, cx, cy, cz, rx, rz, len, col = Fd) => { for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2 + k * 0.3; list.push([C_(0.07 + (k % 3) * 0.02, len * (0.8 + (k % 4) * 0.12), cx + Math.cos(a) * rx, cy - len * 0.4, cz + Math.sin(a) * rz, Math.PI + Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12, 4), k % 2 ? col : F]); } return list; };
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  const legs = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(s * 0.3, 1.0, 0); body.add(p); sm(SG.box, fur, 0.38, 1.0, 0.42, 0, -0.5, 0, p); sm(SG.box, face, 0.42, 0.14, 0.75, 0, -0.95, 0.14, p); return p; });
+  const legs = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(s * 0.3, 1.0, 0); body.add(p);
+    partMesh(clumps([[E_(0.24, 1, 2.2, 1.05, 0, -0.45, 0), F, sh], [E_(0.25, 1.05, 0.42, 1.9, 0, -0.95, 0.16), FC], ...[-0.12, -0.04, 0.04, 0.12].map(x => [E_(0.05, 1, 0.8, 1.2, x, -0.95, 0.6), FC])], 9, 0, -0.38, 0, 0.2, 0.2, 0.26), mat, p); return p; });
   const torso = new THREE.Group(); torso.position.y = 1.0; body.add(torso);
-  sm(SG.lump, fur, 0.62, 0.78, 0.46, 0, 0.72, 0, torso); sm(SG.lump, fur, 0.78, 0.42, 0.5, 0, 1.22, -0.02, torso); sm(SG.lump, face, 0.34, 0.38, 0.12, 0, 0.62, 0.38, torso); // belly patch
+  partMesh(clumps(clumps([[E_(0.5, 1.25, 1.55, 0.95, 0, 0.72, 0), F, sh], [E_(0.5, 1.6, 0.9, 1.05, 0, 1.22, -0.02), F, sh], [E_(0.4, 1.25, 1.3, 0.55, 0, 0.75, 0.26), FL, sh], // belly, shoulders, chest
+    [E_(0.36, 1, 0.8, 0.9, 0, 1.45, -0.12), Fd, sh]], 14, 0, 1.25, 0, 0.62, 0.38, 0.38), 10, 0, 0.35, 0, 0.5, 0.36, 0.3), mat, torso); // hair fringe off the shoulders and the hips
   const head = new THREE.Group(); head.position.set(0, 1.58, 0.06); torso.add(head);
-  sm(SG.lump, fur, 0.32, 0.36, 0.32, 0, 0.14, 0, head); sm(SG.box, face, 0.34, 0.24, 0.1, 0, 0.08, 0.26, head); sm(SG.box, fur, 0.4, 0.08, 0.14, 0, 0.24, 0.26, head); // face + brow
-  for (const x of [-0.08, 0.08]) sm(SG.ball, SM.bfEye, 0.035, 0.035, 0.02, x, 0.13, 0.32, head);
-  const arms = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(s * 0.74, 1.3, 0); torso.add(p); sm(SG.box, fur, 0.26, 1.25, 0.28, 0, -0.62, 0, p); sm(SG.lump, face, 0.17, 0.2, 0.17, 0, -1.3, 0.03, p); return p; });
+  const hd = [[E_(0.3, 1.05, 1.25, 1.05, 0, 0.14, -0.02), F, sh], [C_(0.18, 0.3, 0, 0.5, -0.05, 0, 0, 0, 6), Fd], // head with a crest
+    [E_(0.19, 0.95, 1.0, 0.5, 0, 0.06, 0.2), FC], [E_(0.2, 1.05, 0.25, 0.55, 0, 0.21, 0.25), Fd], // face, heavy brow
+    [E_(0.06, 1.3, 0.8, 0.9, 0, 0.08, 0.32), 0x6a4a34], [E_(0.07, 1.2, 0.15, 0.3, 0, -0.04, 0.3), K, { ao: 0 }]]; // nose, mouth line
+  for (const x of [-0.08, 0.08]) hd.push([E_(0.04, 1, 0.8, 0.6, x, 0.14, 0.3), K, { ao: 0 }], [E_(0.012, 1, 1, 1, x + 0.012, 0.155, 0.322), 0xffffff, { ao: 0 }]); // deep-set eyes + glint
+  for (const x of [-0.3, 0.3]) hd.push([E_(0.06, 0.6, 1, 0.8, x, 0.1, -0.02), FC]); // ears in the hair
+  partMesh(clumps(hd, 10, 0, 0.12, -0.04, 0.28, 0.24, 0.22), mat, head);
+  const arms = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(s * 0.74, 1.3, 0); torso.add(p);
+    const a = [[E_(0.17, 1, 3.7, 1.05, 0, -0.6, 0), F, sh], [E_(0.15, 1.1, 1.1, 0.75, 0, -1.28, 0.03), FC], ...[-0.08, -0.03, 0.03, 0.08].map(x => [E_(0.03, 1, 3.2, 1, x, -1.42, 0.06), FC]), [E_(0.03, 1, 2.4, 1, s * -0.11, -1.3, 0.1, 0, 0, s * 0.6), FC]]; // arm, hand, fingers, thumb
+    partMesh(clumps(clumps(a, 8, 0, -0.35, 0, 0.16, 0.16, 0.3), 8, 0, -0.85, 0, 0.15, 0.15, 0.3), mat, p); return p; });
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.userData = { legs, arms, torso, head, body }; return g;
 }
@@ -4167,6 +4218,8 @@ const STORY_CLUES = {
     const hot = []; H.group.children.filter(o => o.userData.basketGroup).forEach(bg => bg.traverse(m => { if (m.isMesh && m !== bg.userData.flag) hot.push([m, m.material]); }));
     const halo = new THREE.Sprite(SM.halo); halo.scale.setScalar(0.01); halo.position.copy(H.basket).setY(H.basket.y + 1.2); H.group.add(halo);
     SM.hotMetal.emissiveIntensity = 0; const creature = new THREE.Group(); creature.visible = false;
+    const golem = makeLavaGolem(); creature.add(golem); golem.position.y = -8; { // behind the basket, toward the volcano, facing the camera
+      const bk = new THREE.Vector3(H.tee.x - H.basket.x, 0, H.tee.z - H.basket.z).normalize(), gp = H.basket.clone().addScaledVector(bk, -15); creature.position.set(gp.x, H.groundY(gp.x, gp.z), gp.z); creature.rotation.y = Math.atan2(bk.x, bk.z); creature.scale.setScalar(2.4); }
     const st = { cracks: n, fountain, rain, creature, world: [creature], hotParts: () => hot.filter(([m]) => m.material === SM.hotMetal).length }; let last = 0, camK = 0;
     const B = H.basket, T = H.tee, back = new THREE.Vector3(T.x - B.x, 0, T.z - B.z).normalize(), side = new THREE.Vector3(-back.z, 0, back.x);
     const shoot = (big) => { if (!V) return; for (let i = 0; i < (big ? 3 : 1); i++) fountain.spawn(V.x + (Math.random() - 0.5) * 8, V.top, V.z + (Math.random() - 0.5) * 8, (Math.random() - 0.5) * (big ? 26 : 8), (big ? 30 : 14) + Math.random() * 16, (Math.random() - 0.5) * (big ? 26 : 8), big ? 2 + Math.random() * 3 : 1.4); };
@@ -4176,14 +4229,15 @@ const STORY_CLUES = {
         if (t < 1.0) { Rv.stage = 'rumble'; shakeCamera(0.1, 0.3); storyTint(0.85 + t * 0.1); }
         else if (t < 4.4) { Rv.stage = 'erupt'; creature.visible = true;
           if (!Rv.boom) { Rv.boom = true; shakeCamera(0.24, 0.9); for (let i = 0; i < 6; i++) shoot(true); hot.forEach(([m]) => m.material = SM.hotMetal); }
-          if (t > 1.5 && !Rv.shown) { Rv.shown = true; }
+          if (t > 1.5 && !Rv.shown) { Rv.shown = true; } { const k = ease((t - 1.2) / 1.6), ga = golem.userData; golem.position.y = -8 + 7.6 * k; ga.arms.forEach((m, i) => { m.rotation.x = -2.2 * ease((t - 2.4) / 0.8); m.rotation.z = (i ? -1 : 1) * 0.35 * ease((t - 2.4) / 0.8); });
+            ga.body.rotation.x = -0.18 * ease((t - 2.6) / 0.6) + Math.sin(t * 22) * 0.01; SM.golemCore.color.setScalar(0.85 + Math.sin(t * 9) * 0.15); } // heaves up, raises both fists, roars
           if (Math.random() < 0.6) shoot(true);
           if (Math.random() < 0.45) { const a = Math.random() * 6.28, r = 6 + Math.random() * 20; rain.spawn(B.x + Math.cos(a) * r, B.y + 28 + Math.random() * 10, B.z + Math.sin(a) * r, (Math.random() - 0.5) * 4, -14, (Math.random() - 0.5) * 4, 0.35 + Math.random() * 0.4); }
           SM.hotMetal.emissiveIntensity = Math.min(1.3, (t - 1) * 0.8); halo.scale.setScalar(Math.min(4.5, (t - 1) * 2.4)); }
-        else if (t < 6.0) { Rv.stage = 'trophy'; SM.hotMetal.emissiveIntensity = 1.1 + Math.sin(t * 6) * 0.2; halo.scale.setScalar(4.5 + Math.sin(t * 6) * 0.3); }
+        else if (t < 6.0) { Rv.stage = 'trophy'; golem.position.y = -0.4 + Math.sin(t * 2) * 0.1; SM.golemCore.color.setScalar(0.85 + Math.sin(t * 5) * 0.15); SM.hotMetal.emissiveIntensity = 1.1 + Math.sin(t * 6) * 0.2; halo.scale.setScalar(4.5 + Math.sin(t * 6) * 0.3); }
         else return true;
         return false; },
-      finish() { creature.visible = true; hot.forEach(([m]) => m.material = SM.hotMetal); SM.hotMetal.emissiveIntensity = 1.1; halo.scale.setScalar(4.5); },
+      finish() { creature.visible = true; golem.position.y = -0.4; golem.userData.arms.forEach((m, i) => { m.rotation.x = -2.2; m.rotation.z = (i ? -1 : 1) * 0.35; }); hot.forEach(([m]) => m.material = SM.hotMetal); SM.hotMetal.emissiveIntensity = 1.1; halo.scale.setScalar(4.5); },
       // pull back from a close-up of the basket to a wide shot: the glowing basket low in frame, the erupting peak above it
       cam() { const d = 7 + camK * 25, h = 2.4 + camK * 9, pos = B.clone().addScaledVector(back, d).addScaledVector(side, 3 * (1 - camK)).setY(B.y + h);
         const look = B.clone().setY(B.y + 1); if (V) look.lerp(new THREE.Vector3(B.x + (V.x - B.x) * 0.1, B.y + 5.5, B.z + (V.z - B.z) * 0.1), camK); return { pos, look }; },
@@ -4378,7 +4432,7 @@ const STORY_CLUES = {
   woodshadow(g, c) { // a howl from the woods ('AROOOO…'), and now and then Bigfoot peeks halfway out from behind the big old maple by the fairway, looks at you, and ducks back out of sight
     const [x0, z0] = c.at, gy = H.groundY(x0, z0), T = c.peekTree, tee = H.tee;
     const howl = textSprite('AROOOOOO…', 6.5, 'rgba(40,30,20,0.8)', '#ffe9c4'); howl.position.set(x0, gy + 7, z0);
-    const bf = makeBigfoot(SM.bfPeekFur, SM.bfPeekFace); bf.scale.setScalar(c.peekScale || 1.1); bf.visible = false;
+    const bf = makeBigfoot(SM.bfPeekFur); bf.scale.setScalar(c.peekScale || 1.1); bf.visible = false;
     const d = new THREE.Vector2(T[0] - tee.x, T[1] - tee.z).normalize(), side = c.peekSide || -1, perp = new THREE.Vector2(-d.y, d.x).multiplyScalar(side); // perp points toward the fairway
     const tree = H.trees.find(q => Math.hypot(q.x - T[0], q.z - T[1]) < 0.01), depth = tree ? 0.42 * tree.s * (tree.w || 1) + 0.9 : 1.3; // just behind the (wide) trunk's back
     const hide = new THREE.Vector2(T[0] + d.x * depth, T[1] + d.y * depth).addScaledVector(perp, 0.15), out = hide.clone().addScaledVector(perp, c.peekOut || 0.75); // fully behind the trunk (seen from the tee) / halfway out
@@ -4794,7 +4848,7 @@ window.__game = {
     return out; },
   sceneryGroup: () => H?.group.userData.scenery || null,
   backdrop: () => { const sc = H?.group.userData.scenery; if (!sc) return null; let tris = 0, meshes = 0; sc.traverse(o => { if (!o.isMesh) return; meshes++; const g = o.geometry, n = (g.index ? g.index.count : g.attributes.position.count) / 3; tris += n * (o.isInstancedMesh ? o.count : 1); });
-    const m = sc.userData.marks || {}; return { forest: sc.userData.forest || 0, marks: Object.keys(m), aurora: m.aurora || 0, anger: m.anger ?? null, ruins: m.ruins ?? null, lights: m.lights ?? null, fx: sc.userData.fx.length, tris: Math.round(tris), meshes, fogFar: scene.fog.far }; },
+    const m = sc.userData.marks || {}; return { spots: m.spots || null, forest: sc.userData.forest || 0, marks: Object.keys(m), aurora: m.aurora || 0, anger: m.anger ?? null, ruins: m.ruins ?? null, lights: m.lights ?? null, fx: sc.userData.fx.length, tris: Math.round(tris), meshes, fogFar: scene.fog.far }; },
   storyShadow: () => { const b = H.story?.built, sh = b?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2), turtle: !!b.diver?.visible, y: b.diver ? +b.diver.position.y.toFixed(2) : null, tx: b.diver ? +b.diver.position.x.toFixed(2) : null, tz: b.diver ? +b.diver.position.z.toFixed(2) : null, stage: b.stage, k: +(b.k || 0).toFixed(2), foot: b.diver ? (() => { const y = b.diver.position.y, v = b.diver.visible; b.diver.position.y = 0; b.diver.visible = true; const bx = new THREE.Box3().setFromObject(b.diver).union(new THREE.Box3().setFromObject(sh)); b.diver.position.y = y; b.diver.visible = v; return [bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2)); })() : null } : null; },
   storyRock: () => { const b = H.story?.built, r = b?.rock; if (!r) return null; const w = r.getWorldPosition(new THREE.Vector3()); return { visible: r.visible, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2) }; },
   storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, headY: +b.turtle.position.y.toFixed(2), parts: (() => { const t = b.turtle, y = t.position.y, v = t.visible; t.position.y = 0.9; t.visible = true; t.updateMatrixWorld(true); const o = []; t.traverse(m => { if (m.isMesh) { const bx = new THREE.Box3().setFromObject(m); o.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2))); } }); t.position.y = y; t.visible = v; t.updateMatrixWorld(true); return o; })(), island: b.island ? [+b.island.position.x.toFixed(2), +b.island.position.z.toFixed(2)] : null, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
