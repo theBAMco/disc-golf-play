@@ -241,7 +241,7 @@ body.charging #minimap { opacity: .55; }
 #storyphoto span { display: block; margin-top: 8px; text-align: center; color: #333; font: italic 800 18px/1.1 "Comic Sans MS", "Marker Felt", system-ui, sans-serif; text-shadow: none; }
 @keyframes photoIn { from { transform: translateX(-50%) rotate(-14deg) scale(.6); opacity: 0; } to { transform: translateX(-50%) rotate(-4deg) scale(1); opacity: 1; } }
 
-/* ===== DEV TOOLS (only shown with ?dev=1; delete with the DEV block in game.js) ===== */
+/* ===== DEV TOOLS (only shown with ?dev=1; delete together with the DEV TOOLS START..END block in game.js, same folder) ===== */
 .devbar { position: fixed; top: 250px; left: 10px; z-index: 60; display: flex; gap: 4px; }
 .devbar button, .devpanel button { font: 800 13px system-ui, sans-serif; border: 0; border-radius: 10px; color: #fff; background: rgba(120, 20, 120, .78); box-shadow: 0 2px 0 rgba(0,0,0,.35); touch-action: manipulation; }
 .devchip { padding: 8px 10px; letter-spacing: .5px; } .devmini { width: 34px; padding: 8px 0; }
@@ -987,7 +987,7 @@ scene.add(sun, sun.target);
         #include <colorspace_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(450, 32, 16), m);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(450, 32, 16), m); sky.renderOrder = -2; // drawn first (and writes no depth), so far rings/peaks/aurora past its radius are never painted over
   scene.add(sky);
   scene.userData.sky = sky;
   // Earth hanging in the moon sky (only shown in the moon world): a small painted globe with a soft blue glow
@@ -1157,7 +1157,10 @@ const DOT_TEX = (() => { const c = document.createElement('canvas'); c.width = c
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.8)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })();
 MAT.lavaGlow.map = DOT_TEX;
 // a soft additive glow hovering over lava (cheap 'bloom': sprites, no post-processing)
-function addGlow(group, x, z, size) { const sp = new THREE.Sprite(MAT.lavaGlow); sp.position.set(x, 0.9, z); sp.scale.set(size, size * 0.45, 1); sp.renderOrder = 2; group.add(sp); }
+// lava glow: soft orange billboards over the lava, all of a hole's in ONE instanced draw (they used to be one Sprite each: ~190 draws on volcano 2).
+// LAVA_GLOW_U is shared by every batch; the loop copies MAT.lavaGlow.opacity (the slow pulse) into it.
+const LAVA_GLOW_U = { value: 0.5 };
+function lavaGlows(group, list) { if (!list.length) return; const b = glowBatch(list.map(([x, z, s]) => [x, 0.9, z, s, s * 0.45, 0xff8a30]), { fog: true, toneMapped: false, renderOrder: 2, key: 'lava' }); b.material.uniforms.opacity = LAVA_GLOW_U; b.userData.lavaGlow = list.length; group.add(b); }
 patchGround(MAT.water, { noise: 0.35, sparkle: 0.9, scale: 1.4 }, 'water');
 const GEO = {
   basalt: new THREE.CylinderGeometry(0.92, 1, 1, 6).translate(0, 0.5, 0),
@@ -1259,6 +1262,35 @@ GEO.rock = DETAIL.lumpy(new THREE.DodecahedronGeometry(0.55, 1).scale(1, 0.62, 1
 GEO.skirt = DETAIL.lumpy(new THREE.CylinderGeometry(0.55, 1.0, 0.14, 9, 1, true), 0.05, 2.5, { xz: true });
 const mergeGeos = (list) => { const pos = []; for (const g of list) { const n = g.index ? g.toNonIndexed() : g, p = n.attributes.position; for (let i = 0; i < p.count; i++) pos.push(p.getX(i), p.getY(i), p.getZ(i)); }
   const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.computeVertexNormals(); return out; };
+// merge geometries keeping their own normals (and uvs/colours when every part has them): one draw call for many static parts
+const mergeKeep = (list) => { const parts = list.map(g => g.index ? g.toNonIndexed() : g), out = new THREE.BufferGeometry();
+  for (const k of ['position', 'normal', 'uv', 'color']) { if (!parts.every(q => q.attributes[k] && q.attributes[k].itemSize === parts[0].attributes[k].itemSize)) continue;
+    const sz = parts[0].attributes[k].itemSize, arr = []; for (const q of parts) { const a = q.attributes[k]; for (let i = 0; i < a.count; i++) for (let j = 0; j < sz; j++) arr.push(a.getComponent(i, j)); }
+    out.setAttribute(k, new THREE.Float32BufferAttribute(arr, sz)); }
+  if (!out.attributes.normal) out.computeVertexNormals(); return out; };
+// bake a static landmark: every plain mesh under g becomes part of one mesh per material (in g's own space); sprites, points and instanced meshes stay as they are
+function bakeStatic(g) { g.updateMatrixWorld(true); const inv = g.matrixWorld.clone().invert(), byMat = new Map(), m4 = new THREE.Matrix4(), drop = [];
+  g.traverse(o => { if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material)) return; m4.multiplyMatrices(inv, o.matrixWorld); const k = o.material.uuid + (o.castShadow ? 's' : '');
+    if (!byMat.has(k)) byMat.set(k, { mat: o.material, cast: o.castShadow, recv: o.receiveShadow, list: [] }); byMat.get(k).list.push(o.geometry.clone().applyMatrix4(m4)); drop.push(o); });
+  for (const o of drop) o.parent.remove(o);
+  for (const { mat, cast, recv, list } of byMat.values()) { const m = new THREE.Mesh(mergeKeep(list), mat); m.castShadow = cast; m.receiveShadow = recv; g.add(m); list.forEach(q => q.dispose()); } return g; }
+GEO.glowQuad = new THREE.PlaneGeometry(1, 1);
+// many glow billboards in one draw call: an instanced quad that always faces the camera (like a Sprite). Per glow: [x, y, z, width, height, colour, alpha];
+// glowSet(i, colour, alpha) changes one (alpha folds into the colour: the blend is additive). Sizes scale with the object's own world scale, like sprites do.
+// key: share one material across holes (kept, never disposed): the lava glow, the moon base lights, the ruins halos
+const GLOW_MATS = new Map();
+function glowBatch(list, { opacity = 1, fog = false, toneMapped = true, renderOrder = 0, key = null } = {}) {
+  const mat = (key && GLOW_MATS.get(key)) || new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { map: { value: null }, opacity: { value: opacity } }]), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog,
+    vertexShader: '#include <common>\n#include <fog_pars_vertex>\nvarying vec2 vUv; varying vec3 vCol;\nvoid main() { vUv = uv; vCol = instanceColor; float ws = length(modelMatrix[0].xyz); vec4 mvPosition = modelViewMatrix * vec4(instanceMatrix[3].xyz, 1.0);\n'
+      + ' mvPosition.xy += position.xy * vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz)) * ws; gl_Position = projectionMatrix * mvPosition;\n#include <fog_vertex>\n}',
+    fragmentShader: '#include <common>\n#include <fog_pars_fragment>\nuniform sampler2D map; uniform float opacity; varying vec2 vUv; varying vec3 vCol;\nvoid main() { gl_FragColor = vec4(vCol, opacity) * texture2D(map, vUv);\n'
+      + (toneMapped ? '#include <tonemapping_fragment>\n' : '') + '#include <colorspace_fragment>\n#include <fog_fragment>\n}' });
+  mat.uniforms.map.value = DOT_TEX; if (key && !GLOW_MATS.has(key)) { mat.userData.keep = true; GLOW_MATS.set(key, mat); } if (key !== 'lava') mat.uniforms.opacity.value = opacity;
+  const im = new THREE.InstancedMesh(GEO.glowQuad, mat, list.length), m4 = new THREE.Matrix4(), c = new THREE.Color();
+  list.forEach(([x, y, z, w, h], i) => im.setMatrixAt(i, m4.makeScale(w, h, 1).setPosition(x, y, z)));
+  im.glowSet = (i, col, a = 1) => { im.setColorAt(i, c.set(col).multiplyScalar(a)); im.instanceColor.needsUpdate = true; };
+  list.forEach(([, , , , , col = 0xffffff, a = 1], i) => im.glowSet(i, col, a));
+  im.frustumCulled = false; im.renderOrder = renderOrder; return im; }
 // Roots: five tapered roots running out from the trunk foot and diving into the soil (unit trunk; scaled per tree like the trunk)
 GEO.roots = mergeGeos([0, 1, 2, 3].map(k => { const a = k * 1.571 + (k % 2) * 0.45, len = 0.95 + (k % 3) * 0.25;
   return new THREE.ConeGeometry(0.2, len, 5, 1, true).rotateZ(-Math.PI / 2 - 0.22).translate(0.3 + len / 2 * 0.97, 0.06 - len * 0.11, 0).rotateY(-a); }));
@@ -1273,6 +1305,13 @@ GEO.basketFoot = DETAIL.lumpy(new THREE.CylinderGeometry(0.26, 0.33, 0.2, 12).tr
 // Tee sign: wooden frame + little roof around the board
 GEO.signFrame = [[1.32, 0.09, 0.12, 0, 0.445], [1.32, 0.09, 0.12, 0, -0.445], [0.09, 0.98, 0.12, 0.615, 0], [0.09, 0.98, 0.12, -0.615, 0]].map(([w, h, d, x, y]) => new THREE.BoxGeometry(w, h, d).translate(x, y, 0));
 GEO.signRoof = new THREE.BoxGeometry(1.5, 0.07, 0.36).translate(0, 0.56, 0.04);
+// the frame, roof and post as ONE geometry (one draw instead of six), in the board's space; the board itself: 5 plain faces in one group + the map face
+GEO.signWood = mergeKeep([...GEO.signFrame, GEO.signRoof, new THREE.CylinderGeometry(0.05, 0.06, 1.0).translate(0, -0.8, 0.05)]);
+// basket chains: 14 curved tubes merged into one geometry (same for every basket)
+GEO.chains = mergeKeep(Array.from({ length: 14 }, (_, i) => { const a = (i / 14) * Math.PI * 2;
+  const top = new THREE.Vector3(Math.cos(a) * BK.trayR * 0.85, BK.bandY, Math.sin(a) * BK.trayR * 0.85), bot = new THREE.Vector3(Math.cos(a) * 0.09, BK.trayY + 0.05, Math.sin(a) * 0.09);
+  const mid = top.clone().lerp(bot, 0.5); mid.x *= 1.25; mid.z *= 1.25; return new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(top, mid, bot), 8, 0.012, 4); }));
+GEO.signBoard = new THREE.BoxGeometry(1.2, 0.8, 0.08); GEO.signBoard.clearGroups(); GEO.signBoard.addGroup(0, 30, 0); GEO.signBoard.addGroup(30, 6, 1);
 // Tee slab: worn concrete with rounded, chipped edges, a scuffed run-up and a hidden 0.2 m footing so it never floats on a slope
 function teeSlabGeo() {
   const g = new THREE.BoxGeometry(2.2, 0.32, 4, 11, 1, 20).translate(0, -0.1, 0), p = g.attributes.position, col = [], c = new THREE.Color();
@@ -1412,27 +1451,28 @@ SCENERY.extras = {
     sm0(G.box, M.hull, 9, 2.6, 3, 7.5, 0, 2, g); sm0(G.box, M.hull, 7, 2.6, 3, -6, 0, 1.5, g); sm0(G.box, M.hull, 8, 5, 7, 2, 0, -12, g); // tubes + module
     for (const x of [-22, -28]) { const p = sm0(G.box, M.panel, 5, 0.3, 8, x, 4, -4, g); p.rotation.z = 0.5; sm0(G.box, M.hull, 0.4, 4, 0.4, x, 0, -4, g); } // solar panels
     sm0(G.box, M.hull, 0.6, 18, 0.6, 22, 0, -6, g); sm0(G.dome, M.hull, 3, 1.2, 3, 22, 18, -6, g).rotation.x = 2.6; // antenna + dish
-    const red = new THREE.SpriteMaterial({ map: DOT_TEX, color: 0xff3b30, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }), grn = red.clone(); grn.color.setHex(0x5dff8a);
-    const wht = red.clone(); wht.color.setHex(0xfff4d0); const lights = [];
-    for (const [x, y, z, m] of [[22, 19.5, -6, red], [0, 7.2, 0, grn], [15, 5, 4, red], [-12, 5.4, 3, grn], [2, 5.6, -12, wht], [-25, 6, -4, wht]]) { const l = new THREE.Sprite(m); l.scale.setScalar(4.2); l.position.set(x, y, z); g.add(l); lights.push(l); }
+    bakeStatic(g); // the hull / panel parts: one draw per material
+    const LT = [[22, 19.5, -6, 0xff3b30], [0, 7.2, 0, 0x5dff8a], [15, 5, 4, 0xff3b30], [-12, 5.4, 3, 0x5dff8a], [2, 5.6, -12, 0xfff4d0], [-25, 6, -4, 0xfff4d0]];
+    const lights = glowBatch(LT.map(([x, y, z, c]) => [x, y, z, 4.2, 4.2, c]), { key: 'moonLights' }); g.add(lights); // all six blinking lights: one draw
     const p = at(-0.13, 60, 250, 170); g.position.set(p.x, -0.5, p.z); g.rotation.y = Math.atan2(dir.x, dir.y) + 0.4; g.scale.setScalar(1.35); scen.add(g);
-    marks.lights = lights.length; marks.base = g; fx.push((dt, t) => { red.opacity = (t % 1.4) < 0.55 ? 1 : 0.08; grn.opacity = ((t + 0.7) % 1.4) < 0.55 ? 1 : 0.08; wht.opacity = 0.7 + Math.sin(t * 3) * 0.2; }); },
+    marks.lights = LT.length; marks.base = g; fx.push((dt, t) => { const a = [(t % 1.4) < 0.55 ? 1 : 0.08, ((t + 0.7) % 1.4) < 0.55 ? 1 : 0.08, 0.7 + Math.sin(t * 3) * 0.2];
+      LT.forEach(([, , , c], i) => lights.glowSet(i, c, a[c === 0xff3b30 ? 0 : c === 0x5dff8a ? 1 : 2])); }); },
   // Moon: glowing alien ruins on the horizon (two pyramids and three towers) whose glow builds hole by hole: dim on 1, strongest on 9
   ruins({ scen, rnd, index, at, fx, marks, dir }) { const g = new THREE.Group(), G = SCENERY.geo, M = SCENERY.mat, k = 0.12 + 0.88 * (index / 8);
     const glowCol = new THREE.Color(0x101a18).lerp(new THREE.Color(0x7affd0), k), band = new THREE.MeshBasicMaterial({ color: glowCol, fog: false });
-    const halo = new THREE.SpriteMaterial({ map: DOT_TEX, color: 0x5affc8, transparent: true, opacity: 0.1 + 0.75 * k, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
     const glows = [];
-    for (const [x, z, w, h] of [[0, 0, 30, 28], [36, 10, 20, 17]]) { sm0(G.pyramid, M.ruin, w, h, w, x, -1, z, g); sm0(G.orb, band, 1.6, 1.6, 1.6, x, h - 0.5, z, g); for (const f of [0.3, 0.55]) sm0(G.box, band, w * (1 - f) * 1.42, 0.5, 0.5, x, -1 + h * f, z + w * (1 - f) * 0.71, g); const s = new THREE.Sprite(halo); s.position.set(x, h + 1, z); s.scale.setScalar(14 + 22 * k); g.add(s); glows.push(s); }
-    for (const [x, z, h] of [[-24, 6, 44], [-34, -4, 32], [20, -14, 38]]) { sm0(G.hex, M.ruin, 2.6, h, 2.6, x, -1, z, g); sm0(G.pyramid, M.ruin, 4, 7, 4, x, h - 1, z, g); for (const f of [0.35, 0.6, 0.85]) sm0(G.hex, band, 2.75, 0.8, 2.75, x, h * f, z, g); const s = new THREE.Sprite(halo); s.position.set(x, h + 4, z); s.scale.setScalar(10 + 16 * k); g.add(s); glows.push(s); }
+    for (const [x, z, w, h] of [[0, 0, 30, 28], [36, 10, 20, 17]]) { sm0(G.pyramid, M.ruin, w, h, w, x, -1, z, g); sm0(G.orb, band, 1.6, 1.6, 1.6, x, h - 0.5, z, g); for (const f of [0.3, 0.55]) sm0(G.box, band, w * (1 - f) * 1.42, 0.5, 0.5, x, -1 + h * f, z + w * (1 - f) * 0.71, g); glows.push([x, h + 1, z, 14 + 22 * k, 14 + 22 * k, 0x5affc8]); }
+    for (const [x, z, h] of [[-24, 6, 44], [-34, -4, 32], [20, -14, 38]]) { sm0(G.hex, M.ruin, 2.6, h, 2.6, x, -1, z, g); sm0(G.pyramid, M.ruin, 4, 7, 4, x, h - 1, z, g); for (const f of [0.35, 0.6, 0.85]) sm0(G.hex, band, 2.75, 0.8, 2.75, x, h * f, z, g); glows.push([x, h + 4, z, 10 + 16 * k, 10 + 16 * k, 0x5affc8]); }
+    bakeStatic(g); const halo = glowBatch(glows, { opacity: 0.1 + 0.75 * k, key: 'ruinHalo' }); g.add(halo); // stone + glow bands: one draw per material; the five halos: one draw
     const p = at(0.14, 150, 340, 300); g.position.set(p.x, 0, p.z); g.rotation.y = Math.atan2(dir.x, dir.y) + 0.3; g.scale.setScalar(0.8); scen.add(g);
-    marks.ruins = +k.toFixed(3); fx.push((dt, t) => { halo.opacity = (0.1 + 0.75 * k) * (0.82 + 0.18 * Math.sin(t * 1.7)); }); },
+    marks.ruins = +k.toFixed(3); fx.push((dt, t) => { halo.material.uniforms.opacity.value = (0.1 + 0.75 * k) * (0.82 + 0.18 * Math.sin(t * 1.7)); }); },
   // Volcano: a cluster of tall black hexagonal basalt pillars on the horizon with soft steam rising off their tops
   pillars({ scen, rnd, at, fx, marks, dir }) { const N = 15, c = at(0.1, 110, 320, 250), side = new THREE.Vector2(-dir.y, dir.x), im = new THREE.InstancedMesh(SCENERY.geo.hex, MAT.basalt, N), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), tops = [];
     for (let i = 0; i < N; i++) { const u = (i / (N - 1) - 0.5) * 2, x = c.x + side.x * u * 26 + (rnd() - 0.5) * 8, z = c.z + side.y * u * 26 + (rnd() - 0.5) * 8, r = 2.6 + rnd() * 2.4, h = (1 - Math.abs(u) * 0.5) * (26 + rnd() * 30);
       q.setFromAxisAngle(up, rnd() * 1.05); mtx.compose(new THREE.Vector3(x, -2, z), q, sc.set(r, h, r)); im.setMatrixAt(i, mtx); if (i % 3 === 1) tops.push([x, h - 2, z, r]); }
     scen.add(im);
     const SN = 60, geo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(SN * 3), 3)), seed = Array.from({ length: SN }, (_, i) => [((i * 7919) % 997) / 997, ((i * 3571) % 991) / 991]);
-    const steam = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xe9ddd6, size: 14, map: DOT_TEX, transparent: true, opacity: 0.22, depthWrite: false })); steam.frustumCulled = false; scen.add(steam);
+    const steam = new THREE.Points(geo, SCENERY.steamMat || (SCENERY.steamMat = keepMat(new THREE.PointsMaterial({ color: 0xe9ddd6, size: 14, map: DOT_TEX, transparent: true, opacity: 0.22, depthWrite: false })))); // one material for every hole steam.frustumCulled = false; scen.add(steam);
     marks.pillars = N; fx.push((dt, t) => { const a = geo.attributes.position.array; for (let i = 0; i < SN; i++) { const [s0, s1] = seed[i], tp = tops[i % tops.length], life = (t * 0.07 + s0) % 1;
       a[i * 3] = tp[0] + (s1 - 0.5) * tp[3] * 2 + life * 14; a[i * 3 + 1] = tp[1] + life * 38; a[i * 3 + 2] = tp[2] + (s0 - 0.5) * tp[3] * 2; } geo.attributes.position.needsUpdate = true; }); },
   // Antarctica: tabular icebergs along the horizon
@@ -1452,7 +1492,8 @@ SCENERY.extras = {
     const sg = new THREE.PlaneGeometry(8, 7, 4, 4), sp = sg.attributes.position; for (let i = 0; i < sp.count; i++) { const y = sp.getY(i); sp.setZ(i, Math.sin(sp.getX(i) * 1.3 + y) * 0.6); if (y < -2 && (i % 3)) sp.setY(i, y + 1.6 + (i % 2) * 0.8); } // ragged lower edge
     sg.computeVertexNormals(); sm0(sg, M.sail, 1, 1, 1, 0, 12.2, 2.4, g);
     for (const [x, z, s] of [[-5, 4, 4], [5, -3, 5], [-4, -12, 3.5], [4.5, 11, 3], [0, -14, 4]]) sm0(G.berg, MAT.berg, s * 1.3, s * 0.6, s, x, -1, z, g); // ice heaved up round the hull
-    const p = at(-0.11, 75, 270); g.position.set(p.x, -3.2, p.z); g.rotation.set(-0.08, Math.atan2(dir.x, dir.y) + 1.2, 0.3); g.scale.setScalar(2.1); scen.add(g); marks.ship = g; },
+    bakeStatic(g); // ~16 parts → one draw per material
+    const p = at(0.3, 75, 270); g.position.set(p.x, -3.2, p.z); g.rotation.set(-0.08, Math.atan2(dir.x, dir.y) + 1.2, 0.3); g.scale.setScalar(2.1); scen.add(g); marks.ship = g; }, // 0.3 rad off the line of play (was 0.11 rad: parked right behind the basket and the hole 3 arch)
   // Antarctica holes 7-9: northern lights, slow waving curtains high in the sky (stronger each hole)
   aurora({ scen, index, fx, marks, cx, cz, dir }) { if (index < 6) return; const k = 0.55 + (index - 6) * 0.22;
     const mat = new THREE.ShaderMaterial({ uniforms: { t: { value: 0 }, k: { value: k } }, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
@@ -1703,9 +1744,8 @@ function makeHole(data, index) {
       const [ex, ey] = P(pts[pts.length - 1]); x.fillStyle = '#ffd23f'; x.beginPath(); x.arc(ex, ey, 7, 0, 7); x.fill(); x.fillStyle = '#c9ced6'; x.fillRect(ex - 1.5, ey - 16, 3, 12);
       const [tx, ty] = P(pts[0]); x.fillStyle = '#b8b0a2'; x.fillRect(tx - 6, ty - 8, 12, 14);
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return new THREE.MeshLambertMaterial({ map: t }); })();
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.08), [MAT.sign, MAT.sign, MAT.sign, MAT.sign, MAT.sign, map]); sign.position.set(-3.2, 1.2, 3.5); sign.castShadow = true; pad.add(sign);
-    for (const fg of [...GEO.signFrame, GEO.signRoof]) { const f = new THREE.Mesh(fg, MAT.wood); f.position.copy(sign.position); f.castShadow = true; pad.add(f); }
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.0), MAT.wood); post.position.set(-3.2, 0.4, 3.55); pad.add(post);
+    const sign = new THREE.Mesh(GEO.signBoard, [MAT.sign, map]); sign.position.set(-3.2, 1.2, 3.5); sign.castShadow = true; pad.add(sign);
+    const wood = new THREE.Mesh(GEO.signWood, MAT.wood); wood.position.copy(sign.position); wood.castShadow = true; pad.add(wood); // frame + roof + post
     const pskirt = new THREE.Mesh(GEO.skirt, MAT.skirt); pskirt.scale.set(0.22, 0.6, 0.22); pskirt.position.set(-3.2, 0.0, 3.55); pad.add(pskirt);
     pad.position.copy(tee); pad.rotation.y = -yaw; group.add(pad);
   }
@@ -1764,14 +1804,16 @@ function makeHole(data, index) {
       if (rag) for (let i = 1; i < p.count; i++) { const px = p.getX(i), pz = p.getZ(i), k = 1 + (DETAIL.noise((px + x) * 0.35, 3, (pz + z) * 0.35) - 0.5) * 2 * rag / r; p.setXYZ(i, px * k, 0, pz * k); }
       for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + x) / 9, (p.getZ(i) + z) / 9);
       const m = new THREE.Mesh(g, mat); m.position.set(x, y, z); m.receiveShadow = true; return m; };
+    const glowList = [];
     for (const r of rivers) {
       const ends = [r.samples[0], r.samples[r.samples.length - 1]];
       group.add(band(r.samples, r.w / 2 + 1.7, 0.04, MAT.sand, 0.55), band(r.samples, r.w / 2 + 0.45, 0.05, MAT.foam, 0.15), band(r.samples, r.w / 2, 0.06, MAT.water));
       for (const e of ends) group.add(disk(e.x, e.y, r.w / 2 + 1.7, 0.04, MAT.sand, 0.55), disk(e.x, e.y, r.w / 2 + 0.45, 0.05, MAT.foam, 0.15), disk(e.x, e.y, r.w / 2, 0.06, MAT.water)); // round ends for creeks
       group.add(band(r.samples, r.w / 2 + 0.95, 0.045, MAT.wetSand, 0.3)); for (const e of ends) group.add(disk(e.x, e.y, r.w / 2 + 0.95, 0.045, MAT.wetSand, 0.3)); // damp edge (water) / cooled black crust (lava)
-      if (WORLD.lava) for (let i = 0; i < r.samples.length; i += 3) addGlow(group, r.samples[i].x, r.samples[i].y, r.w * 1.9);
+      if (WORLD.lava) for (let i = 0; i < r.samples.length; i += 3) glowList.push([r.samples[i].x, r.samples[i].y, r.w * 1.9]);
     }
-    for (const p of ponds) { group.add(disk(p.x, p.z, p.r + 1.7, 0.04, MAT.sand, 0.55), disk(p.x, p.z, p.r + 0.45, 0.05, MAT.foam, 0.15), disk(p.x, p.z, p.r, 0.06, MAT.water)); group.add(disk(p.x, p.z, p.r + 0.95, 0.045, MAT.wetSand, 0.3)); if (WORLD.lava) addGlow(group, p.x, p.z, p.r * 2.6); }
+    for (const p of ponds) { group.add(disk(p.x, p.z, p.r + 1.7, 0.04, MAT.sand, 0.55), disk(p.x, p.z, p.r + 0.45, 0.05, MAT.foam, 0.15), disk(p.x, p.z, p.r, 0.06, MAT.water)); group.add(disk(p.x, p.z, p.r + 0.95, 0.045, MAT.wetSand, 0.3)); if (WORLD.lava) glowList.push([p.x, p.z, p.r * 2.6]); }
+    lavaGlows(group, glowList);
     for (const i of islands) group.add(disk(i.x, i.z, i.r, 0.08, MAT.islandSand), disk(i.x, i.z, i.r - 1.1, 0.09, MAT.islandGrass));
     for (const b of bridges) {
       const g = new THREE.Group(), yaw = Math.atan2(b.dir.x, b.dir.y);
@@ -1987,13 +2029,7 @@ function makeHole(data, index) {
     const tray = new THREE.Mesh(new THREE.CylinderGeometry(BK.trayR, BK.trayR * 0.8, 0.22, 24, 1, true), MAT.yellow); tray.position.y = BK.trayY; g.add(tray);
     const trayBottom = new THREE.Mesh(new THREE.CircleGeometry(BK.trayR * 0.8, 24), MAT.metal); trayBottom.rotation.x = -Math.PI / 2; trayBottom.position.y = BK.trayY - 0.1; g.add(trayBottom);
     const band = new THREE.Mesh(new THREE.TorusGeometry(BK.trayR * 0.9, 0.035, 8, 32), MAT.yellow); band.rotation.x = Math.PI / 2; band.position.y = BK.bandY; g.add(band);
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2;
-      const top = new THREE.Vector3(Math.cos(a) * BK.trayR * 0.85, BK.bandY, Math.sin(a) * BK.trayR * 0.85);
-      const bot = new THREE.Vector3(Math.cos(a) * 0.09, BK.trayY + 0.05, Math.sin(a) * 0.09);
-      const mid = top.clone().lerp(bot, 0.5); mid.x *= 1.25; mid.z *= 1.25;
-      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(top, mid, bot), 8, 0.012, 4), MAT.chain));
-    }
+    g.add(new THREE.Mesh(GEO.chains, MAT.chain)); // all 14 chains: one shared geometry, one draw
     // flag on a pivot at the top of its pole so it can stream with the wind (or hang when calm)
     const flagPivot = new THREE.Group(); flagPivot.position.set(0, 3.15, 0); g.add(flagPivot);
     const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.6, 6, 1).translate(0.5, -0.3, 0), MAT.flag); flagPivot.add(flag); g.userData.flag = flag; g.userData.flagPivot = flagPivot;
@@ -2074,6 +2110,7 @@ const aimArrow = new THREE.Group();
   const m = new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.85, depthWrite: false });
   for (let i = 0; i < 7; i++) { const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 1.1), m); dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.05, -(1.5 + i * 1.8)); aimArrow.add(dash); }
   const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.0, 3), m); head.rotation.x = -Math.PI / 2; head.position.set(0, 0.05, -14.6); aimArrow.add(head);
+  bakeStatic(aimArrow); // 7 dashes + head: one draw (the group only ever moves/turns as a whole)
 }
 scene.add(aimArrow);
 // Flight prediction for the aim camera only: simulateThrow (the same physics as a real throw, incl. wind) samples the path of a
@@ -2607,7 +2644,7 @@ function closePicker() {
 }
 const pickerOpen = () => !picker.el.classList.contains('hidden');
 function restartHole() { loadHole(S.practice ? 0 : S.holeIdx, { practice: S.practice }); }
-function newRoundSeed() { if (!S.fixedSeed) S.roundSeed = 1 + Math.floor(Math.random() * 1e9); }
+function newRoundSeed() { if (!S.fixedSeed) S.roundSeed = 1 + Math.floor(Math.random() * 1e9); S.devRound = false; } // a fresh round (new course / restart round) is a real round again; a dev jump marks it after this
 function restartRound() { S.scores = Array(COURSE.holes.length).fill(null); newRoundSeed(); loadHole(0); }
 function nextHole() {
   if (S.phase !== 'holed') return false;
@@ -3029,6 +3066,7 @@ function hideMenu() { ui.menu.classList.add('hidden'); }
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 const AIMCAM = { d: new THREE.Vector3(), pos: new THREE.Vector3(), look: new THREE.Vector3() };
 AIMCAM.out = { pos: AIMCAM.pos, look: AIMCAM.look };
+const CAMT = { hv: new THREE.Vector3(), pos: new THREE.Vector3(), look: new THREE.Vector3() }; CAMT.out = { pos: CAMT.pos, look: CAMT.look }; // the other camera targets: no per-frame allocations
 // returns shared scratch vectors: callers copy or lerp toward them straight away
 function desiredAimCam() {
   const yaw = (S.pull ? S.pull.baseYaw : S.yaw) + (S.camOff || 0); // camera holds still while you pull; turns toward a big curve
@@ -3060,18 +3098,18 @@ function updateCamera(dt) {
   if (S.viewProp) { camera.position.copy(S.viewProp.pos); camera.lookAt(S.viewProp.look); return; } // test hook: close-up of the story prop
   let target, aimT = false;
   if (S.phase === 'flying') {
-    const hv = new THREE.Vector3(S.vel.x, 0, S.vel.z);
+    const hv = CAMT.hv.set(S.vel.x, 0, S.vel.z);
     if (hv.lengthSq() < 0.01) hv.copy(S.dir0);
     hv.normalize();
-    const p = S.pos.clone().addScaledVector(hv, -7);
-    target = { pos: p.setY(Math.max(S.pos.y + 2.2, H.groundY(p.x, p.z) + 2)), look: S.pos.clone() };
+    const p = CAMT.pos.copy(S.pos).addScaledVector(hv, -7);
+    p.setY(Math.max(S.pos.y + 2.2, H.groundY(p.x, p.z) + 2)); CAMT.look.copy(S.pos); target = CAMT.out;
   } else if (S.phase === 'splash') {
-    target = { pos: camPos.clone(), look: camLook.clone() }; // watch the splash
+    CAMT.pos.copy(camPos); CAMT.look.copy(camLook); target = CAMT.out; // watch the splash
   } else if (S.reveal && !S.reveal.done) {
     target = revealCam(); // the reveal cinematic
   } else if (S.phase === 'holed' || S.phase === 'done') {
     const t = performance.now() / 1000, B = H.basket;
-    target = { pos: new THREE.Vector3(B.x + Math.sin(t * 0.4) * 5, B.y + 2.4, B.z + Math.cos(t * 0.4) * 5), look: new THREE.Vector3(B.x, B.y + 1.0, B.z) };
+    CAMT.pos.set(B.x + Math.sin(t * 0.4) * 5, B.y + 2.4, B.z + Math.cos(t * 0.4) * 5); CAMT.look.set(B.x, B.y + 1.0, B.z); target = CAMT.out;
   } else { target = desiredAimCam(); aimT = true; }
   const k = 1 - Math.exp(-dt * (S.phase === 'flying' ? 5 : 4));
   if (!(aimT && swingAroundLie(target.pos, k))) camPos.lerp(target.pos, k);
@@ -3537,13 +3575,14 @@ function dipCycle(t, period) { const c = ((t % period) + period) % period, e = x
 // Antarctica story: a real ice formation with claw gouges carved into it. One closed mesh: a rounded slab whose horizontal cross-section
 // is a superellipse (dense on the front where the claws are, sparse on the back), leaning back and closing into a snowy crest. The gouges
 // push the front surface in (so they have real depth and follow the wall's curve), dark blue at the bottom, frosted white lips at the edges.
-function carvedIceSlab({ a = 4.6, b = 1.0, h = 5.6, bend = 9, lean = 0.6, gashes = [], seed = 1.3, dense = [-3.9, 3.0, 1.0, 4.8], step = 0.085 }) {
+// spans: the x ranges that get the fine column spacing (step); rows inside dense[2..3] are stepY apart. Keep the fine grid only where the gouges are.
+function carvedIceSlab({ a = 4.6, b = 1.0, h = 5.6, bend = 9, lean = 0.6, gashes = [], seed = 1.3, dense = [-3.9, 3.0, 1.0, 4.8], step = 0.085, stepY = step, spans = [[dense[0], dense[1]]] }) {
   const sp = (c, e) => Math.sign(c) * Math.pow(Math.abs(c), e), nz = (x, y) => 0.1 * Math.sin(1.9 * x + 0.7 * y + seed) + 0.06 * Math.sin(4.3 * x - 2.9 * y) + 0.015 * Math.sin(9.1 * x + 6.7 * y + seed * 2);
   const A = v => a * (1 - 0.22 * v * v), B = v => b * (1 - Math.pow(v, 2.2)), E = 2 / 3;
   const fr = new Set(); for (let i = 0; i <= 28; i++) fr.add(+(i / 28 * Math.PI).toFixed(5));
-  for (let x = dense[0]; x <= dense[1]; x += step) fr.add(+Math.acos(THREE.MathUtils.clamp(sp(x / a, 1.5), -1, 1)).toFixed(5));
+  for (const [s0, s1] of spans) for (let x = s0; x <= s1; x += step) fr.add(+Math.acos(THREE.MathUtils.clamp(sp(x / a, 1.5), -1, 1)).toFixed(5));
   const phis = [...fr].sort((p, q) => q - p).reverse(); for (let i = 1; i < 14; i++) phis.push(Math.PI + i / 14 * Math.PI); // front 0..π (dense), back π..2π (sparse)
-  const vs = new Set(); for (let i = 0; i <= 12; i++) vs.add(+(i / 12).toFixed(5)); for (let y = dense[2]; y <= dense[3]; y += step) vs.add(+((y + 0.4) / h).toFixed(5));
+  const vs = new Set(); for (let i = 0; i <= 12; i++) vs.add(+(i / 12).toFixed(5)); for (let y = dense[2]; y <= dense[3]; y += stepY) vs.add(+((y + 0.4) / h).toFixed(5));
   const rows = [...vs].sort((p, q) => p - q), C = phis.length, pos = [], col = [], idx = [], front = [];
   for (let r = 0; r < rows.length; r++) { const v = rows[r], y = v * h - 0.4;
     for (let c = 0; c < C; c++) { const f = phis[c], cs = Math.cos(f), sn = Math.sin(f); let x = A(v) * sp(cs, E), z = B(v) * sp(sn, E);
@@ -3569,7 +3608,7 @@ function carvedIceSlab({ a = 4.6, b = 1.0, h = 5.6, bend = 9, lean = 0.6, gashes
     for (const G of gashes) { const dx = G.x1 - G.x0, dy = G.y1 - G.y0, L2 = dx * dx + dy * dy, u = THREE.MathUtils.clamp(((x - G.x0) * dx + (y - G.y0) * dy) / L2, 0, 1), d = Math.hypot(G.x0 + dx * u - x, G.y0 + dy * u - y);
       if (d < G.w * 1.9) { col[i * 3] = col[i * 3] * 0.3 + 0.7 * frost.r; col[i * 3 + 1] = col[i * 3 + 1] * 0.3 + 0.7 * frost.g; col[i * 3 + 2] = col[i * 3 + 2] * 0.3 + 0.7 * frost.b; break; } } }
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  const mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0xdff4ff, shininess: 55 })); mesh.castShadow = true; mesh.receiveShadow = true;
+  const mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0xdff4ff, shininess: 55 })); mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData.tris = idx.length / 3;
   // where a point on the front ends up after carving (for things stuck in a gouge)
   mesh.userData.surfaceZ = (x, y) => { let bi = -1, bd = 1e9; for (let i = 0; i < pos.length / 3; i++) if (front[i]) { const d = (pos[i * 3] - x) ** 2 + (pos[i * 3 + 1] - y) ** 2; if (d < bd) { bd = d; bi = i; } } return pos[bi * 3 + 2]; };
   mesh.userData.groove = groove.filter(q => q > 0).length; return mesh;
@@ -3896,19 +3935,21 @@ const STORY_CLUES = {
     const gashes = [], stroke = (x, y, len, tilt, w, depth) => { const dx = -Math.sin(tilt) * len / 2, dy = Math.cos(tilt) * len / 2; gashes.push({ x0: x - dx, y0: y - dy, x1: x + dx, y1: y + dy, w, depth }); };
     for (let i = 0; i < 4; i++) stroke(0.6 + i * 0.55, 3.0 - Math.abs(i - 1.5) * 0.15, 2.8, 0.28, 0.14, 0.24); // big set on the fairway side, where you can see it
     for (let i = 0; i < 4; i++) stroke(-3.2 + i * 0.42, 2.2, 1.7, -0.22, 0.1, 0.16);
-    const slab = carvedIceSlab({ gashes }); slab.position.z = 0.6; g.add(slab); // its back sinks into the serac wall behind, its face stands just proud of the seracs
+    // fine grid only across the two sets of gouges (≈7k triangles instead of ≈14k); its shadow comes from a coarse copy that draws no colour
+    const slab = carvedIceSlab({ gashes, spans: [[-3.65, -1.65], [-0.1, 2.9]], step: 0.11, stepY: 0.15 }); slab.position.z = 0.6; slab.castShadow = false; g.add(slab); // its back sinks into the serac wall behind, its face stands just proud of the seracs
+    const shadow = carvedIceSlab({ spans: [], stepY: 99 }); shadow.material.colorWrite = false; shadow.material.depthWrite = false; shadow.receiveShadow = false; shadow.position.z = 0.6; g.add(shadow);
     for (const [x, z, sx, sy, sz] of [[-3.6, 0.3, 2.6, 0.7, 1.6], [3.4, 0.0, 2.4, 0.6, 1.5], [0.2, 0.55, 4.4, 0.45, 1.3]]) { const d = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2), MAT.bank); d.scale.set(sx, sy, sz); d.position.set(x, -0.05, z); d.receiveShadow = true; g.add(d); } // snow drifted against its foot
     const G2 = gashes[2], gx = G2.x0 + (G2.x1 - G2.x0) * 0.38, gy = G2.y0 + (G2.y1 - G2.y0) * 0.38;
     const d = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R * 1.6, DISC_R * 1.3, 0.035, 24), new THREE.MeshStandardMaterial({ color: 0xc77dff, roughness: 0.4 }));
     d.rotation.set(0.25, 0, Math.PI / 2 - 0.28); d.position.set(gx, gy, slab.position.z + slab.userData.surfaceZ(gx, gy) + 0.05); g.add(d); // stuck deep in the third gouge, half buried
-    return { slab, gouges: gashes.length, carved: slab.userData.groove };
+    return { slab, gouges: gashes.length, carved: slab.userData.groove, slabTris: slab.userData.tris, shadowTris: shadow.userData.tris };
   },
   prints(g, c) {
     const [x0, z0] = c.at, [x1, z1] = c.to, len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len, n = Math.floor(len / 1.7);
     const pad = new THREE.CircleGeometry(0.34, 14).rotateX(-Math.PI / 2).scale(1, 1, 1.3), toe = new THREE.CircleGeometry(0.11, 8).rotateX(-Math.PI / 2), rim = DETAIL.lumpy(new THREE.TorusGeometry(0.4, 0.07, 3, 14).rotateX(Math.PI / 2).scale(1, 0.6, 1.3), 0.02, 6);
     const out = [];
     for (let i = 0; i < n; i++) { const side = i % 2 ? 1 : -1, x = x0 + ux * i * 1.7 - uz * side * 0.45, z = z0 + uz * i * 1.7 + ux * side * 0.45;
-      const p = new THREE.Group(); p.add(new THREE.Mesh(pad, SM.print), new THREE.Mesh(rim, MAT.snowCap)); /* pressed print with a packed-snow rim */ for (let k = 0; k < 4; k++) { const tm = new THREE.Mesh(toe, SM.print); tm.position.set((k - 1.5) * 0.17, 0, -0.5 - Math.abs(k - 1.5) * -0.04); p.add(tm); }
+      const p = new THREE.Group(); p.userData.bake = true; p.add(new THREE.Mesh(pad, SM.print), new THREE.Mesh(rim, MAT.snowCap)); /* pressed print with a packed-snow rim */ for (let k = 0; k < 4; k++) { const tm = new THREE.Mesh(toe, SM.print); tm.position.set((k - 1.5) * 0.17, 0, -0.5 - Math.abs(k - 1.5) * -0.04); p.add(tm); }
       p.position.set(x, H.groundY(x, z) + 0.03, z); p.rotation.y = Math.atan2(-ux, -uz); out.push(p); }
     return { world: out, n };
   },
@@ -3987,7 +4028,7 @@ const STORY_CLUES = {
     return {};
   },
   mudprint(g) { // one giant muddy footprint beside the tee (≈1.9 m long), with splats; a second one heading off into the trees
-    const one = (x, z, yaw, s, m) => { const p = new THREE.Group(); p.position.set(x, 0.03, z); p.rotation.y = yaw; p.scale.setScalar(s); g.add(p);
+    const one = (x, z, yaw, s, m) => { const p = new THREE.Group(); p.userData.bake = true; p.position.set(x, 0.03, z); p.rotation.y = yaw; p.scale.setScalar(s); g.add(p);
       sm(SG.splat2, SM.mudRim, 0.56, 1, 0.92, 0, -0.004, 0.2, p); // squeezed-up mud rim round the print
       sm(SG.splat, m, 0.45, 1, 0.75, 0, 0, 0.05, p); sm(SG.splat2, m, 0.36, 1, 0.4, 0.04, 0, 0.75, p); // sole + heel
       for (let k = 0; k < 5; k++) sm(SG.splat, m, k === 0 ? 0.17 : 0.12, 1, k === 0 ? 0.2 : 0.15, -0.36 + k * 0.18, 0, -0.98 + Math.abs(k - 0.6) * 0.07, p); };
@@ -4031,13 +4072,14 @@ const STORY_CLUES = {
   },
   pond(g, c) { // decoration only (the real hole has no water): a little pond with a footbridge cracked in the middle, and huge prints that walk straight across it
     const R = c.r || 6; sm(SG.splat2, SM.bfShore, R + 1.1, 1, R + 1.1, 0, 0.02, 0, g); const w = sm(SG.splat, SM.bfPond, R, 1, R, 0, 0.05, 0, g);
-    for (let i = 0; i < 11; i++) { const a = i / 11 * 6.28 + 1.1, rr = R + 0.55 + (i % 3) * 0.2; const k = new THREE.Mesh(GEO.rock, MAT.rock); k.scale.setScalar(0.45 + (i % 4) * 0.12); k.rotation.y = i * 1.3; k.position.set(Math.cos(a) * rr, 0.04, Math.sin(a) * rr); g.add(k); }
-    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.28 + 0.3; sm(SG.cone, SM.bfReed, 0.08, 0.9, 0.08, Math.cos(a) * (R + 0.4), 0.45, Math.sin(a) * (R + 0.4), g); }
-    const half = (s) => { const b = new THREE.Group(); b.position.set(0, 0.35, s * (R + 1.2) / 2); b.rotation.x = s * 0.12; g.add(b); const n = Math.round((R + 1.2) / 0.32); for (let k = 0; k < n; k++) { const pl = sm(SG.plank, SM.bfWood, 1.5, 0.1, 0.27, 0, (k % 3 - 1) * 0.01, -(R + 1.2) / 2 + (k + 0.5) * (R + 1.2) / n, b); pl.rotation.y = (k % 2 - 0.5) * 0.04; }
+    const deco = new THREE.Group(); deco.userData.bake = true; g.add(deco); // shore stones + reeds (static: baked to one draw each)
+    for (let i = 0; i < 11; i++) { const a = i / 11 * 6.28 + 1.1, rr = R + 0.55 + (i % 3) * 0.2; const k = new THREE.Mesh(GEO.rock, MAT.rock); k.scale.setScalar(0.45 + (i % 4) * 0.12); k.rotation.y = i * 1.3; k.position.set(Math.cos(a) * rr, 0.04, Math.sin(a) * rr); deco.add(k); }
+    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.28 + 0.3; sm(SG.cone, SM.bfReed, 0.08, 0.9, 0.08, Math.cos(a) * (R + 0.4), 0.45, Math.sin(a) * (R + 0.4), deco); }
+    const half = (s) => { const b = new THREE.Group(); b.userData.bake = true; b.position.set(0, 0.35, s * (R + 1.2) / 2); b.rotation.x = s * 0.12; g.add(b); const n = Math.round((R + 1.2) / 0.32); for (let k = 0; k < n; k++) { const pl = sm(SG.plank, SM.bfWood, 1.5, 0.1, 0.27, 0, (k % 3 - 1) * 0.01, -(R + 1.2) / 2 + (k + 0.5) * (R + 1.2) / n, b); pl.rotation.y = (k % 2 - 0.5) * 0.04; }
       for (const x of [-0.72, 0.72]) sm(SG.box, SM.bfWood, 0.08, 0.6, R + 1.2, x, 0.32, 0, b); return b; };
     half(-1); half(1); sm(SG.box, SM.bfSnap, 1.52, 0.13, 0.12, 0, 0.3, 0, g); // the crack
     const pr = []; for (let i = -5; i <= 5; i++) { const s = i % 2 ? 0.28 : -0.28, z = i * 1.25; const y = Math.abs(z) < R + 1 ? 0.43 + Math.abs(z) * 0.02 : 0.04;
-      const p = new THREE.Group(); p.position.set(s, y, z); p.scale.setScalar(0.85); g.add(p); sm(SG.splat, SM.mud, 0.32, 1, 0.5, 0, 0, 0, p); for (let k = 0; k < 5; k++) sm(SG.splat, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, p); pr.push(p); }
+      const p = new THREE.Group(); p.userData.bake = true; p.position.set(s, y, z); p.scale.setScalar(0.85); g.add(p); sm(SG.splat, SM.mud, 0.32, 1, 0.5, 0, 0, 0, p); for (let k = 0; k < 5; k++) sm(SG.splat, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, p); pr.push(p); }
     const rip = sm(SG.ring, SM.bfRipple, 1, 1, 1, 1.8, 0.07, 1.5, g);
     return { prints: pr.length, update: (dt, t) => { const f = (t * 0.4) % 1; rip.scale.setScalar(0.4 + f * 2.5); SM.bfRipple.opacity = 0.7 * (1 - f); w.position.y = 0.05 + Math.sin(t) * 0.005; } };
   },
@@ -4064,7 +4106,7 @@ const STORY_CLUES = {
     const B = H.basket, T = H.tee, back = new THREE.Vector3(T.x - B.x, 0, T.z - B.z).normalize(), side = new THREE.Vector3(-back.z, 0, back.x);
     const from = B.clone().addScaledVector(side, 16).addScaledVector(back, -4), away = B.clone().addScaledVector(side, -26).addScaledVector(back, -10);
     const prints = []; for (let i = 0; i < 7; i++) { const p = B.clone().addScaledVector(side, 6 + i * 1.6).addScaledVector(back, -1.5 - i * 0.5).add(new THREE.Vector3(-back.x, 0, -back.z).multiplyScalar(i % 2 ? 0.3 : -0.3));
-      const q = new THREE.Group(); q.position.set(p.x, H.groundY(p.x, p.z) + 0.03, p.z); q.rotation.y = Math.atan2(-side.x, -side.z); sm(SG.splat, SM.mud, 0.32, 1, 0.5, 0, 0, 0, q); for (let k = 0; k < 5; k++) sm(SG.splat, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, q); prints.push(q); }
+      const q = new THREE.Group(); q.userData.bake = true; q.position.set(p.x, H.groundY(p.x, p.z) + 0.03, p.z); q.rotation.y = Math.atan2(-side.x, -side.z); sm(SG.splat, SM.mud, 0.32, 1, 0.5, 0, 0, 0, q); for (let k = 0; k < 5; k++) sm(SG.splat, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, q); prints.push(q); }
     const bush = new THREE.Group(); { const p = B.clone().addScaledVector(side, 15).addScaledVector(back, -4); bush.position.set(p.x, H.groundY(p.x, p.z), p.z); }
     for (const [x, y, z, s] of [[0, 0.8, 0, 1.3], [0.9, 0.6, 0.3, 0.9], [-0.8, 0.6, 0.2, 1]]) { const l = sm(SG.lump, SM.bfLeaf, s, s * 0.8, s, x, y, z, bush); l.castShadow = true; }
     const bf = makeBigfoot(); bf.visible = false; const u = bf.userData;
@@ -4104,6 +4146,7 @@ function buildStory(idx) {
   S.plumeK = c.plume ?? 1; storyTint(c.sky || 0);
   const n0 = H.group.children.length, built = STORY_CLUES[c.clue](g, c, rnd) || {}, extra = H.group.children.slice(n0); // pooled bits the clue parented to the hole
   smoothStory([g, ...(built.world || []), ...extra]); // round off the story props (no change to size/position)
+  for (const r of [g, ...(built.world || []), ...extra]) { const bk = []; r.traverse(o => { if (o.userData.bake) bk.push(o); }); bk.forEach(bakeStatic); } // static clusters marked bake: one draw per material
   H.group.add(g); for (const o of built.world || []) H.group.add(o);
   let meshes = 0; g.traverse(o => { if (o.isMesh || o.isSprite) meshes++; }); for (const o of [...(built.world || []), ...extra]) o.traverse(q => { if (q.isMesh || q.isSprite) meshes++; });
   H.story = { clue: c.clue, data: c, group: g, built, meshes };
@@ -4289,7 +4332,7 @@ addEventListener('resize', () => { mm.dirty = true; });
 
 function frame(now) {
   const rawDt = (now - last) / 1000, dt = Math.min(0.05, rawDt); last = now;
-  adaptQuality(rawDt); { const tt = now / 1000; MAT.lavaGlow.opacity = 0.42 + 0.12 * Math.sin(tt * 1.7) + 0.05 * Math.sin(tt * 4.3); MAT.foam.opacity = WORLD.lava ? 0.75 + 0.2 * Math.sin(tt * 2.4) : 0.45 + 0.12 * Math.sin(tt * 1.3); } SWAY_U.gWind.value = Math.min(1.5, (S.wind?.mph || 0) / 12); scene.userData.sky.material.uniforms.time.value = GROUND_U.gTime.value = now / 1000;
+  adaptQuality(rawDt); { const tt = now / 1000; MAT.lavaGlow.opacity = LAVA_GLOW_U.value = 0.42 + 0.12 * Math.sin(tt * 1.7) + 0.05 * Math.sin(tt * 4.3); MAT.foam.opacity = WORLD.lava ? 0.75 + 0.2 * Math.sin(tt * 2.4) : 0.45 + 0.12 * Math.sin(tt * 1.3); } SWAY_U.gWind.value = Math.min(1.5, (S.wind?.mph || 0) / 12); scene.userData.sky.material.uniforms.time.value = GROUND_U.gTime.value = now / 1000;
   if (S.phase === 'aim' || S.phase === 'charging') {
     const turn = (keys['arrowleft'] || keys['a'] || keys['_touchleft'] ? -1 : 0) + (keys['arrowright'] || keys['d'] || keys['_touchright'] ? 1 : 0); turnTaps.clear();
     if (S.pull) { S.pull.baseYaw += turn * dt * 0.9; updatePull(); } else S.yaw += turn * dt * 0.9;
@@ -4451,7 +4494,7 @@ window.__game = {
     beam: +SM.beam.opacity.toFixed(2), discLift: S.discLift || 0, discHidden: !!S.discHidden, basketPhysY: H.basket.y, gravity: GRAV.k, rangeK: GRAV.range, stars: scene.userData.sky.material.uniforms.stars.value, earth: scene.userData.earth.visible,
     basketVis: (() => { const bg = H.group.children.find(o => o.userData.basketGroup); return bg ? { y: +bg.position.y.toFixed(2), visible: bg.visible } : null; })() }; },
   storyProps: () => { const b = H.story?.built || {}; const out = {};
-    if (H.story?.clue === 'prints' || (b.n && b.world?.length && b.world[0].children?.length >= 5)) { const w = (b.world || []).filter(o => o.parent); out.prints = { n: b.n, inScene: w.length, parts: w[0]?.children.length || 0, onGround: w.every(o => Math.abs(o.position.y - H.groundY(o.position.x, o.position.z) - 0.03) < 0.02) }; }
+    if (H.story?.clue === 'prints' || (b.n && b.world?.length && b.world[0].children?.length >= 5)) { const w = (b.world || []).filter(o => o.parent); out.prints = { n: b.n, inScene: w.length, parts: w[0]?.children.length || 0, tris: (w[0]?.children || []).reduce((t, m) => t + (m.geometry ? (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3 : 0), 0), onGround: w.every(o => Math.abs(o.position.y - H.groundY(o.position.x, o.position.z) - 0.03) < 0.02) }; }
     if (b.slab) { let flat = 0; H.story.group?.traverse?.(o => { if (o.isMesh && o.geometry?.type === 'BoxGeometry') flat++; }); out.claws = { gouges: b.gouges, carved: b.carved, boxes: flat }; }
     if (b.bear && b.world?.[0]?.userData?.crestY) { const r = b.world[0], f = 0.5; out.ridge = { boxes: r.geometry?.type === 'BoxGeometry' ? 1 : 0, crest: +r.userData.crestY(f).toFixed(2), bearY: b.bear.visible ? +b.bear.position.y.toFixed(2) : null, bearZ: +b.bear.position.z.toFixed(2), crestAtBear: b.bear.visible ? +r.userData.crestY((b.bear.position.z - (-58)) / (-48)).toFixed(2) : null }; }
     return out; },
@@ -4493,19 +4536,21 @@ window.__game = {
 
 // ======================= DEV TOOLS (hole jumper) — START =======================
 // Only with ?dev=1 in the URL (combines with other params, e.g. ?dev=1&pull=2). Without it nothing below runs and play is unchanged.
-// To strip before the finished product: delete this whole block (START..END) and the `.devbar/.devpanel` rules marked DEV in style.css.
+// To strip before the finished product: delete this whole block (START..END) in game.js and the DEV TOOLS section (.devbar/.devpanel/...)
+// at the end of style.css (both in the src folder), then rebuild dist/disc-golf.html with scripts/build-dist.py (it inlines both). Tests: tests/dev-jumper.mjs.
 // A '◀ DEV ▶' chip under the map icon (left) opens a panel: pick any of the 5 worlds, jump to hole 1-9 (fresh at the tee, with that hole's
 // story props, monsters, backdrop and per-hole effects), Prev/Next (wraps across worlds), and 'Play finale' (sinks a putt on hole 9 so
-// the ending plays). Once you've jumped, this round never saves a best score (so no PRs, stars or unlocks change).
+// the ending plays). Once you've jumped, this round never saves a best score (so no PRs, stars or unlocks change); starting a fresh round
+// (picking a course or Restart round) makes it a real round again.
 const DEV_TOOLS = new URLSearchParams(location.search).get('dev') === '1';
 if (DEV_TOOLS) {
   const realSaveBest = saveBest;
   saveBest = (id, strokes) => { if (S.devRound) return; realSaveBest(id, strokes); }; // dev rounds never record
   const order = COURSES.map(c => c.id);
-  const jump = (courseId, idx) => { S.devRound = true;
-    if (COURSE.id !== courseId) loadCourse(courseId);
+  const jump = (courseId, idx) => {
+    if (COURSE.id !== courseId) loadCourse(courseId); // (starting a new round clears devRound, so it is set again just below)
     hidePicker(); hideMenu(); hideCard(); hideBanner();
-    idx = THREE.MathUtils.clamp(idx, 0, COURSE.holes.length - 1); loadHole(idx); return { course: COURSE.id, hole: idx + 1 }; };
+    idx = THREE.MathUtils.clamp(idx, 0, COURSE.holes.length - 1); loadHole(idx); S.devRound = true; return { course: COURSE.id, hole: idx + 1 }; };
   const step = d => { let ci = order.indexOf(COURSE.id), h = Math.max(0, S.holeIdx) + d;
     if (h >= COURSE.holes.length) { ci = (ci + 1) % order.length; h = 0; } else if (h < 0) { ci = (ci - 1 + order.length) % order.length; h = COURSES[ci].holes.length - 1; }
     return jump(order[ci], h); };
