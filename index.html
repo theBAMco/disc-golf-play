@@ -240,6 +240,18 @@ body.charging #minimap { opacity: .55; }
 #storyphoto canvas { display: block; width: 100%; height: auto; filter: blur(2.2px) sepia(.35) contrast(1.15) saturate(.8); }
 #storyphoto span { display: block; margin-top: 8px; text-align: center; color: #333; font: italic 800 18px/1.1 "Comic Sans MS", "Marker Felt", system-ui, sans-serif; text-shadow: none; }
 @keyframes photoIn { from { transform: translateX(-50%) rotate(-14deg) scale(.6); opacity: 0; } to { transform: translateX(-50%) rotate(-4deg) scale(1); opacity: 1; } }
+
+/* ===== DEV TOOLS (only shown with ?dev=1; delete with the DEV block in game.js) ===== */
+.devbar { position: fixed; top: 250px; left: 10px; z-index: 60; display: flex; gap: 4px; }
+.devbar button, .devpanel button { font: 800 13px system-ui, sans-serif; border: 0; border-radius: 10px; color: #fff; background: rgba(120, 20, 120, .78); box-shadow: 0 2px 0 rgba(0,0,0,.35); touch-action: manipulation; }
+.devchip { padding: 8px 10px; letter-spacing: .5px; } .devmini { width: 34px; padding: 8px 0; }
+.devpanel { position: fixed; top: 294px; left: 10px; z-index: 61; width: min(330px, calc(100vw - 20px)); padding: 10px; border-radius: 14px;
+  background: rgba(20, 10, 30, .92); color: #fff; display: flex; flex-direction: column; gap: 8px; font: 700 13px system-ui, sans-serif; }
+.devpanel.hidden, .devbar.hidden { display: none; }
+.devtitle { opacity: .8; font-size: 12px; }
+.devrow { display: flex; flex-wrap: wrap; gap: 6px; } .devgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.devpanel .devbtn { padding: 10px 8px; min-height: 40px; background: rgba(255,255,255,.14); } .devpanel .devbtn.on { background: #c04fd0; }
+.devpanel .devbtn.hole { font-size: 16px; }
 </style>
 </head>
 <body>
@@ -4230,6 +4242,51 @@ window.__game = {
   yawToBasket: () => yawToward(S.lie, H.basket),
   fastForward() { let n = 0; while (S.phase === 'flying' && n++ < 60 * 40) updateFlight(1 / 60); finishSplash(); return this.state(); },
 };
+
+// ======================= DEV TOOLS (hole jumper) — START =======================
+// Only with ?dev=1 in the URL (combines with other params, e.g. ?dev=1&pull=2). Without it nothing below runs and play is unchanged.
+// To strip before the finished product: delete this whole block (START..END) and the `.devbar/.devpanel` rules marked DEV in style.css.
+// A '◀ DEV ▶' chip under the map icon (left) opens a panel: pick any of the 5 worlds, jump to hole 1-9 (fresh at the tee, with that hole's
+// story props, monsters, backdrop and per-hole effects), Prev/Next (wraps across worlds), and 'Play finale' (sinks a putt on hole 9 so
+// the ending plays). Once you've jumped, this round never saves a best score (so no PRs, stars or unlocks change).
+const DEV_TOOLS = new URLSearchParams(location.search).get('dev') === '1';
+if (DEV_TOOLS) {
+  const realSaveBest = saveBest;
+  saveBest = (id, strokes) => { if (S.devRound) return; realSaveBest(id, strokes); }; // dev rounds never record
+  const order = COURSES.map(c => c.id);
+  const jump = (courseId, idx) => { S.devRound = true;
+    if (COURSE.id !== courseId) loadCourse(courseId);
+    hidePicker(); hideMenu(); hideCard(); hideBanner();
+    idx = THREE.MathUtils.clamp(idx, 0, COURSE.holes.length - 1); loadHole(idx); return { course: COURSE.id, hole: idx + 1 }; };
+  const step = d => { let ci = order.indexOf(COURSE.id), h = Math.max(0, S.holeIdx) + d;
+    if (h >= COURSE.holes.length) { ci = (ci + 1) % order.length; h = 0; } else if (h < 0) { ci = (ci - 1 + order.length) % order.length; h = COURSES[ci].holes.length - 1; }
+    return jump(order[ci], h); };
+  const finale = () => { jump(COURSE.id, COURSE.holes.length - 1); // a short putt that drops, so the hole-9 ending plays
+    selectDisc('putter'); S.curve = 0; S.tomahawk = false; S.lie.set(H.basket.x + 2.4, 0, H.basket.z + 3.2); resetToLie(); snapCamera(); S.yaw = yawToward(S.lie, H.basket);
+    const ok = []; for (let q = 0.02; q <= 1; q += 0.02) if (simulateThrow({ power: q, disc: 'putter', curve: 0, yaw: S.yaw }).outcome === 'made') ok.push(q);
+    if (ok.length) throwDisc(ok[Math.floor(ok.length / 2)], 0); return ok.length > 0; };
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+  const bar = el('div', 'devbar'), prev = el('button', 'devmini', '◀'), chip = el('button', 'devchip', 'DEV'), next = el('button', 'devmini', '▶');
+  bar.append(prev, chip, next); const panel = el('div', 'devpanel hidden');
+  const worlds = el('div', 'devrow'), holes = el('div', 'devgrid'), acts = el('div', 'devrow');
+  let pickCourse = COURSE.id;
+  const draw = () => { worlds.replaceChildren(...COURSES.map(c => { const b = el('button', 'devbtn' + (c.id === pickCourse ? ' on' : ''), c.name); b.dataset.course = c.id; b.onclick = () => { pickCourse = c.id; draw(); }; return b; }));
+    const C = COURSES.find(c => c.id === pickCourse); holes.replaceChildren(...C.holes.map((_, i) => { const b = el('button', 'devbtn hole' + (C.id === COURSE.id && i === S.holeIdx ? ' on' : ''), String(i + 1)); b.dataset.hole = i + 1; b.onclick = () => { jump(C.id, i); close(); }; return b; }));
+    chip.textContent = `DEV ${COURSE.name.split(' ')[0]} ${S.holeIdx + 1}`; };
+  const close = () => { panel.classList.add('hidden'); draw(); };
+  const bPrev = el('button', 'devbtn', '◀ Prev'), bNext = el('button', 'devbtn', 'Next ▶'), bFin = el('button', 'devbtn', 'Play finale'), bClose = el('button', 'devbtn', 'Close');
+  bPrev.onclick = () => { step(-1); pickCourse = COURSE.id; draw(); }; bNext.onclick = () => { step(1); pickCourse = COURSE.id; draw(); };
+  bFin.onclick = () => { jump(pickCourse, 8); finale(); close(); }; bClose.onclick = close;
+  acts.append(bPrev, bNext, bFin, bClose); panel.append(el('div', 'devtitle', 'Dev: jump to a hole (records off)'), worlds, holes, acts);
+  prev.onclick = () => { step(-1); draw(); }; next.onclick = () => { step(1); draw(); };
+  chip.onclick = () => { pickCourse = COURSE.id; draw(); panel.classList.toggle('hidden'); };
+  for (const b of [bar, panel]) { b.addEventListener('pointerdown', e => e.stopPropagation()); document.body.append(b); }
+  const place = () => { const m = document.getElementById('minimap')?.getBoundingClientRect(), top = m && m.height ? m.bottom + 8 : 250; bar.style.top = top + 'px'; panel.style.top = (top + 44) + 'px'; }; // left column, under the map icon (clear of the wind dial, map, Card/Restart menu and throw controls)
+  place(); addEventListener('resize', place); setTimeout(place, 500);
+  draw();
+  window.__dev = { jump, step, finale, open: () => chip.onclick(), state: () => ({ devRound: !!S.devRound, course: COURSE.id, hole: S.holeIdx + 1, panelOpen: !panel.classList.contains('hidden') }), trySave: (id, s) => saveBest(id, s) };
+}
+// ======================= DEV TOOLS (hole jumper) — END =========================
 </script>
 </body>
 </html>
