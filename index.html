@@ -1188,6 +1188,116 @@ const GEO = {
     flipper: new THREE.BoxGeometry(0.05, 0.38, 0.13).translate(0, -0.17, 0),
   },
 };
+// ---------- Hand-crafted detail on everything that matters in play (looks only: colliders, physics and stories unchanged) ----------
+// Surfaces: world-space colour breakup, optional grain/bark streaks, a world-fitting coat on upward faces (moss, frost, soot, dust),
+// dirt or snow creeping up from the foot, chipped paint and painted bands. Shapes: shared geometries made lumpy / ridged / seated
+// a little into the ground, all within ~0.1 m of the old surface (and trunks never thinner, so the Bigfoot peek still hides).
+const DETAIL_U = { dCoat: { value: new THREE.Color(0x4f7d2c) }, dCoatAmt: { value: 0.6 }, dSoil: { value: new THREE.Color(0x3b2b1c) } };
+const DETAIL_WORLD = { park: [0x4f7d2c, 0.6, 0x3b2b1c], river: [0x3f6b2a, 0.75, 0x33291c], ice: [0xf2f8ff, 0.85, 0xe6f0fa], lava: [0x2a2422, 0.7, 0x2e2826], moon: [0xb4b4ba, 0.55, 0x6e6e74] };
+function patchDetail(mat, key, o = {}) {
+  const own = { dBreak: { value: o.breakup ?? 0.35 }, dScale: { value: o.scale ?? 1.4 }, dStretch: { value: new THREE.Vector3(...(o.stretch || [1, 1, 1])) }, dStreak: { value: o.streak ?? 0 },
+    dCoatK: { value: o.coat ?? 0 }, dCoatUp: { value: o.coatUp ?? 0.55 }, dFoot: { value: o.foot ?? 0 }, dFootH: { value: o.footH ?? 0.35 }, dChip: { value: o.chip ?? 0 },
+    dBand: { value: new THREE.Vector4(...(o.band || [0, 0, 0, 0])) }, dBandCol: { value: new THREE.Color(o.bandCol ?? 0xe8452a) } };
+  mat.userData.detail = own;
+  const prev = mat.onBeforeCompile, prevKey = mat.customProgramCacheKey;
+  mat.customProgramCacheKey = () => 'detail-' + key + (prevKey ? '|' + prevKey.call(mat) : '');
+  mat.onBeforeCompile = (sh, r) => { if (prev) prev.call(mat, sh, r); Object.assign(sh.uniforms, DETAIL_U, own);
+    sh.vertexShader = 'varying vec3 vDW, vDN, vDO;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      { vec4 dw = vec4(transformed, 1.0); vec3 dn = objectNormal; vec4 dorg = vec4(0.0, 0.0, 0.0, 1.0);
+        #ifdef USE_INSTANCING
+          dw = instanceMatrix * dw; dn = mat3(instanceMatrix) * dn; dorg = instanceMatrix * dorg;
+        #endif
+        dw = modelMatrix * dw; vDW = dw.xyz; vDN = normalize(mat3(modelMatrix) * dn); vDO = (modelMatrix * dorg).xyz; }`);
+    sh.fragmentShader = `varying vec3 vDW, vDN, vDO; uniform vec3 dCoat, dSoil, dStretch, dBandCol; uniform vec4 dBand;
+      uniform float dCoatAmt, dBreak, dScale, dStreak, dCoatK, dCoatUp, dFoot, dFootH, dChip;
+      float dh3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+      float dvn(vec3 p){ vec3 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+        return mix(mix(mix(dh3(i), dh3(i+vec3(1,0,0)), f.x), mix(dh3(i+vec3(0,1,0)), dh3(i+vec3(1,1,0)), f.x), f.y),
+                   mix(mix(dh3(i+vec3(0,0,1)), dh3(i+vec3(1,0,1)), f.x), mix(dh3(i+vec3(0,1,1)), dh3(i+vec3(1,1,1)), f.x), f.y), f.z); }
+      ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      { vec3 q = vDW * dScale; float n1 = dvn(q), n2 = dvn(q*3.7 + 7.0), n3 = dvn(q*11.0 + 3.0); vec3 c = diffuseColor.rgb;
+        c *= 1.0 + ((n1-0.5)*1.1 + (n2-0.5)*0.6 + (n3-0.5)*0.35) * dBreak;
+        if (dStreak > 0.0) c *= 1.0 - dStreak * smoothstep(0.42, 0.9, dvn(vDW * dStretch));
+        float h = vDW.y - vDO.y;
+        if (dBand.w > 0.0) c = mix(c, dBandCol * (0.9 + 0.2*n3), step(dBand.x, h) * step(h, dBand.y) * dBand.w);
+        if (dChip > 0.0) c = mix(c, c*0.3 + vec3(0.13, 0.12, 0.11), smoothstep(0.7, 0.76, n2*0.55 + n3*0.45) * dChip);
+        float up = normalize(vDN).y + (n2-0.5)*0.7;
+        c = mix(c, dCoat * (0.8 + 0.4*n3), clamp(smoothstep(dCoatUp - 0.15, dCoatUp + 0.2, up) * dCoatK * dCoatAmt, 0.0, 1.0));
+        if (dFoot > 0.0) c = mix(c, dSoil * (0.8 + 0.4*n2), clamp((1.0 - smoothstep(0.0, dFootH, h + (n3-0.5)*dFootH*0.7)) * dFoot, 0.0, 1.0));
+        diffuseColor.rgb = c; }`);
+  };
+  return mat;
+}
+const DETAIL = {
+  noise(x, y, z) { const h = (a, b, c) => { const s = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453; return s - Math.floor(s); };
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), fx = x - xi, fy = y - yi, fz = z - zi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy), w = fz * fz * (3 - 2 * fz), L = (a, b, t) => a + (b - a) * t;
+    return L(L(L(h(xi, yi, zi), h(xi + 1, yi, zi), u), L(h(xi, yi + 1, zi), h(xi + 1, yi + 1, zi), u), v), L(L(h(xi, yi, zi + 1), h(xi + 1, yi, zi + 1), u), L(h(xi, yi + 1, zi + 1), h(xi + 1, yi + 1, zi + 1), u), v), w); },
+  // push every vertex along its direction from the centre by noise (same position -> same push, so flat-shaded seams never crack)
+  lumpy(geo, amp, freq = 2, { out = false, xz = false, minY = -Infinity, seed = 0 } = {}) {
+    const p = geo.attributes.position, v = new THREE.Vector3(), c = new THREE.Vector3(), d = new THREE.Vector3(); geo.computeBoundingBox(); geo.boundingBox.getCenter(c);
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); if (v.y < minY) continue; const n = DETAIL.noise(v.x * freq + seed, v.y * freq, v.z * freq - seed);
+      d.copy(v).sub(c); if (xz) d.y = 0; if (d.lengthSq() < 1e-8) continue; d.normalize(); v.addScaledVector(d, out ? n * amp : (n - 0.5) * 2 * amp); p.setXYZ(i, v.x, v.y, v.z); }
+    geo.computeVertexNormals(); return geo; },
+  world(w) { const k = DETAIL_WORLD[w.id] || DETAIL_WORLD.park; DETAIL_U.dCoat.value.setHex(k[0]); DETAIL_U.dCoatAmt.value = k[1]; DETAIL_U.dSoil.value.setHex(k[2]); MAT.skirt.color.setHex(k[2]); },
+};
+// Trees: bark ridges and root flare (outward only), reaching 0.25 m into the ground so they sit on slopes; canopies with ragged rims
+GEO.trunk = (() => { const g = new THREE.CylinderGeometry(0.3, 0.42, 3.25, 8, 3, true).translate(0, 1.375, 0), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), r = Math.hypot(x, z);
+    const yy = Math.max(0, y), flare = yy < 0.7 ? 0.045 * (1 - yy / 0.7) ** 2 * (0.55 + 0.45 * Math.cos(a * 4 + 0.5)) : 0;
+    const rr = r + 0.025 * Math.max(0, Math.sin(a * 4 + y * 0.7)) + flare + 0.02 * DETAIL.noise(x * 3, y * 1.4, z * 3);
+    p.setXYZ(i, x / r * rr, y, z / r * rr); }
+  g.computeVertexNormals(); return g; })();
+GEO.cones = GEO.cones.map((g, k) => { const p = g.attributes.position; // ragged branch tips on the rim: every other rim point droops and juts
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r = Math.hypot(x, z); if (r < 0.5) continue; const a = Math.atan2(z, x), j = Math.round((a + Math.PI) / (Math.PI * 2) * 10) % 2;
+    const n = DETAIL.noise(x * 1.7 + k, y, z * 1.7), rr = r + (j ? 0.08 : -0.06) + (n - 0.5) * 0.08; p.setXYZ(i, x / r * rr, y - (j ? 0.1 : 0) + (n - 0.5) * 0.06, z / r * rr); }
+  g.computeVertexNormals(); return g; });
+GEO.maple = GEO.maple.map((g, k) => DETAIL.lumpy(g, 0.1, 1.3, { seed: k * 3 }));
+GEO.willow[0] = DETAIL.lumpy(GEO.willow[0], 0.1, 1.2);
+// Boulders: more facets, lumpy, flattened where they sink into the ground (the collider stays the squat cylinder inside)
+GEO.rock = DETAIL.lumpy(new THREE.DodecahedronGeometry(0.55, 1).scale(1, 0.62, 1), 0.045, 3.2);
+// Root / foot skirts that seat trees, rocks and posts into the ground (no shadows, no collision); colour set per world
+GEO.skirt = DETAIL.lumpy(new THREE.CylinderGeometry(0.55, 1.0, 0.14, 9, 1, true), 0.05, 2.5, { xz: true });
+const mergeGeos = (list) => { const pos = []; for (const g of list) { const n = g.index ? g.toNonIndexed() : g, p = n.attributes.position; for (let i = 0; i < p.count; i++) pos.push(p.getX(i), p.getY(i), p.getZ(i)); }
+  const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.computeVertexNormals(); return out; };
+// Roots: five tapered roots running out from the trunk foot and diving into the soil (unit trunk; scaled per tree like the trunk)
+GEO.roots = mergeGeos([0, 1, 2, 3].map(k => { const a = k * 1.571 + (k % 2) * 0.45, len = 0.95 + (k % 3) * 0.25;
+  return new THREE.ConeGeometry(0.2, len, 5, 1, true).rotateZ(-Math.PI / 2 - 0.22).translate(0.3 + len / 2 * 0.97, 0.06 - len * 0.11, 0).rotateY(-a); }));
+// Pebbles kicked round a boulder's foot
+GEO.pebbles = mergeGeos([0, 1, 2, 3, 4, 5].map(k => { const a = k * 1.05 + (k % 2) * 0.4, r = 0.85 + (k % 3) * 0.18, s = 0.09 + (k % 3) * 0.04;
+  return new THREE.DodecahedronGeometry(s, 0).scale(1, 0.6, 1.2).translate(Math.cos(a) * r, s * 0.15, Math.sin(a) * r); }));
+MAT.skirt = patchDetail(new THREE.MeshLambertMaterial({ color: 0x3b2b1c }), 'skirt', { breakup: 0.55, scale: 2.2, coat: 0.55, coatUp: 0.75 });
+// OB stakes: tapered, pushed into the ground, with an orange band and dirt splashed up the foot
+GEO.obStake = new THREE.CylinderGeometry(0.035, 0.05, 1.05, 6).translate(0, 0.375, 0);
+// Basket footing: a little concrete collar the pole stands in
+GEO.basketFoot = DETAIL.lumpy(new THREE.CylinderGeometry(0.26, 0.33, 0.2, 12).translate(0, 0.02, 0), 0.015, 6, { xz: true });
+// Tee sign: wooden frame + little roof around the board
+GEO.signFrame = [[1.32, 0.09, 0.12, 0, 0.445], [1.32, 0.09, 0.12, 0, -0.445], [0.09, 0.98, 0.12, 0.615, 0], [0.09, 0.98, 0.12, -0.615, 0]].map(([w, h, d, x, y]) => new THREE.BoxGeometry(w, h, d).translate(x, y, 0));
+GEO.signRoof = new THREE.BoxGeometry(1.5, 0.07, 0.36).translate(0, 0.56, 0.04);
+// Tee slab: worn concrete with rounded, chipped edges, a scuffed run-up and a hidden 0.2 m footing so it never floats on a slope
+function teeSlabGeo() {
+  const g = new THREE.BoxGeometry(2.2, 0.32, 4, 11, 1, 20).translate(0, -0.1, 0), p = g.attributes.position, col = [], c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) { let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    if (y > -0.01) { const e = Math.min(1.1 - Math.abs(x), 2 - Math.abs(z)), n = DETAIL.noise(x * 4, 0, z * 4); if (e < 0.09) y -= (0.09 - e) * 0.55 + (n > 0.62 ? 0.025 : 0); y += (n - 0.5) * 0.008; }
+    p.setY(i, y);
+    const scuff = Math.exp(-((x * 0.9) ** 2 + ((z + 1.0) * 0.8) ** 2)), edge = Math.max(0, 1 - Math.min(1.1 - Math.abs(x), 2 - Math.abs(z)) / 0.18), n2 = DETAIL.noise(x * 2.3 + 5, 1, z * 2.3);
+    c.setRGB(1, 1, 1).multiplyScalar(1 - 0.22 * scuff - 0.2 * edge - 0.12 * (n2 - 0.5)); if (y < -0.07) c.multiplyScalar(0.75); col.push(c.r, c.g, c.b); }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals(); return g;
+}
+MAT.teeV = patchGround(new THREE.MeshLambertMaterial({ color: 0xb8b0a2, vertexColors: true }), { noise: 0.8, scale: 3 }, 'teeV');
+// Surfaces of the shared play materials
+MAT.trunk.color.setHex(0x80603f);
+patchDetail(MAT.trunk, 'trunk', { breakup: 0.5, scale: 2.2, streak: 0.6, stretch: [9, 0.35, 9], coat: 0.6, coatUp: 0.35, foot: 0.5, footH: 0.45 });
+MAT.roots = patchDetail(new THREE.MeshLambertMaterial({ color: 0x6e5034, flatShading: true }), 'roots', { breakup: 0.5, scale: 2.5, coat: 0.7, coatUp: 0.6, foot: 0.4, footH: 0.08 });
+patchDetail(MAT.rock, 'rock', { breakup: 0.45, scale: 1.6, coat: 0.85, coatUp: 0.45, foot: 0.4, footH: 0.12 });
+patchDetail(MAT.wood, 'wood', { breakup: 0.3, scale: 2, streak: 0.3, stretch: [9, 0.6, 9], foot: 0.5, footH: 0.25 });
+patchDetail(MAT.plank, 'plank', { breakup: 0.35, scale: 2, streak: 0.3, stretch: [1.2, 9, 9], coat: 0.25, coatUp: 0.9 });
+patchDetail(MAT.sign, 'sign', { breakup: 0.18, scale: 3, chip: 0.25 });
+patchDetail(MAT.obPost, 'obPost', { breakup: 0.12, scale: 4, band: [0.62, 0.76, 0, 1], foot: 0.7, footH: 0.22 });
+patchDetail(MAT.yellow, 'tray', { breakup: 0.12, scale: 5, chip: 0.45 });
+patchDetail(MAT.metal, 'metal', { breakup: 0.12, scale: 3, foot: 0.45, footH: 0.22 });
+patchDetail(MAT.tee, 'tee', { breakup: 0.15, scale: 3 });
+MAT.leaves.forEach((m, i) => patchDetail(m, 'pine' + i, { breakup: 0.3, scale: 1.1 })); MAT.maple.forEach((m, i) => patchDetail(m, 'maple' + i, { breakup: 0.25, scale: 1.2 }));
+MAT.willow.forEach((m, i) => patchDetail(m, 'willow' + i, { breakup: 0.25, scale: 1.2 }));
 // One low-poly penguin (≈1 m tall). Flippers are kept so they can flap.
 function makePenguin() {
   const g = new THREE.Group(), P = GEO.peng, M = MAT;
@@ -1534,14 +1644,14 @@ function makeHole(data, index) {
   // Out-of-bounds stakes along both edges of the in-bounds area
   {
     const stakes = []; for (let i = 0; i < obLine.length; i += 8) stakes.push(i);
-    const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.05, 0.05, 0.9).translate(0, 0.45, 0), MAT.obPost, stakes.length * 2);
-    const mtx = new THREE.Matrix4(); let k = 0;
+    const im = new THREE.InstancedMesh(GEO.obStake, MAT.obPost, stakes.length * 2);
+    const mtx = new THREE.Matrix4(), lean = new THREE.Matrix4(); let k = 0;
     for (const i of stakes) {
       const a = obLine[Math.max(0, i - 1)], b = obLine[Math.min(obLine.length - 1, i + 1)];
       const d = b.clone().sub(a).normalize(), n = new THREE.Vector2(-d.y, d.x);
       for (const s of [-1, 1]) { const x = obLine[i].x + n.x * s * inBoundsR, z = obLine[i].y + n.y * s * inBoundsR;
         if (distToPlay(x, z) < inBoundsR - 0.5 || inHull(x, z)) continue; // inside of a bend
-        mtx.makeTranslation(x, groundY(x, z), z); im.setMatrixAt(k++, mtx); }
+        mtx.makeTranslation(x, groundY(x, z), z).multiply(lean.makeRotationFromEuler(new THREE.Euler(Math.sin(k * 2.7) * 0.05, k * 1.3, Math.cos(k * 1.9) * 0.05))); im.setMatrixAt(k++, mtx); }
     }
     im.count = k; group.add(im);
   }
@@ -1549,9 +1659,21 @@ function makeHole(data, index) {
   {
     const yaw = Math.atan2(teeAim.x - tee.x, -(teeAim.z - tee.z));
     const pad = new THREE.Group();
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 4), MAT.tee); slab.position.set(0, 0.06, 0.8); slab.receiveShadow = true; pad.add(slab);
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.08), MAT.sign); sign.position.set(-3.2, 1.2, 3.5); sign.castShadow = true; pad.add(sign);
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2), MAT.wood); post.position.set(-3.2, 0.5, 3.55); pad.add(post);
+    const slab = new THREE.Mesh(teeSlabGeo(), MAT.teeV); slab.position.set(0, 0.06, 0.8); slab.receiveShadow = true; pad.add(slab);
+    const map = (() => { // the board's face: a painted plan of this hole (fairway, tee, basket), no words
+      const c = document.createElement('canvas'); c.width = 192; c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#2b5d8a'; x.fillRect(0, 0, 192, 128);
+      x.strokeStyle = '#e9f1f7'; x.lineWidth = 5; x.strokeRect(6, 6, 180, 116);
+      const up = new THREE.Vector3(0, 1, 0), pts = samples.map(q => new THREE.Vector3(q.x - tee.x, 0, q.y - tee.z).applyAxisAngle(up, yaw));
+      let mx = 1; for (const q of pts) mx = Math.max(mx, Math.abs(q.x) * 1.5, -q.z); const P = q => [96 - q.x / mx * 100, 112 + q.z / mx * 96]; // drawn on the face toward the tee (mirrored)
+      x.lineCap = x.lineJoin = 'round'; x.strokeStyle = '#7cc35a'; x.lineWidth = 16; x.beginPath(); pts.forEach((q, i) => x[i ? 'lineTo' : 'moveTo'](...P(q))); x.stroke();
+      x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.setLineDash([5, 5]); x.stroke(); x.setLineDash([]);
+      const [ex, ey] = P(pts[pts.length - 1]); x.fillStyle = '#ffd23f'; x.beginPath(); x.arc(ex, ey, 7, 0, 7); x.fill(); x.fillStyle = '#c9ced6'; x.fillRect(ex - 1.5, ey - 16, 3, 12);
+      const [tx, ty] = P(pts[0]); x.fillStyle = '#b8b0a2'; x.fillRect(tx - 6, ty - 8, 12, 14);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return new THREE.MeshLambertMaterial({ map: t }); })();
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.08), [MAT.sign, MAT.sign, MAT.sign, MAT.sign, MAT.sign, map]); sign.position.set(-3.2, 1.2, 3.5); sign.castShadow = true; pad.add(sign);
+    for (const fg of [...GEO.signFrame, GEO.signRoof]) { const f = new THREE.Mesh(fg, MAT.wood); f.position.copy(sign.position); f.castShadow = true; pad.add(f); }
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.0), MAT.wood); post.position.set(-3.2, 0.4, 3.55); pad.add(post);
+    const pskirt = new THREE.Mesh(GEO.skirt, MAT.skirt); pskirt.scale.set(0.22, 0.6, 0.22); pskirt.position.set(-3.2, 0.0, 3.55); pad.add(pskirt);
     pad.position.copy(tee); pad.rotation.y = -yaw; group.add(pad);
   }
   // Trees as instanced meshes (cheap on phones), one set per tree style, each tree with its own tint. In Maple Park about a
@@ -1582,6 +1704,10 @@ function makeHole(data, index) {
     treeViz.push({ list: list.map(o => o.t), trunk, crowns, ghosts, mats0, cols, faded: new Uint8Array(list.length), zero: new THREE.Matrix4().makeScale(0, 0, 0) });
   }
   group.userData.treeViz = treeViz;
+  if (trees.length) { // root skirts seat every trunk into the ground (soil + moss, snow, ash or dust by world)
+    const sk = new THREE.InstancedMesh(GEO.roots, MAT.roots, trees.length), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+    trees.forEach((t, i) => { const w = t.s * (t.w || 1); q.setFromAxisAngle(up, i * 1.7); mtx.compose(new THREE.Vector3(t.x, t.y, t.z), q, new THREE.Vector3(w, Math.min(t.s, w), w)); sk.setMatrixAt(i, mtx); });
+    sk.receiveShadow = true; group.add(sk); }
   // Backdrop scenery (Maple Park, Riverbend; looks only: no collision, no shadows, not on the map): a deep forest behind the tree
   // walls fading into the haze, and three rings of flat cutout hills, each farther ring hazier and bluer, whose feet melt into the
   // fog colour so there's no hard horizon line. Kept well outside the in-bounds area.
@@ -1645,6 +1771,9 @@ function makeHole(data, index) {
     const km = new THREE.InstancedMesh(GEO.rock, MAT.rock, rockList.length), caps = WORLD.snowCaps ? new THREE.InstancedMesh(GEO.snowCap, MAT.snowCap, rockList.length) : null;
     rockList.forEach((r, i) => { e.set(0, rnd() * 6, 0); q.setFromEuler(e); mtx.compose(new THREE.Vector3(r.x, groundY(r.x, r.z) + 0.05, r.z), q, new THREE.Vector3(r.s, r.s, r.s)); km.setMatrixAt(i, mtx); if (caps) caps.setMatrixAt(i, mtx); });
     km.castShadow = true; group.add(km); if (caps) group.add(caps);
+    const sk = new THREE.InstancedMesh(GEO.pebbles, MAT.rock, rockList.length); // a few pebbles broken off round the foot
+    rockList.forEach((r, i) => { mtx.compose(new THREE.Vector3(r.x, groundY(r.x, r.z) - 0.03, r.z), q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), i * 2.1), new THREE.Vector3(r.s * 0.75, r.s * 0.75, r.s * 0.75)); sk.setMatrixAt(i, mtx); });
+    sk.receiveShadow = true; group.add(sk);
   }
   // boulders are solid too (same collision as pillars): a squat cylinder a bit inside the drawn rock
   for (const r of rockList) solids.push({ kind: 'rock', x: r.x, z: r.z, y: groundY(r.x, r.z), r: 0.5 * r.s, h: 0.05 + 0.34 * r.s });
@@ -1791,6 +1920,7 @@ function makeHole(data, index) {
   {
     const g = new THREE.Group();
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(BK.poleR, BK.poleR, 1.7, 12), MAT.metal); pole.position.y = 0.85; g.add(pole);
+    const foot = new THREE.Mesh(GEO.basketFoot, MAT.tee); g.add(foot);
     const tray = new THREE.Mesh(new THREE.CylinderGeometry(BK.trayR, BK.trayR * 0.8, 0.22, 24, 1, true), MAT.yellow); tray.position.y = BK.trayY; g.add(tray);
     const trayBottom = new THREE.Mesh(new THREE.CircleGeometry(BK.trayR * 0.8, 24), MAT.metal); trayBottom.rotation.x = -Math.PI / 2; trayBottom.position.y = BK.trayY - 0.1; g.add(trayBottom);
     const band = new THREE.Mesh(new THREE.TorusGeometry(BK.trayR * 0.9, 0.035, 8, 32), MAT.yellow); band.rotation.x = Math.PI / 2; band.position.y = BK.bandY; g.add(band);
@@ -2257,7 +2387,7 @@ function selectDisc(key) {
 function applyWorld(w) {
   WORLD = w;
   scene.background.setHex(w.fog); scene.fog.color.setHex(w.fog); [scene.fog.near, scene.fog.far] = w.fogRange || [90, 230];
-  MAT.obPost.color.setHex(w.obPost || 0xffffff);
+  MAT.obPost.color.setHex(w.obPost || 0xffffff); DETAIL.world(w);
   const U = scene.userData.sky.material.uniforms, gx = GFX[w.id] || GFX.park;
   U.top.value.setHex(w.sky[0]); U.bottom.value.setHex(w.sky[1]); U.haze.value.setHex(gx.haze); U.sunCol.value.setHex(w.sun[0]); U.sunSize.value = gx.sunSize;
   U.cloudCol.value.setHex(gx.cloud[0]); U.cloudShade.value.setHex(gx.cloud[1]); U.cloudAmt.value = gx.cloud[2];
@@ -3136,6 +3266,19 @@ Object.assign(SM, { // Maple Park (Bigfoot) story
   bfTable: new THREE.MeshLambertMaterial({ color: 0xa8743f }), bfCheck: new THREE.MeshLambertMaterial({ color: 0xd8402c }), bfCup: new THREE.MeshLambertMaterial({ color: 0xf0f0f0 }), bfCrumb: new THREE.MeshLambertMaterial({ color: 0xe0b060 }),
   bfShore: new THREE.MeshLambertMaterial({ color: 0xb9a27a }), bfPond: new THREE.MeshLambertMaterial({ color: 0x3aa0e0 }), bfReed: new THREE.MeshLambertMaterial({ color: 0x6c8a3a }), bfRipple: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }),
 });
+// Maple story props: weathered wood grain, bark with moss and soil at the foot, leaf colour breakup, a checked picnic blanket
+patchDetail(SM.bfWood, 'bfWood', { breakup: 0.35, scale: 2.2, streak: 0.35, stretch: [10, 0.7, 10], foot: 0.55, footH: 0.3 });
+patchDetail(SM.bfBoard, 'bfBoard', { breakup: 0.3, scale: 2.5, streak: 0.3, stretch: [0.8, 9, 0.8], chip: 0.15 });
+patchDetail(SM.bfTable, 'bfTable', { breakup: 0.35, scale: 2.2, streak: 0.35, stretch: [0.9, 10, 10], coat: 0.2, coatUp: 0.85 });
+patchDetail(SM.bfBark, 'bfBark', { breakup: 0.5, scale: 2.2, streak: 0.6, stretch: [9, 0.35, 9], coat: 0.6, coatUp: 0.35, foot: 0.5, footH: 0.45 });
+patchDetail(SM.bfPine, 'bfPine', { breakup: 0.3, scale: 1.1 }); patchDetail(SM.bfLeaf, 'bfLeaf', { breakup: 0.3, scale: 1.3 });
+patchDetail(SM.bfShore, 'bfShore', { breakup: 0.5, scale: 1.5, coat: 0.4, coatUp: 0.95 }); patchDetail(SM.bfSnap, 'bfSnap', { breakup: 0.25, scale: 6 });
+SM.bfCheck.color.setHex(0xffffff); SM.bfCheck.map = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#f4efe4'; x.fillRect(0, 0, 64, 64);
+  x.fillStyle = 'rgba(216,64,44,0.85)'; for (let i = 0; i < 8; i++) { x.fillRect(i * 8, 0, 4, 64); x.fillRect(0, i * 8, 64, 4); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+SM.mudRim = layered(new THREE.MeshBasicMaterial({ color: 0x6b4c30, transparent: true, opacity: 0.75, depthWrite: false }), 6);
+// a splat with a ragged edge (mud prints, pond shore): shared
+const splatGeo = (seed) => { const g = new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2), p = g.attributes.position;
+  for (let i = 1; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), a = Math.atan2(z, x), k = 0.86 + 0.22 * DETAIL.noise(Math.cos(a) * 1.6 + seed, Math.sin(a) * 1.6, seed); p.setXYZ(i, x * k, 0, z * k); } return g; };
 // A low-poly polar bear (≈3.4 m long, 2.3 m tall). torso pivots at the hips so it can rear up; jaw opens for the roar.
 function makeBear(mat = SM.bear, dark = SM.bearDark, mouth = SM.bearMouth) {
   const g = new THREE.Group(), torso = new THREE.Group(); torso.position.set(0, 1.25, -0.9); g.add(torso);
@@ -3172,7 +3315,7 @@ Object.assign(SM, {
 const SG = { ball: new THREE.SphereGeometry(1, 20, 14), lump: blobGeo(1, 2, 0.07), log: new THREE.CylinderGeometry(0.45, 0.5, 1, 16).rotateZ(Math.PI / 2),
   box: new THREE.BoxGeometry(1, 1, 1), ring: new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), disc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24),
   frond: new THREE.ConeGeometry(0.35, 2.6, 3).rotateX(Math.PI / 2).translate(0, 0, 1.3).scale(1, 0.2, 1), disk: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2) };
-Object.assign(SG, { cyl: new THREE.CylinderGeometry(1, 1, 1, 16), cone: new THREE.ConeGeometry(1, 1, 16), bigDisc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24) });
+Object.assign(SG, { plank: mergeGeos([new THREE.BoxGeometry(1, 1, 1)]), splat: splatGeo(1), splat2: splatGeo(5), cyl: new THREE.CylinderGeometry(1, 1, 1, 16), cone: new THREE.ConeGeometry(1, 1, 16), bigDisc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24) });
 GEO.storyRiver = SG; // shared: never disposed with a hole
 const DISC_MATS = [0xff6b3d, 0xffd23f, 0x5ad1ff, 0xc9a0ff, 0x7dff8a, 0xff5fa2].map(c => new THREE.MeshLambertMaterial({ color: c }));
 MAT.storyDiscs = DISC_MATS;
@@ -3734,7 +3877,10 @@ const STORY_CLUES = {
   // ----- Maple Park: Bigfoot (light and friendly: the starter-world mystery) -----
   flyer(g) { // the ranger's notice board with a 'Bigfoot sighting?' flyer that someone has scribbled LOL on
     const box = (w, h, d, m, x, y, z) => sm(SG.box, m, w, h, d, x, y, z, g);
-    box(0.16, 2.6, 0.16, SM.bfWood, -1.15, 1.3, 0); box(0.16, 2.6, 0.16, SM.bfWood, 1.15, 1.3, 0); box(2.7, 1.7, 0.12, SM.bfBoard, 0, 1.85, 0); box(3.0, 0.14, 0.5, SM.bfWood, 0, 2.78, 0.05);
+    box(0.16, 3.1, 0.16, SM.bfWood, -1.15, 1.05, 0); box(0.16, 3.1, 0.16, SM.bfWood, 1.15, 1.05, 0); box(2.7, 1.7, 0.12, SM.bfBoard, 0, 1.85, 0); // posts sunk 0.5 m into the ground
+    for (const s of [-1, 1]) { const r = sm(SG.plank, SM.bfWood, 3.1, 0.06, 0.42, 0, 2.84, s * 0.17, g); r.rotation.x = s * 0.45; r.castShadow = true; } sm(SG.plank, SM.bfWood, 3.0, 0.1, 0.1, 0, 2.93, 0, g); // little gable roof
+    sm(SG.plank, SM.bfWood, 2.8, 0.07, 0.16, 0, 0.98, 0.04, g); sm(SG.plank, SM.bfWood, 2.8, 0.07, 0.16, 0, 2.72, 0.04, g); // frame rails
+    for (const x0 of [-1.15, 1.15]) { const m = new THREE.Mesh(GEO.skirt, MAT.skirt); m.scale.set(0.3, 0.8, 0.3); m.position.set(x0, 0, 0); g.add(m); }
     const c = document.createElement('canvas'); c.width = 512; c.height = 640; const x = c.getContext('2d'); x.scale(2, 2);
     x.fillStyle = '#fbf6e4'; x.fillRect(0, 0, 256, 320); x.fillStyle = '#c0392b'; x.font = '900 34px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('BIGFOOT', 128, 44); x.fillText('SIGHTING?', 128, 82);
     x.filter = 'blur(6px)'; x.fillStyle = '#5a3d26'; x.beginPath(); x.ellipse(128, 168, 30, 46, 0.15, 0, 7); x.fill(); x.beginPath(); x.arc(134, 112, 17, 0, 7); x.fill(); x.fillRect(96, 150, 14, 52); x.fillRect(150, 146, 14, 52); x.fillRect(110, 200, 14, 40); x.fillRect(136, 200, 14, 40); x.filter = 'none';
@@ -3747,14 +3893,15 @@ const STORY_CLUES = {
   },
   mudprint(g) { // one giant muddy footprint beside the tee (≈1.9 m long), with splats; a second one heading off into the trees
     const one = (x, z, yaw, s, m) => { const p = new THREE.Group(); p.position.set(x, 0.03, z); p.rotation.y = yaw; p.scale.setScalar(s); g.add(p);
-      sm(SG.disk, m, 0.45, 1, 0.75, 0, 0, 0.05, p); sm(SG.disk, m, 0.36, 1, 0.4, 0.04, 0, 0.75, p); // sole + heel
-      for (let k = 0; k < 5; k++) sm(SG.disk, m, k === 0 ? 0.17 : 0.12, 1, k === 0 ? 0.2 : 0.15, -0.36 + k * 0.18, 0, -0.98 + Math.abs(k - 0.6) * 0.07, p); };
+      sm(SG.splat2, SM.mudRim, 0.56, 1, 0.92, 0, -0.004, 0.2, p); // squeezed-up mud rim round the print
+      sm(SG.splat, m, 0.45, 1, 0.75, 0, 0, 0.05, p); sm(SG.splat2, m, 0.36, 1, 0.4, 0.04, 0, 0.75, p); // sole + heel
+      for (let k = 0; k < 5; k++) sm(SG.splat, m, k === 0 ? 0.17 : 0.12, 1, k === 0 ? 0.2 : 0.15, -0.36 + k * 0.18, 0, -0.98 + Math.abs(k - 0.6) * 0.07, p); };
     one(0, 0, 0.25, 1.5, SM.mud); one(1.9, -3.2, 0.25, 1.5, SM.mudFaint);
-    for (const [x, z, r] of [[0.9, 0.6, 0.22], [-0.8, -0.5, 0.16], [0.6, -1.4, 0.12], [-0.5, 1.4, 0.18]]) sm(SG.disk, SM.mud, r, 1, r, x, 0.035, z, g);
+    for (const [x, z, r] of [[0.9, 0.6, 0.22], [-0.8, -0.5, 0.16], [0.6, -1.4, 0.12], [-0.5, 1.4, 0.18]]) sm(SG.splat, SM.mud, r, 1, r * 0.8, x, 0.035, z, g);
     return {};
   },
   treedisc(g) { // a lone tall pine with a Driver jammed near the top (≈9.5 m up); a ladder leaning on it reaches 3 m
-    sm(SG.cyl, SM.bfBark, 0.36, 11, 0.36, 0, 5.5, 0, g);
+    sm(SG.cyl, SM.bfBark, 0.36, 11.5, 0.36, 0, 5.5 - 0.25, 0, g); g.add(new THREE.Mesh(GEO.roots, MAT.roots)); // seated, with roots
     for (const [y, s] of [[4.6, 3.0], [6.8, 2.4], [8.8, 1.8], [10.6, 1.2]]) { const c = new THREE.Mesh(SG.cone, SM.bfPine); c.scale.set(s, 2.6, s); c.position.y = y; c.castShadow = true; g.add(c); }
     const d = new THREE.Mesh(SG.bigDisc, SM.bfDisc); d.position.set(1.0, 9.4, 1.0); d.rotation.set(0.5, 0, 0.9); d.scale.setScalar(2.6); g.add(d); // scaled up so it reads from the tee
     const lad = new THREE.Group(); lad.position.set(0.3, 0, 1.2); lad.rotation.x = -0.28; g.add(lad);
@@ -3762,7 +3909,7 @@ const STORY_CLUES = {
     return { disc: d };
   },
   snapped(g) { // a tall maple with fresh breaks way up high (pale snapped ends), one branch dangling, and broken branches on the ground
-    sm(SG.cyl, SM.bfBark, 0.42, 12, 0.42, 0, 6, 0, g);
+    sm(SG.cyl, SM.bfBark, 0.42, 12.5, 0.42, 0, 6 - 0.25, 0, g); { const r = new THREE.Mesh(GEO.roots, MAT.roots); r.scale.set(1.15, 1, 1.15); g.add(r); }
     const crown = sm(SG.lump, SM.bfLeaf, 3.0, 2.2, 3.0, 0, 12.4, 0, g); crown.castShadow = true;
     const br = (y, yaw, len, broken) => { const b = new THREE.Group(); b.position.y = y; b.rotation.set(0, yaw, -1.0); g.add(b); sm(SG.cyl, SM.bfBark, 0.14, len, 0.14, 0, len / 2, 0, b); if (broken) sm(SG.cyl, SM.bfSnap, 0.15, 0.12, 0.15, 0, len, 0, b); return b; };
     br(4.5, 0.4, 2.6, false); br(5.2, 2.6, 2.2, false); br(8.8, 1.2, 0.9, true); br(9.6, -1.4, 0.8, true); br(10.2, 0.2, 0.7, true); br(9.1, 2.9, 0.8, true);
@@ -3780,7 +3927,7 @@ const STORY_CLUES = {
   },
   picnic(g) { // a picnic table flipped upside down, a bench on its side, a crumpled blanket… and where the food basket was: just crumbs, heading for the trees
     const box = (w, h, d, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const b = sm(SG.box, m, w, h, d, x, y, z, g); b.rotation.set(rx, ry, rz); b.castShadow = true; return b; };
-    box(2.2, 0.1, 0.95, SM.bfTable, 0, 0.06, 0, 0, 0.3, 0); // top, lying upside down
+    for (let k = 0; k < 4; k++) { const b = sm(SG.plank, SM.bfTable, 2.2, 0.1, 0.22, Math.sin(0.3) * (k - 1.5) * 0.24, 0.06, Math.cos(0.3) * (k - 1.5) * 0.24, g); b.rotation.y = 0.3; b.castShadow = true; } // top: four planks, lying upside down
     for (const s of [-1, 1]) { box(0.1, 0.8, 0.1, SM.bfWood, s * 0.75, 0.5, 0.3, 0.35, 0.3, 0); box(0.1, 0.8, 0.1, SM.bfWood, s * 0.75, 0.5, -0.3, -0.35, 0.3, 0); } // legs in the air
     box(2.0, 0.08, 0.32, SM.bfTable, -0.6, 0.2, 1.5, Math.PI / 2, 0.5, 0); box(0.95, 0.03, 0.95, SM.bfCheck, 1.6, 0.03, -1.0, 0.05, 0.7, 0.04);
     box(0.12, 0.16, 0.12, SM.bfCup, 1.1, 0.06, -0.3, Math.PI / 2, 0, 0.4); sm(SG.disk, SM.mud, 0.45, 1, 0.3, 1.6, 0.045, -1.0, g); // the empty spot on the blanket
@@ -3788,13 +3935,14 @@ const STORY_CLUES = {
     return {};
   },
   pond(g, c) { // decoration only (the real hole has no water): a little pond with a footbridge cracked in the middle, and huge prints that walk straight across it
-    const R = c.r || 6; sm(SG.disk, SM.bfShore, R + 0.9, 1, R + 0.9, 0, 0.02, 0, g); const w = sm(SG.disk, SM.bfPond, R, 1, R, 0, 0.05, 0, g);
+    const R = c.r || 6; sm(SG.splat2, SM.bfShore, R + 1.1, 1, R + 1.1, 0, 0.02, 0, g); const w = sm(SG.splat, SM.bfPond, R, 1, R, 0, 0.05, 0, g);
+    for (let i = 0; i < 11; i++) { const a = i / 11 * 6.28 + 1.1, rr = R + 0.55 + (i % 3) * 0.2; const k = new THREE.Mesh(GEO.rock, MAT.rock); k.scale.setScalar(0.45 + (i % 4) * 0.12); k.rotation.y = i * 1.3; k.position.set(Math.cos(a) * rr, 0.04, Math.sin(a) * rr); g.add(k); }
     for (let i = 0; i < 9; i++) { const a = i / 9 * 6.28 + 0.3; sm(SG.cone, SM.bfReed, 0.08, 0.9, 0.08, Math.cos(a) * (R + 0.4), 0.45, Math.sin(a) * (R + 0.4), g); }
-    const half = (s) => { const b = new THREE.Group(); b.position.set(0, 0.35, s * (R + 1.2) / 2); b.rotation.x = s * 0.12; g.add(b); sm(SG.box, SM.bfWood, 1.5, 0.12, R + 1.2, 0, 0, 0, b);
+    const half = (s) => { const b = new THREE.Group(); b.position.set(0, 0.35, s * (R + 1.2) / 2); b.rotation.x = s * 0.12; g.add(b); const n = Math.round((R + 1.2) / 0.32); for (let k = 0; k < n; k++) { const pl = sm(SG.plank, SM.bfWood, 1.5, 0.1, 0.27, 0, (k % 3 - 1) * 0.01, -(R + 1.2) / 2 + (k + 0.5) * (R + 1.2) / n, b); pl.rotation.y = (k % 2 - 0.5) * 0.04; }
       for (const x of [-0.72, 0.72]) sm(SG.box, SM.bfWood, 0.08, 0.6, R + 1.2, x, 0.32, 0, b); return b; };
     half(-1); half(1); sm(SG.box, SM.bfSnap, 1.52, 0.13, 0.12, 0, 0.3, 0, g); // the crack
     const pr = []; for (let i = -5; i <= 5; i++) { const s = i % 2 ? 0.28 : -0.28, z = i * 1.25; const y = Math.abs(z) < R + 1 ? 0.43 + Math.abs(z) * 0.02 : 0.04;
-      const p = new THREE.Group(); p.position.set(s, y, z); p.scale.setScalar(0.85); g.add(p); sm(SG.disk, SM.mud, 0.32, 1, 0.5, 0, 0, 0, p); for (let k = 0; k < 5; k++) sm(SG.disk, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, p); pr.push(p); }
+      const p = new THREE.Group(); p.position.set(s, y, z); p.scale.setScalar(0.85); g.add(p); sm(SG.splat, SM.mud, 0.32, 1, 0.5, 0, 0, 0, p); for (let k = 0; k < 5; k++) sm(SG.splat, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, p); pr.push(p); }
     const rip = sm(SG.ring, SM.bfRipple, 1, 1, 1, 1.8, 0.07, 1.5, g);
     return { prints: pr.length, update: (dt, t) => { const f = (t * 0.4) % 1; rip.scale.setScalar(0.4 + f * 2.5); SM.bfRipple.opacity = 0.7 * (1 - f); w.position.y = 0.05 + Math.sin(t) * 0.005; } };
   },
@@ -3821,7 +3969,7 @@ const STORY_CLUES = {
     const B = H.basket, T = H.tee, back = new THREE.Vector3(T.x - B.x, 0, T.z - B.z).normalize(), side = new THREE.Vector3(-back.z, 0, back.x);
     const from = B.clone().addScaledVector(side, 16).addScaledVector(back, -4), away = B.clone().addScaledVector(side, -26).addScaledVector(back, -10);
     const prints = []; for (let i = 0; i < 7; i++) { const p = B.clone().addScaledVector(side, 6 + i * 1.6).addScaledVector(back, -1.5 - i * 0.5).add(new THREE.Vector3(-back.x, 0, -back.z).multiplyScalar(i % 2 ? 0.3 : -0.3));
-      const q = new THREE.Group(); q.position.set(p.x, H.groundY(p.x, p.z) + 0.03, p.z); q.rotation.y = Math.atan2(-side.x, -side.z); sm(SG.disk, SM.mud, 0.32, 1, 0.5, 0, 0, 0, q); for (let k = 0; k < 5; k++) sm(SG.disk, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, q); prints.push(q); }
+      const q = new THREE.Group(); q.position.set(p.x, H.groundY(p.x, p.z) + 0.03, p.z); q.rotation.y = Math.atan2(-side.x, -side.z); sm(SG.splat, SM.mud, 0.32, 1, 0.5, 0, 0, 0, q); for (let k = 0; k < 5; k++) sm(SG.splat, SM.mud, 0.08, 1, 0.09, -0.24 + k * 0.12, 0, -0.5, q); prints.push(q); }
     const bush = new THREE.Group(); { const p = B.clone().addScaledVector(side, 15).addScaledVector(back, -4); bush.position.set(p.x, H.groundY(p.x, p.z), p.z); }
     for (const [x, y, z, s] of [[0, 0.8, 0, 1.3], [0.9, 0.6, 0.3, 0.9], [-0.8, 0.6, 0.2, 1]]) { const l = sm(SG.lump, SM.bfLeaf, s, s * 0.8, s, x, y, z, bush); l.castShadow = true; }
     const bf = makeBigfoot(); bf.visible = false; const u = bf.userData;
@@ -4218,6 +4366,7 @@ window.__game = {
   storyRock: () => { const b = H.story?.built, r = b?.rock; if (!r) return null; const w = r.getWorldPosition(new THREE.Vector3()); return { visible: r.visible, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2) }; },
   storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, headY: +b.turtle.position.y.toFixed(2), parts: (() => { const t = b.turtle, y = t.position.y, v = t.visible; t.position.y = 0.9; t.visible = true; t.updateMatrixWorld(true); const o = []; t.traverse(m => { if (m.isMesh) { const bx = new THREE.Box3().setFromObject(m); o.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2))); } }); t.position.y = y; t.visible = v; t.updateMatrixWorld(true); return o; })(), island: b.island ? [+b.island.position.x.toFixed(2), +b.island.position.z.toFixed(2)] : null, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
   treeFade: () => { const v = H.group.userData.treeViz || []; return { trees: v.reduce((n, g) => n + g.list.length, 0), faded: v.reduce((n, g) => n + g.faded.reduce((a, b) => a + b, 0), 0), styles: v.map(g => g.list.length) }; },
+  viewAt: (p, l) => { S.viewProp = p ? { pos: new THREE.Vector3(...p), look: new THREE.Vector3(...l) } : null; }, // tests: free close-up camera
   viewStory: (d = 6, h = 2.2, side = 0) => { if (!d) { S.viewProp = null; return; } const g = H.story?.group; if (!g) return null; const p = g.getWorldPosition(new THREE.Vector3()), t = H.tee;
     const dir = new THREE.Vector3(t.x - p.x, 0, t.z - p.z).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), side); S.viewProp = { pos: p.clone().addScaledVector(dir, d).setY(p.y + h), look: p.clone().setY(p.y + 1) }; return { x: p.x, z: p.z }; },
   renderInfo: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, ratio: renderer.getPixelRatio(), geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }),
@@ -4240,6 +4389,9 @@ window.__game = {
   simulate: (o) => simulateThrow(o),
   camInfo: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z, ground: H.groundY(camera.position.x, camera.position.z), look: { x: camLook.x, y: camLook.y, z: camLook.z } }), // tests: where the camera is
   yawToBasket: () => yawToward(S.lie, H.basket),
+  // tests: the obstacle (tree, boulder or solid) nearest the tee but at least 12 m out, for close-up detail screenshots
+  nearObstacle: () => { const T = H.tee, all = [...H.trees, ...(H.solids || [])].map(o => ({ x: o.x, z: o.z, d: Math.hypot(o.x - T.x, o.z - T.z) })).filter(o => o.d > 12 && o.d < 70).sort((a, b) => a.d - b.d);
+    return all[0] ? { x: all[0].x, z: all[0].z, tx: T.x, tz: T.z } : null; },
   fastForward() { let n = 0; while (S.phase === 'flying' && n++ < 60 * 40) updateFlight(1 / 60); finishSplash(); return this.state(); },
 };
 
