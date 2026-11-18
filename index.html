@@ -1217,7 +1217,7 @@ function patchDetail(mat, key, o = {}) {
       ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
       { vec3 q = vDW * dScale; float n1 = dvn(q), n2 = dvn(q*3.7 + 7.0), n3 = dvn(q*11.0 + 3.0); vec3 c = diffuseColor.rgb;
         c *= 1.0 + ((n1-0.5)*1.1 + (n2-0.5)*0.6 + (n3-0.5)*0.35) * dBreak;
-        if (dStreak > 0.0) c *= 1.0 - dStreak * smoothstep(0.42, 0.9, dvn(vDW * dStretch));
+        if (dStreak != 0.0) c *= 1.0 - dStreak * smoothstep(0.42, 0.9, dvn(vDW * dStretch));
         float h = vDW.y - vDO.y;
         if (dBand.w > 0.0) c = mix(c, dBandCol * (0.9 + 0.2*n3), step(dBand.x, h) * step(h, dBand.y) * dBand.w);
         if (dChip > 0.0) c = mix(c, c*0.3 + vec3(0.13, 0.12, 0.11), smoothstep(0.7, 0.76, n2*0.55 + n3*0.45) * dChip);
@@ -1283,6 +1283,9 @@ function teeSlabGeo() {
     c.setRGB(1, 1, 1).multiplyScalar(1 - 0.22 * scuff - 0.2 * edge - 0.12 * (n2 - 0.5)); if (y < -0.07) c.multiplyScalar(0.75); col.push(c.r, c.g, c.b); }
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals(); return g;
 }
+MAT.wetSand = patchGround(layered(new THREE.MeshLambertMaterial({ color: 0xa8956a }), 2), { noise: 1.1, scale: 1.6 }, 'wetSand'); // darker damp strip at the water's edge
+GEO.bankStone = DETAIL.lumpy(new THREE.DodecahedronGeometry(0.3, 0).scale(1.2, 0.55, 1), 0.04, 4); // loose stones on the banks (looks only, no collision)
+GEO.pile = new THREE.CylinderGeometry(0.11, 0.13, 1, 7).translate(0, 0.5, 0); // bridge piles driven into the river bed
 MAT.teeV = patchGround(new THREE.MeshLambertMaterial({ color: 0xb8b0a2, vertexColors: true }), { noise: 0.8, scale: 3 }, 'teeV');
 // Surfaces of the shared play materials
 MAT.trunk.color.setHex(0x80603f);
@@ -1715,32 +1718,39 @@ function makeHole(data, index) {
   // Water, banks, islands, bridges, reeds and rocks
   const rockList = (data.rocks || []).map(r => ({ ...r }));
   if (rivers.length || ponds.length) {
-    const band = (pts, halfW, y, mat) => {
+    const band = (pts, halfW, y, mat, rag = 0) => { // rag: ragged edge (+/- metres, looks only; the water band itself is never ragged)
       const pos = [], uv = [], idx = [];
       for (let i = 0; i < pts.length; i++) {
         const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
         const d = b.clone().sub(a).normalize(), n = new THREE.Vector2(-d.y, d.x);
-        for (const sgn of [-1, 1]) { const x = pts[i].x + n.x * halfW * sgn, z = pts[i].y + n.y * halfW * sgn; pos.push(x, y, z); uv.push(x / 9, z / 9); }
+        for (const sgn of [-1, 1]) { const hw = halfW + (rag ? (DETAIL.noise(pts[i].x * 0.35, sgn * 7, pts[i].y * 0.35) - 0.5) * 2 * rag : 0); const x = pts[i].x + n.x * hw * sgn, z = pts[i].y + n.y * hw * sgn; pos.push(x, y, z); uv.push(x / 9, z / 9); }
         if (i > 0) { const k = (i - 1) * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
       }
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
       const m = new THREE.Mesh(g, mat); m.material.side = THREE.DoubleSide; m.receiveShadow = true; return m;
     };
-    const disk = (x, z, r, y, mat) => { const g = new THREE.CircleGeometry(r, 48).rotateX(-Math.PI / 2); const uv = g.attributes.uv, p = g.attributes.position;
+    const disk = (x, z, r, y, mat, rag = 0) => { const g = new THREE.CircleGeometry(r, 48).rotateX(-Math.PI / 2); const uv = g.attributes.uv, p = g.attributes.position;
+      if (rag) for (let i = 1; i < p.count; i++) { const px = p.getX(i), pz = p.getZ(i), k = 1 + (DETAIL.noise((px + x) * 0.35, 3, (pz + z) * 0.35) - 0.5) * 2 * rag / r; p.setXYZ(i, px * k, 0, pz * k); }
       for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + x) / 9, (p.getZ(i) + z) / 9);
       const m = new THREE.Mesh(g, mat); m.position.set(x, y, z); m.receiveShadow = true; return m; };
     for (const r of rivers) {
       const ends = [r.samples[0], r.samples[r.samples.length - 1]];
-      group.add(band(r.samples, r.w / 2 + 1.7, 0.04, MAT.sand), band(r.samples, r.w / 2 + 0.45, 0.05, MAT.foam), band(r.samples, r.w / 2, 0.06, MAT.water));
-      for (const e of ends) group.add(disk(e.x, e.y, r.w / 2 + 1.7, 0.04, MAT.sand), disk(e.x, e.y, r.w / 2 + 0.45, 0.05, MAT.foam), disk(e.x, e.y, r.w / 2, 0.06, MAT.water)); // round ends for creeks
+      group.add(band(r.samples, r.w / 2 + 1.7, 0.04, MAT.sand, 0.55), band(r.samples, r.w / 2 + 0.45, 0.05, MAT.foam, 0.15), band(r.samples, r.w / 2, 0.06, MAT.water));
+      for (const e of ends) group.add(disk(e.x, e.y, r.w / 2 + 1.7, 0.04, MAT.sand, 0.55), disk(e.x, e.y, r.w / 2 + 0.45, 0.05, MAT.foam, 0.15), disk(e.x, e.y, r.w / 2, 0.06, MAT.water)); // round ends for creeks
+      if (!WORLD.lava) { group.add(band(r.samples, r.w / 2 + 0.95, 0.045, MAT.wetSand, 0.3)); for (const e of ends) group.add(disk(e.x, e.y, r.w / 2 + 0.95, 0.045, MAT.wetSand, 0.3)); }
       if (WORLD.lava) for (let i = 0; i < r.samples.length; i += 3) addGlow(group, r.samples[i].x, r.samples[i].y, r.w * 1.9);
     }
-    for (const p of ponds) { group.add(disk(p.x, p.z, p.r + 1.7, 0.04, MAT.sand), disk(p.x, p.z, p.r + 0.45, 0.05, MAT.foam), disk(p.x, p.z, p.r, 0.06, MAT.water)); if (WORLD.lava) addGlow(group, p.x, p.z, p.r * 2.6); }
+    for (const p of ponds) { group.add(disk(p.x, p.z, p.r + 1.7, 0.04, MAT.sand, 0.55), disk(p.x, p.z, p.r + 0.45, 0.05, MAT.foam, 0.15), disk(p.x, p.z, p.r, 0.06, MAT.water)); if (!WORLD.lava) group.add(disk(p.x, p.z, p.r + 0.95, 0.045, MAT.wetSand, 0.3)); if (WORLD.lava) addGlow(group, p.x, p.z, p.r * 2.6); }
     for (const i of islands) group.add(disk(i.x, i.z, i.r, 0.08, MAT.islandSand), disk(i.x, i.z, i.r - 1.1, 0.09, MAT.islandGrass));
     for (const b of bridges) {
       const g = new THREE.Group(), yaw = Math.atan2(b.dir.x, b.dir.y);
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.16, b.len + 0.4), MAT.plank); deck.position.set(0, b.deck - 0.08, b.len / 2); deck.castShadow = deck.receiveShadow = true; g.add(deck);
+      // deck of separate planks (tops exactly at deck height), two stringers under them and piles down into the river bed
+      const L = b.len + 0.4, n = Math.max(2, Math.round(L / 0.32)), pl = new THREE.InstancedMesh(SG.plank, MAT.plank, n), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+      for (let k = 0; k < n; k++) { const wob = DETAIL.noise(k * 1.7, b.a.x, b.a.y); e.set(0, (wob - 0.5) * 0.05, 0); q.setFromEuler(e); mtx.compose(new THREE.Vector3((wob - 0.5) * 0.08, b.deck - 0.08 - (k % 3 === 1 ? 0.012 : 0), -0.2 + (k + 0.5) * L / n), q, new THREE.Vector3(b.w * (0.97 + wob * 0.05), 0.16, L / n - 0.035)); pl.setMatrixAt(k, mtx); }
+      pl.castShadow = pl.receiveShadow = true; g.add(pl);
+      for (const sx of [-1, 1]) { const st = new THREE.Mesh(SG.plank, MAT.wood); st.scale.set(0.16, 0.22, L); st.position.set(sx * b.w * 0.3, b.deck - 0.27, b.len / 2); g.add(st); }
+      for (let k = 0; k <= Math.round(b.len / 2.5); k++) for (const sx of [-1, 1]) { const pi = new THREE.Mesh(GEO.pile, MAT.wood); pi.scale.y = b.deck + 0.4; pi.position.set(sx * (b.w / 2 - 0.05), -0.5, Math.min(b.len, k * 2.5)); g.add(pi); }
       for (const sx of [-1, 1]) {
         const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, b.len + 0.4), MAT.wood); rail.position.set(sx * (b.w / 2 - 0.05), b.deck + 0.75, b.len / 2); g.add(rail);
         for (let k = 0; k <= Math.round(b.len / 2.5); k++) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.8, 0.12), MAT.wood); post.position.set(sx * (b.w / 2 - 0.05), b.deck + 0.35, Math.min(b.len, k * 2.5)); g.add(post); }
@@ -1760,6 +1770,16 @@ function makeHole(data, index) {
     }
     for (const p of ponds) for (let a = 0; a < Math.PI * 2; a += 0.12) if (rnd() < 0.55) { const sp = bankSpot(p.x, p.z, Math.cos(a), Math.sin(a), p.r + 0.2 + rnd() * 1.3); if (sp) reeds.push(sp); }
     for (const i of islands) for (let a = 0; a < Math.PI * 2; a += 0.35) if (rnd() < 0.4) { const x = i.x + Math.cos(a) * (i.r - 0.5), z = i.z + Math.sin(a) * (i.r - 0.5); if (Math.hypot(x - basket.x, z - basket.z) > 3) reeds.push([x, z]); }
+    if (!WORLD.lava) { // loose stones along the water's edge (looks only, no collision; own random stream so nothing else moves)
+      const sr = seeded(4400 + index * 17), st = [];
+      for (const r of rivers) for (let i = 0; i < r.samples.length; i += 2) for (const sgn of [-1, 1]) if (sr() < 0.32) {
+        const a = r.samples[Math.max(0, i - 1)], b = r.samples[Math.min(r.samples.length - 1, i + 1)], d = b.clone().sub(a).normalize(), off = r.w / 2 + 0.25 + sr() * 1.1;
+        const x = r.samples[i].x - d.y * sgn * off, z = r.samples[i].y + d.x * sgn * off; if (!isWater(x, z) && distToPlay(x, z) < inBoundsR + 12 && !onBridge(x, z) && Math.hypot(x - tee.x, z - tee.z) > 3 && Math.hypot(x - basket.x, z - basket.z) > 3) st.push([x, z, 0.5 + sr() * 0.9, sr() * 6]); }
+      for (const p of ponds) for (let a = 0; a < 6.28; a += 0.3) if (sr() < 0.5) { const off = p.r + 0.25 + sr() * 1.1, x = p.x + Math.cos(a) * off, z = p.z + Math.sin(a) * off; if (!isWater(x, z) && near(x, z)) st.push([x, z, 0.5 + sr() * 0.9, sr() * 6]); }
+      if (st.length) { const im = new THREE.InstancedMesh(GEO.bankStone, MAT.rock, st.length), mtx = new THREE.Matrix4(), q = new THREE.Quaternion();
+        st.forEach(([x, z, sc, yaw], i) => { q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw); mtx.compose(new THREE.Vector3(x, groundY(x, z) + 0.02, z), q, new THREE.Vector3(sc, sc, sc)); im.setMatrixAt(i, mtx); });
+        im.receiveShadow = true; group.add(im); }
+    }
     if (WORLD.reeds !== null) {
       const rm = new THREE.InstancedMesh(GEO.reed, MAT.reeds, Math.max(1, Math.min(reeds.length, 1600))), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
       reeds.slice(0, 1600).forEach(([x, z], i) => { e.set((rnd() - 0.5) * 0.3, rnd() * 6, (rnd() - 0.5) * 0.3); q.setFromEuler(e); mtx.compose(new THREE.Vector3(x, groundY(x, z), z), q, new THREE.Vector3(1, 0.7 + rnd() * 0.7, 1)); rm.setMatrixAt(i, mtx); });
@@ -2402,7 +2422,7 @@ function applyWorld(w) {
   const L = !!w.lava;
   Object.assign(MAT.water, { map: L ? lavaTex : rippleTex, emissiveMap: L ? lavaTex : null, shininess: L ? 15 : 70 }); MAT.water.emissive.setHex(L ? 0xffffff : 0x000000); MAT.water.emissiveIntensity = L ? 0.9 : 1;
   MAT.water.specular.setHex(L ? 0x442211 : 0x9fd4ff); MAT.water.needsUpdate = true;
-  MAT.sand.emissive.setHex(L ? 0x3a0c00 : 0x000000);
+  MAT.sand.emissive.setHex(L ? 0x3a0c00 : 0x000000); MAT.wetSand.color.copy(MAT.sand.color).multiplyScalar(0.74);
   MAT.foam.color.setHex(L ? 0xffc24a : w.snow ? 0xdff4ff : 0xffffff); MAT.foam.opacity = L ? 0.85 : 0.55; MAT.water.userData.ground.gSparkle.value = L ? 0 : 0.9;
   MAT.ice.color.setHex(L ? 0x3c3650 : 0x8fcdf0); MAT.ice.specular.setHex(L ? 0xffb080 : 0xffffff);
   MAT.deepSnow.color.setHex(L ? 0x7a726d : 0xffffff); MAT.bank.color.setHex(L ? 0x5a514c : 0xf7fbff); PUFF_MAT.color.setHex(L ? 0x8e8580 : 0xffffff); DUST_MAT.color.setHex(L ? 0x6e6661 : w.snow ? 0xf4f8fc : w.ground.rough);
@@ -3312,10 +3332,30 @@ Object.assign(SM, {
   palm: new THREE.MeshLambertMaterial({ color: 0x8a6a42 }), frond: new THREE.MeshLambertMaterial({ color: 0x3f9a3a, side: THREE.DoubleSide }),
   shadowFish: new THREE.MeshBasicMaterial({ color: 0x06121a, transparent: true, opacity: 0.72, depthWrite: false }),
 });
+// Riverbend story props: weathered planks and wood, chipped boat paint, mossy cliff rock, cut log ends with growth rings, an icy frozen fall
+patchDetail(SM.plank, 'smPlank', { breakup: 0.35, scale: 2, streak: 0.3, stretch: [1.2, 9, 9], coat: 0.25, coatUp: 0.9 });
+patchDetail(SM.wood, 'smWood', { breakup: 0.4, scale: 2, streak: 0.35, stretch: [9, 0.6, 9], coat: 0.35, coatUp: 0.7, foot: 0.4, footH: 0.25 });
+patchDetail(SM.woodIn, 'smWoodIn', { breakup: 0.25, scale: 5 });
+for (const k of ['boatA', 'boatB', 'boatRed']) patchDetail(SM[k], 'sm' + k, { breakup: 0.15, scale: 3, chip: 0.4 });
+patchDetail(SM.cliffRock, 'smCliff', { breakup: 0.45, scale: 1.4, coat: 0.85, coatUp: 0.4, foot: 0.4, footH: 0.3 });
+patchDetail(SM.moss, 'smMoss', { breakup: 0.4, scale: 2.5 }); patchDetail(SM.mossLight, 'smMossL', { breakup: 0.4, scale: 2.5 });
+patchDetail(SM.shell, 'smShell', { breakup: 0.4, scale: 1.6, coat: 0.6, coatUp: 0.5 }); patchDetail(SM.palm, 'smPalm', { breakup: 0.3, scale: 3, streak: 0.4, stretch: [3, 14, 3] });
+patchDetail(SM.ice, 'smIce', { breakup: 0.18, scale: 1.2, streak: -0.35, stretch: [7, 0.4, 7] }); // lighter vertical streaks frozen into the fall
+SM.logEnd = new THREE.MeshLambertMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#d9b27a'; x.fillRect(0, 0, 64, 64);
+  for (let r = 4; r < 30; r += 3 + (r % 2)) { x.strokeStyle = `rgba(120,80,40,${0.35 + (r % 3) * 0.12})`; x.lineWidth = 1.2; x.beginPath(); x.ellipse(32 + Math.sin(r) * 0.8, 32, r, r * 0.96, 0, 0, 7); x.stroke(); }
+  x.strokeStyle = '#4a2e18'; x.lineWidth = 3; x.beginPath(); x.arc(32, 32, 30.5, 0, 7); x.stroke(); x.strokeStyle = 'rgba(70,40,20,0.6)'; x.lineWidth = 1; x.beginPath(); x.moveTo(32, 32); x.lineTo(54, 20); x.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })() });
+// a frozen waterfall sheet: thick, rippled, bulging, with icicles along the lip (replaces the flat panel)
+const frozenFallGeo = (() => { const g = new THREE.BoxGeometry(1.6, 3.2, 0.3, 8, 12, 1), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), rib = Math.sin(x * 9 + Math.sin(y * 2.3) * 0.8) * 0.05, bulge = 0.12 * (1 - (2 * y / 3.2) ** 2);
+    if (z > 0) p.setZ(i, z + rib + bulge + (DETAIL.noise(x * 3, y * 2, 1) - 0.5) * 0.06); p.setX(i, x * (1 + 0.08 * (y / 3.2 + 0.5))); }
+  g.computeVertexNormals(); const ic = [];
+  for (let k = 0; k < 7; k++) { const h = 0.25 + ((k * 37) % 5) * 0.08; ic.push(new THREE.ConeGeometry(0.06, h, 5).rotateX(Math.PI).translate(-0.72 + k * 0.24, -1.6 - h / 2, 0.15)); }
+  return mergeGeos([g, ...ic]); })();
 const SG = { ball: new THREE.SphereGeometry(1, 20, 14), lump: blobGeo(1, 2, 0.07), log: new THREE.CylinderGeometry(0.45, 0.5, 1, 16).rotateZ(Math.PI / 2),
   box: new THREE.BoxGeometry(1, 1, 1), ring: new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), disc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24),
   frond: new THREE.ConeGeometry(0.35, 2.6, 3).rotateX(Math.PI / 2).translate(0, 0, 1.3).scale(1, 0.2, 1), disk: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2) };
-Object.assign(SG, { plank: mergeGeos([new THREE.BoxGeometry(1, 1, 1)]), splat: splatGeo(1), splat2: splatGeo(5), cyl: new THREE.CylinderGeometry(1, 1, 1, 16), cone: new THREE.ConeGeometry(1, 1, 16), bigDisc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24) });
+Object.assign(SG, { fall: frozenFallGeo, logEnd: new THREE.CircleGeometry(1, 16), plank: mergeGeos([new THREE.BoxGeometry(1, 1, 1)]), splat: splatGeo(1), splat2: splatGeo(5), cyl: new THREE.CylinderGeometry(1, 1, 1, 16), cone: new THREE.ConeGeometry(1, 1, 16), bigDisc: new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24) });
 GEO.storyRiver = SG; // shared: never disposed with a hole
 const DISC_MATS = [0xff6b3d, 0xffd23f, 0x5ad1ff, 0xc9a0ff, 0x7dff8a, 0xff5fa2].map(c => new THREE.MeshLambertMaterial({ color: c }));
 MAT.storyDiscs = DISC_MATS;
@@ -3523,20 +3563,19 @@ const STORY_CLUES = {
     return { update: (dt, t) => rings.forEach((r, i) => { const f = ((t * 0.35 + i / 4) % 1); r.scale.setScalar(0.6 + f * 6); r.material.opacity = 0.75 * (1 - f); }) };
   },
   logs(g) { // logs on the bank with huge half-moon bites out of them, and chips
-    const log = (x, z, len, yaw) => { const l = new THREE.Group(); sm(SG.log, SM.wood, len, 1, 1, 0, 0.45, 0, l); for (const bx of [-len * 0.2, len * 0.25]) { sm(SG.ball, SM.bite, 0.55, 0.5, 0.6, bx, 0.75, 0.25, l); sm(SG.ball, SM.woodIn, 0.5, 0.45, 0.55, bx, 0.72, 0.22, l); } l.position.set(x, 0, z); l.rotation.y = yaw; g.add(l); };
+    const log = (x, z, len, yaw) => { const l = new THREE.Group(); sm(SG.log, SM.wood, len, 1, 1, 0, 0.45, 0, l); for (const sx of [-1, 1]) { const e = sm(SG.logEnd, SM.logEnd, 0.48, 0.48, 1, sx * (len / 2 + 0.005), 0.45, 0, l); e.rotation.y = sx * Math.PI / 2; } for (const bx of [-len * 0.2, len * 0.25]) { sm(SG.ball, SM.bite, 0.55, 0.5, 0.6, bx, 0.75, 0.25, l); sm(SG.ball, SM.woodIn, 0.5, 0.45, 0.55, bx, 0.72, 0.22, l); } l.position.set(x, 0, z); l.rotation.y = yaw; g.add(l); };
     log(0, 0, 4.2, 0.2); log(1.5, -1.6, 3.2, -0.5); log(-1.6, -1.2, 2.6, 1.1);
     for (let i = 0; i < 14; i++) sm(SG.box, SM.woodIn, 0.22, 0.05, 0.12, Math.sin(i * 2.1) * 2.5, 0.03, Math.cos(i * 1.7) * 1.8, g).rotation.y = i;
   },
   nest(g, c, rnd) { // a mud mound with dozens of lost discs stuck in it, edges up
-    sm(SG.disk, SM.mud, 3.2, 1, 2.6, 0, 0.05, 0, g); sm(SG.ball, SM.mud, 2.2, 0.45, 1.8, 0, 0, 0, g);
+    sm(SG.splat, SM.mud, 3.2, 1, 2.6, 0, 0.05, 0, g); sm(SG.lump, SM.mud, 2.2, 0.45, 1.8, 0, 0, 0, g);
     for (let i = 0; i < 30; i++) { const a = rnd() * 6.28, r = 0.5 + rnd() * 1.9, d = sm(SG.disc, DISC_MATS[i % DISC_MATS.length], 4, 4, 4, Math.cos(a) * r, 0.35 + rnd() * 0.25, Math.sin(a) * r * 0.85, g);
       d.rotation.set(1.1 + rnd() * 0.6, a, rnd() * 0.5); }
   },
   waterfall(g) { // a little rock cliff whose waterfall has frozen still, a mirror-still pool and frogs that went quiet
     sm(SG.lump, SM.cliffRock, 3.4, 2.6, 1.6, 0, 1.6, -1.2, g); sm(SG.lump, SM.cliffRock, 1.8, 1.8, 1.4, -2.6, 0.9, -0.6, g); sm(SG.lump, SM.cliffRock, 1.6, 1.5, 1.3, 2.6, 0.8, -0.5, g);
-    const fall = sm(SG.box, SM.ice, 1.6, 3.2, 0.25, 0, 1.75, 0.35, g); fall.rotation.x = -0.12; // the frozen sheet of water
-    for (let i = 0; i < 5; i++) sm(SG.box, SM.eyeW, 0.06, 2.6, 0.02, -0.6 + i * 0.3, 1.8, 0.5, g); // still streaks
-    sm(SG.disk, MAT.water, 2.6, 1, 1.7, 0, 0.08, 1.8, g);
+    const fall = sm(SG.fall, SM.ice, 1, 1, 1, 0, 1.75, 0.3, g); fall.rotation.x = -0.12; // the frozen sheet of water: rippled, bulging, icicles on the lip
+    sm(SG.splat, MAT.water, 2.6, 1, 1.7, 0, 0.08, 1.8, g);
     for (const [x, z] of [[-1.7, 2.2], [1.6, 2.6], [0.2, 3.3]]) { const f = new THREE.Group(); sm(SG.ball, SM.frog, 0.32, 0.22, 0.36, 0, 0.18, 0, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, -0.13, 0.36, 0.2, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, 0.13, 0.36, 0.2, f); f.position.set(x, 0.05, z); f.rotation.y = -0.4; g.add(f); }
   },
   bubbles(g, c) { // the 'mossy rock' out in the river (it's the turtle): it surfaces, holds, sinks straight down; + giant bubbles that follow your disc along the river
@@ -3550,7 +3589,7 @@ const STORY_CLUES = {
         else { const w = g.localToWorld(TMP.rp.set(Math.random() * 4 - 2, 0, 2.6)); pool.spawn(w.x, 0.1, w.z, 0.5 + Math.random() * 0.5); } } } };
   },
   dent(g) { // where the mossy rock was: a muddy dent, a wet patch, two drag marks to the river, bits of moss
-    sm(SG.disk, SM.mud, 2.4, 1, 2.0, 0, 0.04, 0, g); sm(SG.disk, SM.wet, 3.2, 1, 2.6, 0, 0.035, 0, g);
+    sm(SG.splat2, SM.mud, 2.4, 1, 2.0, 0, 0.04, 0, g); sm(SG.splat, SM.wet, 3.2, 1, 2.6, 0, 0.035, 0, g);
     for (const sx of [-1, 1]) sm(SG.box, SM.wet, 0.7, 0.02, 9, sx * 1.4, 0.04, -5.5, g);
     for (let i = 0; i < 7; i++) sm(SG.lump, SM.mossLight, 0.28, 0.12, 0.28, Math.sin(i * 2.3) * 1.8, 0.06, -1 - i * 1.3, g);
   },
