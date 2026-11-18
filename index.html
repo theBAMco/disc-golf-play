@@ -346,10 +346,13 @@ if (!THREE) { if (window.__bootFail) window.__bootFail('The 3D engine did not lo
 // A world is the look shared by its courses: sky, light, ground colours, tree style and scenery.
 // windMin..windMax is the range (mph) a hole in that world can roll (hole 1 of a round is capped gentler); each hole gets a seeded random wind.
 const WORLDS = {
-  park: { id: 'park', sky: [0x3d8be0, 0xcdeeff], fog: 0xb0d5f0, fogRange: [105, 290], hemi: [0xdff3ff, 0x3f7a2a, 1.1], sun: [0xfff1d0, 2.2],
-    ground: { ob: 0x3d7a2c, rough: 0x55a23d, fairway: 0x6cc04a, green: 0x80d95b }, trees: 'pine', borderMix: 0, windMin: 3, windMax: 14, leaf: 0x6f9a34 },
-  river: { id: 'river', sky: [0x3b86c4, 0xffe1b5], fog: 0xd6e4d4, hemi: [0xfff2dc, 0x50803c, 1.05], sun: [0xffd8a0, 2.3],
+  park: { id: 'park', sky: [0x3d8be0, 0xcdeeff], fog: 0x76abd5, fogRange: [105, 290], hemi: [0xdff3ff, 0x3f7a2a, 1.1], sun: [0xfff1d0, 2.2],
+    ground: { ob: 0x3d7a2c, rough: 0x55a23d, fairway: 0x6cc04a, green: 0x80d95b }, trees: 'pine', borderMix: 0, windMin: 3, windMax: 14, leaf: 0x6f9a34,
+    // backdrop (game.js buildScenery; Riverbend has one too): hill rings front to back [colour, haze], forest pine tints
+    backdrop: { hills: [[0x2f6a3c, 0.3], [0x4a7b78, 0.52], [0x6f8db0, 0.7]], pines: [0x2a6a2e, 0x32773a, 0x24602b, 0x3b7f3a] } },
+  river: { id: 'river', sky: [0x3b86c4, 0xffe1b5], fog: 0xe0d6c6, fogRange: [105, 290], hemi: [0xfff2dc, 0x50803c, 1.05], sun: [0xffd8a0, 2.3],
     ground: { ob: 0x4c8035, rough: 0x67a646, fairway: 0x84c457, green: 0x9be36c }, trees: 'willow', borderMix: 0.45, windMin: 5, windMax: 18, leaf: 0xc9b458,
+    backdrop: { hills: [[0x4f7a3c, 0.3], [0x7d8c6c, 0.5], [0x958fa0, 0.62]], pines: [0x3f7a35, 0x4b8a3c, 0x376b30, 0x5a8f3e] },
     water: 0x2f8fba, sand: 0xdcc88f, reeds: 0x7f9640, rock: 0x8f8d84 },
   // Antarctica: snowfields, glossy ice, dark sea leads, low polar sun, falling snow, no trees (border is ice formations)
   ice: { id: 'ice', sky: [0x6f9cc6, 0xf6e7d6], fog: 0xdde8f1, fogRange: [150, 520], hemi: [0xf4f9ff, 0xd5e4f0, 1.45], sun: [0xffe6c8, 1.9], sunLow: true,
@@ -1183,7 +1186,7 @@ let H = null;
 
 function seeded(seed) { return () => ((seed = (seed * 16807) % 2147483647) / 2147483647); }
 
-// ---------- Maple Park backdrop (decoration only) ----------
+// ---------- Backdrop scenery: distant hills + forest edge (decoration only; Maple Park, Riverbend) ----------
 // Flat cutout hills: unlit, no shadows, and hazed toward the fog colour by a fixed amount per ring (hazier farther out),
 // with the lower part of each ring melting fully into the fog colour so hills, ground and sky meet without a line.
 const SCENERY = {
@@ -1191,21 +1194,25 @@ const SCENERY = {
     m.onBeforeCompile = sh => { sh.uniforms.hzCol = { value: scene.fog.color }; sh.uniforms.hzAmt = { value: haze };
       sh.vertexShader = 'attribute float hh;\nvarying float vHh;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvHh = hh;');
       sh.fragmentShader = 'uniform vec3 hzCol;\nuniform float hzAmt;\nvarying float vHh;\n' + sh.fragmentShader.replace('#include <fog_fragment>',
-        'gl_FragColor.rgb = mix(gl_FragColor.rgb, hzCol, mix(1.0, hzAmt, smoothstep(0.0, 0.55, vHh)));'); };
+        'gl_FragColor.rgb = mix(gl_FragColor.rgb, sRGBTransferOETF(vec4(hzCol, 1.0)).rgb, mix(1.0, hzAmt, smoothstep(0.0, 0.55, vHh)));'); }; // haze in the same colour space as the fog on the ground
     m.customProgramCacheKey = () => 'hill'; m.userData.keep = true; return m; }, // shared by every hole: never disposed
   // a background pine: two stacked open cones (no base, no trunk: they're only seen from afar, skirts down to the grass), 7 sides each
   pineGeo: () => { const parts = [new THREE.ConeGeometry(2.3, 3.8, 7, 1, true).translate(0, 1.9, 0), new THREE.ConeGeometry(1.6, 2.8, 7, 1, true).translate(0, 4.6, 0)].map(g => g.toNonIndexed()); // 14 triangles a tree
     const pos = [], nrm = []; for (const g of parts) { pos.push(...g.attributes.position.array); nrm.push(...g.attributes.normal.array); }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); return geo; },
 };
-SCENERY.rings = [ // distance beyond the hole's own extent (m), height range (m), roughness (0 rolling hills, 1 peaks), colour, haze amount
-  { d: 175, h: [18, 40], peak: 0.15, color: 0x2f6a3c, haze: 0.3 },
-  { d: 245, h: [34, 66], peak: 0.45, color: 0x4a7b78, haze: 0.52 },
-  { d: 320, h: [55, 110], peak: 0.9, color: 0x6f8db0, haze: 0.7 },
-].map(r => ({ ...r, mat: SCENERY.hillMat(r.color, r.haze) }));
+// The same backdrop on every course that turns it on with `backdrop` in its world data (courses.js): the shapes are shared,
+// each world only picks the colours (hill rings front to back as [colour, haze amount], and the forest's pine tints).
+SCENERY.rings = [ // distance beyond the hole's own extent (m), height range (m), roughness (0 rolling hills, 1 peaks)
+  { d: 175, h: [18, 40], peak: 0.15 },
+  { d: 245, h: [34, 66], peak: 0.45 },
+  { d: 320, h: [55, 110], peak: 0.9 },
+];
+SCENERY.mats = {}; // per world: one material per ring, made once and shared by every hole
+SCENERY.ringMats = w => SCENERY.mats[w.id] || (SCENERY.mats[w.id] = w.backdrop.hills.map(([c, haze]) => SCENERY.hillMat(c, haze)));
 SCENERY.pine = SCENERY.pineGeo();
 SCENERY.pineMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); SCENERY.pineMat.userData.keep = true;
-function hillRing(R, ring, rnd) {
+function hillRing(R, ring, mat, rnd) {
   const N = 144, pos = [], hh = [], idx = [], ph = [0, 1, 2, 3, 4].map(() => rnd() * 6.28), fq = [2, 3, 5, 9, 14].map(f => f + Math.floor(rnd() * 2));
   for (let i = 0; i <= N; i++) {
     const a = (i / N) * Math.PI * 2;
@@ -1218,14 +1225,15 @@ function hillRing(R, ring, rnd) {
     if (i < N) { const b = i * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('hh', new THREE.Float32BufferAttribute(hh, 1)); g.setIndex(idx);
-  const m = new THREE.Mesh(g, ring.mat); m.frustumCulled = false; m.renderOrder = -1; return m;
+  const m = new THREE.Mesh(g, mat); m.frustumCulled = false; m.renderOrder = -1; return m;
 }
-function buildParkScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, isWater, seed }) {
+function buildScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, isWater, seed }) {
   const rnd = seeded(seed);
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity; for (const p of samples) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minZ = Math.min(minZ, p.y); maxZ = Math.max(maxZ, p.y); }
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2, ext = Math.hypot(maxX - minX, maxZ - minZ) / 2;
   const scen = new THREE.Group(); scen.userData.scenery = true;
-  for (const ring of SCENERY.rings) { const m = hillRing(Math.min(ext + ring.d, 440), ring, rnd); m.position.set(cx, 0, cz); scen.add(m); }
+  const mats = SCENERY.ringMats(WORLD), tints = WORLD.backdrop.pines;
+  SCENERY.rings.forEach((ring, k) => { const m = hillRing(Math.min(ext + ring.d, 440), ring, mats[k], rnd); m.position.set(cx, 0, cz); scen.add(m); });
   // the forest behind the tree walls: from just past the generated border trees out into the haze
   const inner = inBoundsR + 13, outer = inBoundsR + 95, pts = [];
   for (let tries = 0; tries < 2600 && pts.length < 460; tries++) {
@@ -1236,7 +1244,7 @@ function buildParkScenery(group, { samples, inBoundsR, distToPlay, inHull, groun
   if (pts.length) {
     const im = new THREE.InstancedMesh(SCENERY.pine, SCENERY.pineMat, pts.length), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), col = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
     pts.forEach((p, i) => { q.setFromAxisAngle(up, rnd() * 6.28); mtx.compose(ps.set(p.x, groundY(p.x, p.z) - 0.2, p.z), q, sc.set(p.s, p.s * (0.9 + rnd() * 0.35), p.s)); im.setMatrixAt(i, mtx);
-      col.setHex([0x2a6a2e, 0x32773a, 0x24602b, 0x3b7f3a][i % 4]).offsetHSL(0, 0, (rnd() - 0.5) * 0.06); im.setColorAt(i, col); });
+      col.setHex(tints[i % tints.length]).offsetHSL(0, 0, (rnd() - 0.5) * 0.06); im.setColorAt(i, col); });
     im.castShadow = false; im.receiveShadow = false; scen.add(im); scen.userData.forest = pts.length;
   }
   group.add(scen); group.userData.scenery = scen;
@@ -1466,10 +1474,10 @@ function makeHole(data, index) {
     treeViz.push({ list: list.map(o => o.t), trunk, crowns, ghosts, mats0, cols, faded: new Uint8Array(list.length), zero: new THREE.Matrix4().makeScale(0, 0, 0) });
   }
   group.userData.treeViz = treeViz;
-  // Maple Park scenery (looks only: no collision, no shadows, not on the map): a deep forest behind the tree walls fading into
-  // the haze, and three rings of flat cutout hills, each farther ring hazier and bluer, whose feet melt into the fog colour so
-  // there's no hard horizon line. Kept well outside the in-bounds area.
-  if (WORLD.id === 'park') buildParkScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, isWater: (rivers.length || ponds.length) ? isWater : null, seed: 500 + index * 31 });
+  // Backdrop scenery (Maple Park, Riverbend; looks only: no collision, no shadows, not on the map): a deep forest behind the tree
+  // walls fading into the haze, and three rings of flat cutout hills, each farther ring hazier and bluer, whose feet melt into the
+  // fog colour so there's no hard horizon line. Kept well outside the in-bounds area.
+  if (WORLD.backdrop) buildScenery(group, { samples, inBoundsR, distToPlay, inHull, groundY, isWater: (rivers.length || ponds.length) ? isWater : null, seed: 500 + index * 31 });
   // Water, banks, islands, bridges, reeds and rocks
   const rockList = (data.rocks || []).map(r => ({ ...r }));
   if (rivers.length || ponds.length) {
