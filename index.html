@@ -465,9 +465,9 @@ const RIVER_COURSE = {
       { clue: 'logs', at: [-9, -36], face: 0.5, scale: 1.2 },
       { clue: 'nest', at: [-16, -40], face: 0.4, scale: 1.2 },
       { clue: 'waterfall', at: [-10, -33], face: 0.3, scale: 1.1 },
-      { clue: 'bubbles', at: [13.5, -52], track: [[24, 10], [24, -30], [34, -80], [52, -104], [90, -118]] },
+      { clue: 'bubbles', at: [23, -50], track: [[24, 10], [24, -30], [34, -80], [52, -104], [90, -118]] },
       { clue: 'dent', at: [-8, -30], face: -0.6 },
-      { clue: 'silhouette', at: [-11, -89], from: [-30, -89], to: [14, -90] },
+      { clue: 'silhouette', at: [-15.8, -89] },
       { clue: 'island', at: [-10, -124.5], r: 8.5 },
     ],
     reveal: { creature: 'turtle' },
@@ -3179,6 +3179,15 @@ function storyPhotoGrab(src, focus) { const cv = storyPhoto?.querySelector('canv
   const sw = Math.min(src.width, src.height * 0.62 * w / h), sh = sw * h / w, sx = THREE.MathUtils.clamp(fx - sw / 2, 0, src.width - sw), sy = THREE.MathUtils.clamp(fy - sh * 0.55, 0, src.height - sh);
   cv.getContext('2d').drawImage(src, sx, sy, sw, sh, 0, 0, w, h); S.photoTaken = true; }
 function storyPhotoShow(on) { if (storyPhoto) storyPhoto.classList.toggle('hidden', !on); S.photoShown = !!on; }
+// Riverbend turtle 'surface-and-dip': he comes straight up where he is, holds so you notice him, then sinks straight back down.
+// No travel at all, so he never crosses land. k = how far up (0 hidden .. 1 fully up).
+const DIP = { below: 0.6, rise: 1.5, hold: 3.7, sink: 4.5 };
+function dipCycle(t, period) { const c = ((t % period) + period) % period, e = x => x * x * (3 - 2 * x);
+  if (c < DIP.below) return { c, stage: 'below', k: 0 };
+  if (c < DIP.rise) return { c, stage: 'rise', k: e((c - DIP.below) / (DIP.rise - DIP.below)) };
+  if (c < DIP.hold) return { c, stage: 'top', k: 1 };
+  if (c < DIP.sink) return { c, stage: 'sink', k: 1 - e((c - DIP.hold) / (DIP.sink - DIP.hold)) };
+  return { c, stage: 'hidden', k: 0 }; }
 const STORY_CLUES = {
   // ----- Riverbend: the snapping turtle -----
   dock(g) { // a short dock out over the river, a whole boat and one snapped in half
@@ -3212,12 +3221,13 @@ const STORY_CLUES = {
     sm(SG.disk, MAT.water, 2.6, 1, 1.7, 0, 0.08, 1.8, g);
     for (const [x, z] of [[-1.7, 2.2], [1.6, 2.6], [0.2, 3.3]]) { const f = new THREE.Group(); sm(SG.ball, SM.frog, 0.32, 0.22, 0.36, 0, 0.18, 0, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, -0.13, 0.36, 0.2, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, 0.13, 0.36, 0.2, f); f.position.set(x, 0.05, z); f.rotation.y = -0.4; g.add(f); }
   },
-  bubbles(g, c) { // the 'mossy rock' in the river (it's the turtle) + giant bubbles that follow your disc along the river
+  bubbles(g, c) { // the 'mossy rock' out in the river (it's the turtle): it surfaces, holds, sinks straight down; + giant bubbles that follow your disc along the river
     const rock = new THREE.Group(); sm(SG.ball, SM.moss, 2.6, 1.3, 2.2, 0, 0, 0, rock); for (let i = 0; i < 6; i++) sm(SG.lump, SM.mossLight, 0.5, 0.3, 0.5, Math.cos(i) * 1.6, 0.9, Math.sin(i * 1.3) * 1.3, rock);
     g.add(rock); const pool = bubblePool(H.group, 26, 0.7), track = c.track.map(([x, z]) => new THREE.Vector2(x, z)), q = new THREE.Vector2();
-    let last = 0;
+    let last = 0, was = 'hidden';
     const nearest = (x, z) => { let best = 1e9; for (let i = 0; i < track.length - 1; i++) { const a = track[i], b = track[i + 1], dx = b.x - a.x, dz = b.y - a.y, u = THREE.MathUtils.clamp(((x - a.x) * dx + (z - a.y) * dz) / (dx * dx + dz * dz), 0, 1), px = a.x + dx * u, pz = a.y + dz * u, d = (px - x) ** 2 + (pz - z) ** 2; if (d < best) { best = d; q.set(px, pz); } } return q; };
-    return { rock, update: (dt, t) => { pool.update(dt); rock.position.y = Math.sin(t * 0.7) * 0.06;
+    return { rock, update: (dt, t) => { pool.update(dt); const d = dipCycle(t, 9); rock.position.y = -1.9 + 1.9 * d.k; rock.visible = d.k > 0.01;
+      if (d.stage !== was) { if (d.stage === 'rise' || d.stage === 'sink') { const w = g.getWorldPosition(TMP.rp); for (let i = 0; i < 6; i++) { const a = i * 1.05; pool.spawn(w.x + Math.cos(a) * 2.4, 0.1, w.z + Math.sin(a) * 2.1, 1 + Math.random() * 0.5); } } was = d.stage; }
       if (t - last > (S.phase === 'flying' ? 0.12 : 0.6)) { last = t; if (S.phase === 'flying') { const p = nearest(S.pos.x, S.pos.z); pool.spawn(p.x + (Math.random() - 0.5) * 2, 0.1, p.y + (Math.random() - 0.5) * 2, 0.8 + Math.random() * 0.8); }
         else { const w = g.localToWorld(TMP.rp.set(Math.random() * 4 - 2, 0, 2.6)); pool.spawn(w.x, 0.1, w.z, 0.5 + Math.random() * 0.5); } } } };
   },
@@ -3226,12 +3236,22 @@ const STORY_CLUES = {
     for (const sx of [-1, 1]) sm(SG.box, SM.wet, 0.7, 0.02, 9, sx * 1.4, 0.04, -5.5, g);
     for (let i = 0; i < 7; i++) sm(SG.lump, SM.mossLight, 0.28, 0.12, 0.28, Math.sin(i * 2.3) * 1.8, 0.06, -1 - i * 1.3, g);
   },
-  silhouette(g, c) { // a huge dark turtle shape gliding just under the water, back and forth beneath the bridge
+  silhouette(g, c) { // the turtle in open water by the bridge: a dark shape shows, he rises straight up (shell + head), holds, sinks straight down, gone
     const sh = new THREE.Group(); sm(SG.ball, SM.shadowFish, 3.2, 0.05, 3.8, 0, 0, 0, sh); sm(SG.ball, SM.shadowFish, 1, 0.05, 1.2, 0, 0, 4.2, sh);
     for (const [x, z] of [[-3, 2], [3, 2], [-2.4, -2.8], [2.4, -2.8]]) sm(SG.ball, SM.shadowFish, 1.2, 0.05, 0.6, x, 0, z, sh);
-    sh.position.y = 0.09; sh.renderOrder = 3; sh.scale.setScalar(1.25); const [ax, az] = c.from, [bx, bz] = c.to;
-    return { shadow: sh, world: [sh], update: (dt, t) => { const k = (t / 16) % 1, f = k < 0.5 ? k * 2 : 2 - k * 2, dir = k < 0.5 ? 1 : -1;
-      sh.position.x = ax + (bx - ax) * f; sh.position.z = az + (bz - az) * f; sh.rotation.y = Math.atan2(bx - ax, bz - az) * (dir > 0 ? 1 : -1) + (dir > 0 ? 0 : Math.PI); sh.children.slice(2).forEach((m, i) => m.rotation.y = Math.sin(t * 2 + i) * 0.4); } };
+    const face = c.face ?? -Math.PI / 2; // long axis along the river, head away from the bridge, so the whole body stays inside the banks
+    sh.position.set(c.at[0], 0.09, c.at[1]); sh.renderOrder = 3; sh.rotation.y = face; sh.scale.setScalar(0.8);
+    const diver = new THREE.Group(); diver.position.set(c.at[0], -2.6, c.at[1]); diver.rotation.y = face;
+    sm(SG.ball, SM.shell, 2.7, 1.1, 3.1, 0, 0, 0, diver); // shell dome
+    for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28; sm(SG.lump, i % 2 ? SM.moss : SM.mossLight, 0.8, 0.3, 0.7, Math.cos(a) * 1.5, 0.8, Math.sin(a) * 1.7, diver); }
+    const head = makeTurtle(); head.scale.setScalar(0.55); head.position.set(0, 0.25, 2.3); diver.add(head);
+    diver.traverse(o => { if (o.isMesh) o.castShadow = true; }); diver.visible = false;
+    const pool = bubblePool(H.group, 12, 0.7); let was = 'hidden';
+    const st = { shadow: sh, diver, world: [sh, diver], stage: 'hidden', k: 0, update: (dt, t) => { pool.update(dt);
+      const d = dipCycle(t, 9); st.stage = d.stage; st.k = d.k; diver.position.y = -2.6 + 2.6 * d.k; diver.visible = d.k > 0.01; sh.visible = d.stage !== 'hidden';
+      head.userData.head.rotation.y = d.stage === 'top' ? Math.sin((d.c - DIP.rise) * 1.8) * 0.4 : 0; head.userData.jaw.rotation.x = d.stage === 'top' && d.c > 2.4 && d.c < 2.8 ? 0.45 : 0.05; // looks around, snaps once
+      if (d.stage !== was) { if (d.stage === 'rise' || d.stage === 'sink') for (let i = 0; i < 7; i++) { const a = i * 0.9; pool.spawn(c.at[0] + Math.cos(a) * 2.6, 0.1, c.at[1] + Math.sin(a) * 2.6, 1.1 + Math.random() * 0.5); } was = d.stage; } } };
+    return st;
   },
   island(g, c, rnd) { // Turtle Island: moss + palm + rocks on the island green; the island (its shell) slowly breathes; bubbles around the edge
     const R = c.r; g.rotation.y = 0;
@@ -3249,22 +3269,23 @@ const STORY_CLUES = {
     const turtle = makeTurtle(); turtle.visible = false; g.add(turtle);
     const face = Math.atan2(-c.at[0], -c.at[1]); // toward the tee side
     turtle.position.set(Math.sin(face) * (R + 1.2), -2.2, Math.cos(face) * (R + 1.2)); turtle.rotation.y = face;
-    const st = { turtle, R, face, bob, base, breathe: 0, swim: 0 };
+    const st = { turtle, R, face, bob, base, breathe: 0, island: g };
     st.update = (dt, t) => { pool.update(dt); const y = (Math.sin(t * 1.1) * 0.05 + st.breathe); st.y = y;
-      bob.forEach((o, i) => { o.position.y = base[i] + y; }); shellBits.position.y = y; g.position.x = c.at[0] + st.swim * Math.sin(face + Math.PI); g.position.z = c.at[1] + st.swim * Math.cos(face + Math.PI);
-      if (st.swim) bob.forEach(o => { o.position.x = (o.userData.x0 ??= o.position.x) + st.swim * Math.sin(face + Math.PI); o.position.z = (o.userData.z0 ??= o.position.z) + st.swim * Math.cos(face + Math.PI); });
+      bob.forEach((o, i) => { o.position.y = base[i] + y; }); shellBits.position.y = y;
       if (t - last > 0.45) { last = t; const a = Math.random() * 6.28; pool.spawn(g.position.x + Math.cos(a) * (R + 0.6), 0.1, g.position.z + Math.sin(a) * (R + 0.6), 0.6 + Math.random() * 0.6); } };
-    // reveal: rumble + bubbles, the head rises out of the water and looks at you, then the whole island swims off
+    // reveal: rumble + bubbles, the head rises straight out of the water, looks at you and snaps, then sinks straight back down (the island stays where it is)
     st.reveal = {
       update(t, Rv) { const u = turtle.userData, ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
         if (t < 1.1) { Rv.stage = 'rumble'; shakeCamera(0.12, 0.3); st.breathe = Math.sin(t * 25) * 0.08; if (Math.random() < 0.5) { const a = Math.random() * 6.28; pool.spawn(g.position.x + Math.cos(a) * (R + 0.5), 0.1, g.position.z + Math.sin(a) * (R + 0.5), 1.2); } }
         else if (t < 2.1) { Rv.stage = 'rise'; st.breathe = 0; turtle.visible = true; turtle.position.y = -2.2 + 3.1 * ease((t - 1.1) / 0.8); u.neck.rotation.x = -0.35 * ease((t - 1.1) / 0.9); shakeCamera(0.2, 0.3); if (!Rv.splash) { Rv.splash = true; const w = turtle.getWorldPosition(TMP.rp); spawnSplash(w.x, w.z); } }
         else if (t < 4.3) { Rv.stage = 'look'; const k = t - 2.1; u.head.rotation.y = Math.sin(k * 1.6) * 0.35 * Math.max(0, 1 - k / 2.2); u.jaw.rotation.x = k > 1.2 && k < 1.7 ? 0.45 : 0.05; // snap!
           if (!Rv.shown) { Rv.shown = true; shakeCamera(0.4, 1.2); } }
-        else if (t < 6.0) { Rv.stage = 'swim'; const k = ease((t - 4.3) / 1.7); st.swim = k * 14; st.breathe = -k * 0.6; u.flips.forEach((f, i) => f.rotation.y = Math.sin(t * 6 + i * 3) * 0.5); turtle.rotation.y = face + Math.PI * k; }
+        else if (t < 5.3) { Rv.stage = 'sink'; const k = ease((t - 4.3) / 0.9); turtle.position.y = 0.9 - 3.1 * k; u.neck.rotation.x = -0.35 * (1 - k); u.head.rotation.y = 0; u.jaw.rotation.x = 0.05;
+          if (!Rv.sunk) { Rv.sunk = true; const w = turtle.getWorldPosition(TMP.rp); for (let i = 0; i < 8; i++) { const a = i * 0.8; pool.spawn(w.x + Math.cos(a) * 1.6, 0.1, w.z + Math.sin(a) * 1.6, 1.2); } } }
+        else if (t < 6.0) { Rv.stage = 'gone'; turtle.visible = false; turtle.position.y = -2.2; }
         else return true;
         return false; },
-      finish() { turtle.visible = true; turtle.position.y = 0.9; },
+      finish() { turtle.visible = false; turtle.position.y = -2.2; },
       cam() { const w = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 10), 3.2, Math.cos(face) * (R + 10))).add(new THREE.Vector3(Math.cos(face) * 6, 0, -Math.sin(face) * 6)), look = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 1), 1.4, Math.cos(face) * (R + 1))); return { pos: w, look }; },
     };
     return st;
@@ -4008,8 +4029,9 @@ window.__game = {
     wheel: b.wheel ? +b.wheel.rotation.x.toFixed(2) : null, beep: b.beep ? b.beep.visible : null, lifted: +(b.lifted || 0).toFixed(2), saucer: b.saucer ? { visible: b.saucer.visible, y: +b.saucer.position.y.toFixed(1) } : null,
     beam: +SM.beam.opacity.toFixed(2), discLift: S.discLift || 0, discHidden: !!S.discHidden, basketPhysY: H.basket.y, gravity: GRAV.k, rangeK: GRAV.range, stars: scene.userData.sky.material.uniforms.stars.value, earth: scene.userData.earth.visible,
     basketVis: (() => { const bg = H.group.children.find(o => o.userData.basketGroup); return bg ? { y: +bg.position.y.toFixed(2), visible: bg.visible } : null; })() }; },
-  storyShadow: () => { const sh = H.story?.built?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2) } : null; },
-  storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
+  storyShadow: () => { const b = H.story?.built, sh = b?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2), turtle: !!b.diver?.visible, y: b.diver ? +b.diver.position.y.toFixed(2) : null, tx: b.diver ? +b.diver.position.x.toFixed(2) : null, tz: b.diver ? +b.diver.position.z.toFixed(2) : null, stage: b.stage, k: +(b.k || 0).toFixed(2), foot: b.diver ? (() => { const y = b.diver.position.y, v = b.diver.visible; b.diver.position.y = 0; b.diver.visible = true; const bx = new THREE.Box3().setFromObject(b.diver).union(new THREE.Box3().setFromObject(sh)); b.diver.position.y = y; b.diver.visible = v; return [bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2)); })() : null } : null; },
+  storyRock: () => { const b = H.story?.built, r = b?.rock; if (!r) return null; const w = r.getWorldPosition(new THREE.Vector3()); return { visible: r.visible, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2) }; },
+  storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, headY: +b.turtle.position.y.toFixed(2), island: b.island ? [+b.island.position.x.toFixed(2), +b.island.position.z.toFixed(2)] : null, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
   treeFade: () => { const v = H.group.userData.treeViz || []; return { trees: v.reduce((n, g) => n + g.list.length, 0), faded: v.reduce((n, g) => n + g.faded.reduce((a, b) => a + b, 0), 0), styles: v.map(g => g.list.length) }; },
   viewStory: (d = 6, h = 2.2, side = 0) => { if (!d) { S.viewProp = null; return; } const g = H.story?.group; if (!g) return null; const p = g.getWorldPosition(new THREE.Vector3()), t = H.tee;
     const dir = new THREE.Vector3(t.x - p.x, 0, t.z - p.z).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), side); S.viewProp = { pos: p.clone().addScaledVector(dir, d).setY(p.y + h), look: p.clone().setY(p.y + 1) }; return { x: p.x, z: p.z }; },
