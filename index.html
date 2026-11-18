@@ -3562,19 +3562,64 @@ SM.mudRim = layered(new THREE.MeshBasicMaterial({ color: 0x6b4c30, transparent: 
 const splatGeo = (seed) => { const g = new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2), p = g.attributes.position;
   for (let i = 1; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), a = Math.atan2(z, x), k = 0.86 + 0.22 * DETAIL.noise(Math.cos(a) * 1.6 + seed, Math.sin(a) * 1.6, seed); p.setXYZ(i, x * k, 0, z * k); } return g; };
 // A low-poly polar bear (≈3.4 m long, 2.3 m tall). torso pivots at the hips so it can rear up; jaw opens for the roar.
-function makeBear(mat = SM.bear, dark = SM.bearDark, mouth = SM.bearMouth) {
+// ----- Monster kit: each moving part is ONE merged mesh with vertex colours (nose, claws, eyes, mouth are just darker vertices), so a whole
+// creature is a handful of draw calls. Fur and skin shading come from a strand / scale texture plus a soft belly-shadow baked into the colours.
+const strandTex = (seed, base, light, dark, n = 2600, len = [3, 7], ang = 0.35) => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), r = seeded(seed);
+  x.fillStyle = base; x.fillRect(0, 0, 128, 128); x.lineCap = 'round';
+  for (let i = 0; i < n; i++) { const px = r() * 128, py = r() * 128, l = len[0] + r() * (len[1] - len[0]), a = Math.PI / 2 + (r() - 0.5) * ang * 2; x.strokeStyle = r() < 0.6 ? light : dark; x.lineWidth = 0.8 + r() * 0.9;
+    for (const ox of [-128, 0, 128]) for (const oy of [-128, 0, 128]) { x.beginPath(); x.moveTo(px + ox, py + oy); x.lineTo(px + ox + Math.cos(a) * l, py + oy + Math.sin(a) * l); x.stroke(); } }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; };
+const scaleTex = (seed, base, edge) => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), r = seeded(seed); x.fillStyle = base; x.fillRect(0, 0, 128, 128);
+  for (let row = 0; row < 18; row++) for (let k = 0; k < 18; k++) { const px = k * 8 + (row % 2) * 4, py = row * 8, rr = 3.2 + r() * 1.6; x.strokeStyle = edge; x.lineWidth = 1; x.fillStyle = `rgba(255,255,230,${0.05 + r() * 0.12})`;
+    x.beginPath(); x.arc(px, py, rr, 0, Math.PI * 2); x.fill(); x.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; };
+const FUR_TEX = strandTex(5150, '#f3efe6', 'rgba(255,255,252,0.6)', 'rgba(186,178,162,0.3)'); FUR_TEX.repeat.set(4, 3);
+const SKIN_TEX = scaleTex(6262, '#c9c7b0', 'rgba(40,46,28,0.45)'); SKIN_TEX.repeat.set(5, 4);
+// an ellipsoid blob (scale, then rotate, then move); C = cone, Y = cylinder
+const E_ = (r, sx, sy, sz, x, y, z, rx = 0, ry = 0, rz = 0, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h).scale(sx, sy, sz).rotateX(rx).rotateY(ry).rotateZ(rz).translate(x, y, z);
+const C_ = (r, h, x, y, z, rx = 0, ry = 0, rz = 0, seg = 6) => new THREE.ConeGeometry(r, h, seg).rotateX(rx).rotateY(ry).rotateZ(rz).translate(x, y, z);
+const Y_ = (r0, r1, h, x, y, z, rx = 0, seg = 12) => new THREE.CylinderGeometry(r0, r1, h, seg, 2).rotateX(rx).translate(x, y, z);
+// parts: [geometry, colour, { lump, freq, ao }]; ao darkens faces that point down (belly / under the chin), so the shape reads in flat light
+function partGeo(parts) {
+  const out = parts.map(([g, col, o = {}]) => { if (o.lump) DETAIL.lumpy(g, o.lump, o.freq || 3, { seed: o.seed || 0 }); else g.computeVertexNormals(); const q = g.index ? g.toNonIndexed() : g; // smooth normals before un-indexing
+    const n = q.attributes.normal, cc = new THREE.Color(col), arr = new Float32Array(n.count * 3), ao = o.ao ?? 0.32;
+    for (let i = 0; i < n.count; i++) { const k = 1 - ao * Math.max(0, -n.getY(i)) - ao * 0.25 * (1 - Math.abs(n.getY(i))); arr[i * 3] = cc.r * k; arr[i * 3 + 1] = cc.g * k; arr[i * 3 + 2] = cc.b * k; }
+    q.setAttribute('color', new THREE.BufferAttribute(arr, 3)); return q; });
+  return mergeKeep(out);
+}
+const partMesh = (parts, mat, parent, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(partGeo(parts), mat); m.position.set(x, y, z); m.castShadow = mat !== SM.silhouette; parent?.add(m); return m; };
+Object.assign(SM, {
+  bearFur: new THREE.MeshLambertMaterial({ map: FUR_TEX, vertexColors: true, emissive: 0x2c2a28 }), // fur strands + baked belly shade
+  bearFurFade: new THREE.MeshLambertMaterial({ map: FUR_TEX, vertexColors: true, emissive: 0x2c2a28, transparent: true }), // hole 8: the same bear, fading in and out at the ends of the cliff
+  turtleWet: new THREE.MeshPhongMaterial({ map: SKIN_TEX, vertexColors: true, specular: 0x5a6a62, shininess: 40 }), // scaly skin with a wet shine
+  shellWet: new THREE.MeshPhongMaterial({ map: SKIN_TEX, vertexColors: true, specular: 0x2a3228, shininess: 18 }), // matte horn, a faint wet sheen
+});
+// Polar bear (faces +z; ~2.4 m at the shoulder at scale 1): long neck, small head and ears, long muzzle, heavy shoulders, big furry paws with
+// black claws. Legs have a knee, so walk(phase) gives a real four-beat walk: the paw lifts and swings, the shoulders roll, the head bobs.
+function makeBear(mat = SM.bearFur) {
+  const W = 0xfbf8f0, Wb = 0xe8dfcc, K = 0x161514, PINK = 0x7a2434, T = 0xf8f6ee, lp = { lump: 0.04, freq: 4 };
   const g = new THREE.Group(), torso = new THREE.Group(); torso.position.set(0, 1.25, -0.9); g.add(torso);
-  const S_ = (r, sx, sy, sz, m, x, y, z) => { const o = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 9), m); o.scale.set(sx, sy, sz); o.position.set(x, y, z); return o; };
-  torso.add(S_(1, 0.95, 0.85, 1.45, mat, 0, 0.2, 1.0), S_(0.8, 0.95, 0.8, 1, mat, 0, 0.45, 1.8)); // body + shoulder hump
-  const head = new THREE.Group(); head.position.set(0, 0.55, 2.55); torso.add(head);
-  head.add(S_(0.55, 1, 0.9, 1.1, mat, 0, 0, 0), S_(0.32, 0.9, 0.75, 1.3, mat, 0, -0.1, 0.55), S_(0.09, 1.3, 1, 1, dark, 0, -0.02, 0.93),
-    S_(0.06, 1, 1, 1, dark, -0.24, 0.17, 0.42), S_(0.06, 1, 1, 1, dark, 0.24, 0.17, 0.42), S_(0.15, 1, 1, 0.6, mat, -0.36, 0.45, -0.05), S_(0.15, 1, 1, 0.6, mat, 0.36, 0.45, -0.05));
-  const jaw = new THREE.Group(); jaw.position.set(0, -0.25, 0.25); head.add(jaw);
-  jaw.add(S_(0.24, 0.95, 0.4, 1.3, mat, 0, -0.04, 0.3)); const mouthIn = S_(0.2, 0.9, 0.5, 1.1, mouth, 0, 0.06, 0.3); jaw.add(mouthIn);
-  const leg = (x, z, parent, y0) => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 1.3, 8).translate(0, -0.65, 0), mat); l.position.set(x, y0, z); parent.add(l); return l; };
-  const front = [leg(-0.55, 1.75, torso, 0), leg(0.55, 1.75, torso, 0)], back = [leg(-0.55, -0.5, g, 1.3), leg(0.55, -0.5, g, 1.3)]; // hind legs under the hip pivot so they stay attached when it rears
-  g.traverse(o => { if (o.isMesh) o.castShadow = mat !== SM.silhouette; });
-  g.userData = { torso, head, jaw, front, back }; return g;
+  partMesh([[E_(0.86, 1, 0.98, 1, 0, 0.12, 0.05), W, lp], [E_(1, 0.92, 0.86, 1.5, 0, 0.16, 1.0), W, lp], [E_(0.84, 0.96, 0.95, 1.0, 0, 0.3, 1.85), W, lp], // rump, barrel, shoulders
+    [E_(0.62, 1.25, 0.45, 2.1, 0, -0.42, 1.0), Wb, { lump: 0.06, freq: 5 }], [E_(0.5, 0.88, 0.85, 1.45, 0, 0.5, 2.45, -0.3), W, lp], [E_(0.12, 1, 0.9, 0.8, 0, 0.45, -0.72), W]], mat, torso); // belly fur, neck, stubby tail
+  const head = new THREE.Group(); head.position.set(0, 0.68, 3.0); torso.add(head);
+  partMesh([[E_(0.44, 1, 0.88, 1.15, 0, 0, 0), W, lp], [E_(0.3, 1.5, 0.45, 0.9, 0, 0.2, 0.2), W], [E_(0.27, 0.92, 0.76, 1.55, 0, -0.12, 0.52), W],
+    [E_(0.1, 1.3, 0.85, 0.9, 0, -0.03, 0.93), K, { ao: 0 }], [E_(0.055, 1, 1, 1, -0.2, 0.1, 0.4), K, { ao: 0 }], [E_(0.055, 1, 1, 1, 0.2, 0.1, 0.4), K, { ao: 0 }],
+    [E_(0.12, 1, 1, 0.55, -0.3, 0.36, -0.08), W], [E_(0.12, 1, 1, 0.55, 0.3, 0.36, -0.08), W], [E_(0.07, 1, 1, 0.4, -0.3, 0.37, -0.03), 0x9a8f84], [E_(0.07, 1, 1, 0.4, 0.3, 0.37, -0.03), 0x9a8f84]], mat, head);
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.24, 0.25); head.add(jaw);
+  partMesh([[E_(0.2, 0.95, 0.42, 1.6, 0, -0.04, 0.38), W], [E_(0.17, 0.85, 0.45, 1.3, 0, 0.05, 0.36), PINK, { ao: 0 }],
+    ...[-0.13, -0.07, 0.07, 0.13].map(x => [C_(0.025, 0.09, x, 0.12, Math.abs(x) > 0.1 ? 0.5 : 0.6), T, { ao: 0 }])], mat, jaw);
+  const leg = (x, y, z, parent, hind) => { const up = new THREE.Group(); up.position.set(x, y, z); parent.add(up);
+    partMesh(hind ? [[E_(0.46, 1, 1.25, 1.15, 0, -0.18, 0), W, lp], [E_(0.3, 1, 1.1, 1, 0, -0.5, 0), W]] : [[E_(0.36, 1, 1.5, 1.05, 0, -0.28, 0), W, lp]], mat, up);
+    const lo = new THREE.Group(); lo.position.set(0, -0.62, 0); up.add(lo);
+    partMesh([[Y_(0.25, 0.27, 0.6, 0, -0.28, 0), W, lp], [E_(0.31, 1, 0.46, 1.3, 0, -0.56, 0.12), W, lp], [E_(0.22, 1.2, 0.3, 1.2, 0, -0.68, 0.08), Wb],
+      ...[-0.17, -0.06, 0.06, 0.17].map(cx => [C_(0.035, 0.16, cx, -0.62, 0.5, Math.PI / 2 + 0.35), K, { ao: 0 }])], mat, lo);
+    return [up, lo]; };
+  const F = [leg(-0.55, 0, 1.75, torso), leg(0.55, 0, 1.75, torso)], B = [leg(-0.55, 1.3, -0.5, g, true), leg(0.55, 1.3, -0.5, g, true)]; // hind legs under the hip pivot so they stay attached when it rears
+  const front = F.map(q => q[0]), back = B.map(q => q[0]), knees = [...F, ...B].map(q => q[1]), y0 = torso.position.y;
+  const walk = (p, a = 1) => { [[front[0], 0], [front[1], Math.PI], [back[0], Math.PI * 1.5], [back[1], Math.PI * 0.5]].forEach(([up, o], i) => {
+      const sn = Math.sin(p + o), cs = Math.cos(p + o); up.rotation.x = sn * 0.42 * a; knees[i].rotation.x = Math.max(0, -cs) * (i < 2 ? 0.95 : 0.75) * a; }); // the paw lifts while it swings forward
+    torso.position.y = y0 + Math.abs(Math.sin(p)) * 0.05 * a; torso.rotation.z = Math.sin(p) * 0.04 * a; head.rotation.x = Math.sin(p * 2) * 0.05 * a; head.rotation.y = Math.sin(p) * 0.07 * a; };
+  g.userData = { torso, head, jaw, front, back, knees, walk }; return g;
 }
 // Riverbend story: shared materials and shapes (built once), a low-poly snapping turtle, a text-bubble sprite
 Object.assign(SM, {
@@ -3629,16 +3674,52 @@ function textSprite(text, w = 6, bg = 'rgba(20,40,30,0.78)', fg = '#e8ffe0') { /
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); sp.scale.set(w, w / 4, 1); sp.userData.text = text; return sp;
 }
 // Snapping turtle head + neck + front flippers (the island is its shell). Faces +z, hidden under the water until the reveal.
+// Wet scaly skin (scale texture + shine), a wrinkled neck with knobbly tubercles, a hooked beak over a pink-mouthed snapping jaw,
+// amber eyes with black slit pupils and a glint, flippers with plate scales and claws. One merged mesh per moving part.
 function makeTurtle() {
-  const g = new THREE.Group(), neck = new THREE.Group(); g.add(neck);
-  sm(SG.ball, SM.turtle, 0.75, 0.7, 1.4, 0, 0, 0.6, neck);
+  const SK = 0x6f7f45, SKd = 0x56633a, BE = 0xb8a66a, BK = 0x3e3424, PK = 0xc46a6a, AM = 0xd8a42a, K = 0x0d0d0b, Wt = 0xffffff, lp = { lump: 0.05, freq: 3.5 };
+  const g = new THREE.Group(), neck = new THREE.Group(), mat = SM.turtleWet; g.add(neck);
+  const nk = [[E_(0.75, 1, 0.92, 1.45, 0, 0, 0.6), SK, { lump: 0.07, freq: 5 }]]; // neck: wrinkle folds and pointed tubercles along the top
+  for (let k = 0; k < 5; k++) nk.push([E_(0.7, 1.02, 0.86, 0.22, 0, 0.02, -0.2 + k * 0.36), k % 2 ? SKd : SK, { lump: 0.05, freq: 6 }]); // skin folds (inside the neck outline)
+  for (let k = 0; k < 7; k++) for (const sx of [-1, 0, 1]) nk.push([C_(0.08, 0.22, sx * 0.32, 0.6 - Math.abs(sx) * 0.08, -0.4 + k * 0.32, sx * -0.3, 0, sx * -0.4, 5), SKd]);
+  nk.push([E_(0.6, 1.1, 0.45, 1.6, 0, -0.42, 0.7), BE, { ao: 0.2 }]); // pale throat
+  partMesh(nk, mat, neck);
   const head = new THREE.Group(); head.position.set(0, 0.35, 1.9); neck.add(head);
-  sm(SG.ball, SM.turtle, 1.0, 0.85, 1.15, 0, 0, 0, head); sm(SG.lump, SM.beak, 0.55, 0.42, 0.6, 0, -0.18, 1.0, head); // head + hooked beak
-  const jaw = new THREE.Group(); jaw.position.set(0, -0.35, 0.3); head.add(jaw); sm(SG.ball, SM.turtleBelly, 0.75, 0.3, 0.85, 0, -0.05, 0.25, jaw);
-  for (const sx of [-1, 1]) { sm(SG.ball, SM.eyeW, 0.27, 0.27, 0.27, sx * 0.55, 0.38, 0.55, head); sm(SG.ball, SM.eyeB, 0.14, 0.14, 0.14, sx * 0.6, 0.42, 0.75, head); }
-  const flips = [-1, 1].map(sx => sm(SG.ball, SM.turtle, 1.5, 0.25, 0.7, sx * 2.6, -0.4, -0.6, g));
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const hd = [[E_(1.0, 1, 0.82, 1.12, 0, 0, 0), SK, { lump: 0.06, freq: 3 }], [E_(0.7, 1.2, 0.55, 0.9, 0, 0.32, -0.15), SKd, lp], // skull + heavy brow
+    [E_(0.5, 1.05, 0.8, 1.05, 0, -0.08, 0.78), SK], [C_(0.32, 0.5, 0, -0.32, 1.22, Math.PI * 0.62, 0, 0, 8), BK, { ao: 0.1 }], [E_(0.36, 1.25, 0.6, 0.9, 0, -0.12, 1.0), BK, { ao: 0.1 }], // snout + hooked beak
+    [E_(0.05, 1, 1, 1, -0.16, 0.18, 1.23), K, { ao: 0 }], [E_(0.05, 1, 1, 1, 0.16, 0.18, 1.23), K, { ao: 0 }]]; // nostrils
+  for (const sx of [-1, 1]) { hd.push([E_(0.3, 1, 1, 0.8, sx * 0.6, 0.36, 0.5), SKd], [E_(0.24, 1, 1, 0.7, sx * 0.66, 0.4, 0.62), AM, { ao: 0 }], // eye socket, amber eye
+    [E_(0.06, 0.6, 2.2, 0.6, sx * 0.72, 0.42, 0.78), K, { ao: 0 }], [E_(0.045, 1, 1, 1, sx * 0.74, 0.52, 0.8), Wt, { ao: 0 }]); // slit pupil + glint
+    for (let k = 0; k < 4; k++) hd.push([E_(0.13, 1, 0.6, 1, sx * (0.85 - k * 0.05), -0.05 - k * 0.12, 0.1 - k * 0.12), SKd]); } // cheek scales
+  partMesh(hd, mat, head);
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.35, 0.3); head.add(jaw);
+  partMesh([[E_(0.75, 1, 0.32, 1.15, 0, -0.05, 0.3), BE, { ao: 0.15 }], [E_(0.62, 0.95, 0.24, 1.05, 0, 0.08, 0.3), PK, { ao: 0 }], [E_(0.25, 0.9, 0.3, 1, 0, 0.12, 0.4), 0xd88a8a, { ao: 0 }], // jaw, pink mouth, tongue
+    [C_(0.18, 0.3, 0, 0.0, 1.08, Math.PI * 0.45, 0, Math.PI, 8), BK, { ao: 0 }]], mat, jaw); // lower beak tip
+  const flip = sx => { const parts = [[E_(1, 1.5, 0.25, 0.7, 0, 0, 0, 0, sx * 0.25), SK, { lump: 0.04, freq: 3 }], [E_(1, 1.25, 0.18, 0.5, sx * 0.25, -0.06, 0.12, 0, sx * 0.25), BE, { ao: 0.1 }]];
+    for (let k = 0; k < 5; k++) parts.push([E_(0.22, 1.1, 0.35, 0.9, sx * (-0.7 + k * 0.38), 0.18, 0.05 - Math.abs(k - 2) * 0.06), SKd]);
+    for (let k = 0; k < 3; k++) parts.push([C_(0.06, 0.28, sx * (1.0 + k * 0.08), -0.02, 0.35 - k * 0.22, Math.PI / 2, 0, 0, 5), 0xe6dcc0, { ao: 0 }]);
+    const m = partMesh(parts, mat, g, sx * 2.6, -0.4, -0.6); return m; };
+  const flips = [flip(-1), flip(1)];
   g.userData = { neck, head, jaw, flips }; return g;
+}
+// The diving turtle's whole shell (hole 3 silhouette): a domed carapace with raised scute plates in rows (vertebral, costal, marginal), three keels,
+// growth rings at the plate edges, a serrated back rim, moss and algae patches, four flippers and a tail. Static: one mesh.
+function makeShell(a = 2.7, b = 1.1, c = 3.1) {
+  const SH = 0x5a5a34, SHl = 0x76703e, SHd = 0x2e3018, MO = 0x5f8a2c, parts = [[E_(1, a, b, c, 0, 0, 0, 0, 0, 0, 24, 16), SHd, { lump: 0.04, freq: 2 }], [E_(1, a * 0.96, 0.35, c * 0.96, 0, -0.2, 0), 0xa8965a]];
+  const on = (th, ph) => { const x = a * Math.cos(ph) * Math.sin(th), y = b * Math.sin(ph), z = c * Math.cos(ph) * Math.cos(th); const n = new THREE.Vector3(x / (a * a), y / (b * b), z / (c * c)).normalize(); return [new THREE.Vector3(x, y, z), n]; };
+  const plate = (th, ph, w, l, col, keel) => { const [p, n] = on(th, ph), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n), m = new THREE.Matrix4().compose(p, q, new THREE.Vector3(1, 1, 1));
+    const rnd = (th * 13.1 + ph * 7.7) % 1, cc = new THREE.Color(col).lerp(new THREE.Color(SHl), Math.abs(rnd) * 0.5).getHex();
+    parts.push([new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(w, 0.3, l).applyMatrix4(m), cc, { ao: 0.15, lump: 0.03, freq: 5 }]); // the plate
+    parts.push([new THREE.TorusGeometry(1, 0.05, 4, 14).rotateX(Math.PI / 2).scale(w * 0.98, 1, l * 0.98).translate(0, 0.02, 0).applyMatrix4(m), SHd, { ao: 0 }]); // dark growth-ring seam
+    if (keel) parts.push([E_(0.12, 1, 1.6, 4.5, 0, 0.12, 0).applyMatrix4(m), SHd]); };
+  for (const [th, ph] of [[0, 0.78], [0, 1.08], [0, 1.5], [Math.PI, 1.08], [Math.PI, 0.78]]) plate(th, ph, 0.62, 0.6, SH, true); // vertebral row with the centre keel
+  for (const sx of [-1, 1]) for (let k = 0; k < 4; k++) plate(sx * (0.55 + k * 0.68), 0.62, 0.58, 0.62, SH, k > 0 && k < 3); // costals down each side
+  for (let k = 0; k < 24; k++) { const th = k / 24 * Math.PI * 2, [p] = on(th, 0.12), back = Math.cos(th) < -0.4; // marginals, serrated at the back
+    parts.push([E_(0.42, 1, 0.28, 0.7, p.x, p.y, p.z, 0, th, 0), k % 2 ? SH : SHl, { ao: 0.2 }]); if (back) parts.push([C_(0.22, 0.6, p.x * 1.08, p.y - 0.05, p.z * 1.08, Math.PI / 2, th, 0, 4), SHd]); }
+  for (let k = 0; k < 9; k++) { const th = (k * 2.39) % 6.28, ph = 0.4 + (k % 4) * 0.22, [p, n] = on(th, ph); parts.push([E_(0.35 + (k % 3) * 0.12, 1.3, 0.25, 1, p.x + n.x * 0.12, p.y + n.y * 0.12, p.z + n.z * 0.12), MO, { lump: 0.08, freq: 6 }]); } // moss
+  for (const [x, z, s] of [[-2.4, 1.6, 1], [2.4, 1.6, 1], [-2.1, -2.3, 0.75], [2.1, -2.3, 0.75]]) parts.push([E_(1, 1.4 * s, 0.22, 0.6 * s, x, -0.25, z, 0, Math.sign(x) * (z > 0 ? -0.4 : 0.5)), 0x6f7f45, { lump: 0.04 }]);
+  parts.push([C_(0.32, 1.0, 0, -0.15, -3.2, -Math.PI / 2, 0, 0, 6), 0x6f7f45]); // tail (short: the whole turtle stays inside the river)
+  return partMesh(parts, SM.shellWet);
 }
 // a pooled set of bubbles (no per-frame allocation): spawn() reuses the oldest
 function bubblePool(parent, n, size = 1) {
@@ -3892,8 +3973,7 @@ const STORY_CLUES = {
     const face = c.face ?? -Math.PI / 2; // long axis along the river, head away from the bridge, so the whole body stays inside the banks
     sh.position.set(c.at[0], 0.09, c.at[1]); sh.renderOrder = 3; sh.rotation.y = face; sh.scale.setScalar(0.8);
     const diver = new THREE.Group(); diver.position.set(c.at[0], -2.6, c.at[1]); diver.rotation.y = face;
-    sm(SG.ball, SM.shell, 2.7, 1.1, 3.1, 0, 0, 0, diver); // shell dome
-    for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28; sm(SG.lump, i % 2 ? SM.moss : SM.mossLight, 0.8, 0.3, 0.7, Math.cos(a) * 1.5, 0.8, Math.sin(a) * 1.7, diver); }
+    diver.add(makeShell()).children.at(-1).scale.setScalar(0.85); // the whole shell: scute plates, keels, serrated rim, moss, flippers, tail
     const head = makeTurtle(); head.scale.setScalar(0.55); head.position.set(0, 0.25, 2.3); diver.add(head);
     diver.traverse(o => { if (o.isMesh) o.castShadow = true; }); diver.visible = false;
     const pool = bubblePool(H.group, 12, 0.7); let was = 'hidden';
@@ -4197,12 +4277,11 @@ const STORY_CLUES = {
   shadow(g, c) {
     const [x0, z0] = c.at, [x1, z1] = c.to, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, len = Math.hypot(x1 - x0, z1 - z0) + 14, gy = H.groundY(mx, mz);
     const ridge = snowRidge(x0, z0, x1, z1); void mx; void mz; void len; void gy; // a natural snow ridge the bear walks along (decoration: no collision, as before)
-    const bear = makeBear(SM.silhouette, SM.silhouette, SM.silhouette); bear.scale.setScalar(1.7); bear.visible = false;
+    const bear = makeBear(SM.bearFurFade); bear.scale.setScalar(1.7); bear.visible = false; // the real bear (fur, walk cycle) on the cliff top
     const st = { world: [ridge, bear], bear, everShown: false };
     st.update = (dt, t) => { const k = t % 30, f = (k - 2) / 12; const vis = f > 0 && f < 1; bear.visible = vis; if (!vis) return; st.everShown = true;
-      const x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; bear.position.set(x, ridge.userData.crestY(f) - 0.15, z); bear.rotation.y = Math.atan2(x1 - x0, z1 - z0); // feet on the crest
-      SM.silhouette.opacity = Math.min(1, f * 8, (1 - f) * 6); const sw = Math.sin(k * 6) * 0.35, u = bear.userData;
-      u.front[0].rotation.x = sw; u.front[1].rotation.x = -sw; u.back[0].rotation.x = -sw; u.back[1].rotation.x = sw; };
+      const x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; bear.position.set(x, ridge.userData.crestY(f) + 0.2, z); bear.rotation.y = Math.atan2(x1 - x0, z1 - z0); // feet on the crest
+      SM.bearFurFade.opacity = Math.min(1, f * 8, (1 - f) * 6); SM.bearFurFade.depthWrite = SM.bearFurFade.opacity > 0.98; bear.userData.walk(k * 5.2); };
     return st;
   },
   cave(g) {
@@ -4395,9 +4474,9 @@ function updateStory(dt) {
   const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
   if (t < 1.3) { R.stage = 'rumble'; shakeCamera(0.12, 0.3); if (!R.dust) { R.dust = true; const p = g.localToWorld(new THREE.Vector3(0, 0, 0)); dumpSnow(p.x, p.z, p.y + 4.4); } }
   else if (t < 2.4) { R.stage = 'burst'; b.visible = true; b.position.z = Z0 + (Z1 - Z0) * ease((t - 1.3) / 0.7); shakeCamera(0.3, 0.3);
-    const sw = Math.sin(t * 22) * 0.5; u.front[0].rotation.x = sw; u.front[1].rotation.x = -sw; u.back[0].rotation.x = -sw; u.back[1].rotation.x = sw;
+    u.walk(t * 16, 1.3); // charging out of the cave
     if (!R.puff) { R.puff = true; const p = g.localToWorld(new THREE.Vector3(0, 0, st.built.mouthZ)); spawnPuff(p.x, p.z); spawnPuff(p.x + 1, p.z + 0.5); } }
-  else if (t < 4.8) { R.stage = 'roar'; b.position.z = Z1; for (const l of [...u.front, ...u.back]) l.rotation.x *= 0.8; const k = ease((t - 2.4) / 0.5);
+  else if (t < 4.8) { R.stage = 'roar'; b.position.z = Z1; for (const l of [...u.front, ...u.back]) l.rotation.x *= 0.8; u.torso.rotation.z *= 0.8; u.head.rotation.y *= 0.8; const k = ease((t - 2.4) / 0.5); u.knees[2].rotation.x *= 0.8; u.knees[3].rotation.x *= 0.8; u.knees[0].rotation.x = u.knees[1].rotation.x = 0.7 * k; // rears up, front paws hanging
     u.torso.rotation.x = -0.85 * k; u.jaw.rotation.x = 0.75 * k; u.head.rotation.x = -0.25 * k + Math.sin(t * 30) * 0.03 * k; u.front[0].rotation.x = u.front[1].rotation.x = -0.9 * k;
     if (!R.roared) { R.roared = true; shakeCamera(0.55, 1.8); } }
   else if (t < 6.2) { R.stage = 'settle'; const k = ease((t - 4.8) / 0.8); u.torso.rotation.x = -0.85 * (1 - k) - 0.2 * k; u.jaw.rotation.x = 0.75 * (1 - k) + 0.3 * k; u.head.rotation.x = 0; u.front[0].rotation.x = u.front[1].rotation.x = -0.9 * (1 - k); }

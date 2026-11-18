@@ -82,7 +82,7 @@ await g(() => { window.__game.loadHole(7); window.__game.holeTime(8); }); await 
 await g(() => window.__game.loadHole(3)); await page.waitForTimeout(400); const pr = await g(() => window.__game.storyProps());
 check('paw_prints_trail_in_snow', pr.prints && pr.prints.n > 5 && pr.prints.inScene === pr.prints.n && pr.prints.parts >= 2 && pr.prints.tris >= 120 && pr.prints.onGround, JSON.stringify(pr.prints || null)); // pad + 4 toes (merged into one mesh) + snow rim, all laid on the snow
 check('claws_carved_into_ice', cl.claws && cl.claws.gouges === 8 && cl.claws.carved > 100 && cl.claws.boxes === 0, JSON.stringify(cl));
-check('bear_walks_ridge_crest', rg.ridge && rg.ridge.boxes === 0 && rg.ridge.bearY != null && Math.abs(rg.ridge.bearY + 0.15 - rg.ridge.crestAtBear) < 0.05, JSON.stringify(rg));
+check('bear_walks_ridge_crest', rg.ridge && rg.ridge.boxes === 0 && rg.ridge.bearY != null && Math.abs(rg.ridge.bearY - 0.2 - rg.ridge.crestAtBear) < 0.05, JSON.stringify(rg));
 // the bear story stays on Antarctica: Maple Park has its own (Bigfoot) story, never the bear
 await open('park'); const ps = await story();
 check('no_bear_story_on_other_courses', ps.hasStory && ps.clue === 'flyer' && !/bear/i.test(ps.caption || ''), `Maple Park: own story ${ps.hasStory}, clue ${ps.clue}`);
