@@ -3,6 +3,11 @@
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const url0 = process.argv[2] || 'https://thebamco.github.io/disc-golf-play/', record = process.argv.includes('--record');
+const recHolesArg = process.argv.find(a => a.startsWith('--record-holes='));
+const recHoles = {}; // course -> Set of 1-based hole numbers to rewrite in the baseline
+if (recHolesArg) recHolesArg.slice('--record-holes='.length).split(',').forEach(tok => {
+  const [c, hs] = tok.split(':'); if (c && hs) recHoles[c] = new Set(hs.split('+').map(Number));
+});
 const basePath = new URL('./collision-baseline.json', import.meta.url).pathname;
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -18,7 +23,15 @@ for (const course of ['park', 'river', 'antarctica', 'volcano', 'moon']) {
 }
 let ok, detail;
 if (record || !existsSync(basePath)) { writeFileSync(basePath, JSON.stringify(out)); ok = true; detail = `recorded ${Object.values(out).flat().length} throws`; }
-else { const base = JSON.parse(readFileSync(basePath, 'utf8')); const diffs = [];
+else if (Object.keys(recHoles).length) {
+  const base = JSON.parse(readFileSync(basePath, 'utf8')); const updated = [];
+  for (const [c, holes] of Object.entries(recHoles)) {
+    if (!base[c] || !out[c]) throw new Error('missing course ' + c);
+    base[c] = base[c].map((row, i) => { const hole = out[c][i][0]; if (holes.has(hole)) { updated.push(`${c} ${hole}`); return out[c][i]; } return row; });
+  }
+  writeFileSync(basePath, JSON.stringify(base));
+  ok = true; detail = `re-recorded ${[...new Set(updated)].join(', ')} (${updated.length} throws)`;
+} else { const base = JSON.parse(readFileSync(basePath, 'utf8')); const diffs = [];
   for (const c of Object.keys(base)) base[c].forEach((b, i) => { if (JSON.stringify(b) !== JSON.stringify(out[c][i])) diffs.push(`${c} #${i}: ${JSON.stringify(b)} → ${JSON.stringify(out[c][i])}`); });
   ok = diffs.length === 0; detail = ok ? `${Object.values(base).flat().length} seeded throws identical (5 courses x 9 holes x 14)` : diffs.slice(0, 6).join(' | '); }
 const results = { throws_land_identically: { ok, detail }, no_errors: { ok: errors.length === 0, detail: errors.slice(0, 2).join(' | ') || 'none' } };

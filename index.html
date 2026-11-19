@@ -128,6 +128,23 @@ body.charging #help { visibility: hidden; }
 
 /* Course name above the hole title */
 #scorebox .coursename { font-size: 11px; font-weight: 800; letter-spacing: .06em; opacity: .85; text-transform: uppercase; margin-bottom: 1px; }
+
+#scorebox .scorehead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 1px; }
+#scorebox .scorehead .coursename { margin-bottom: 0; }
+#coincount { display: inline-flex; align-items: center; gap: 5px; pointer-events: none; padding: 2px 8px 2px 5px; border-radius: 999px; background: rgba(0,0,0,.28); flex: 0 0 auto; }
+#coincount i { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3a8, #ffd23f 42%, #e0a000 78%); box-shadow: 0 0 0 1px rgba(120,70,0,.55), 0 1px 2px rgba(0,0,0,.35); }
+#coincount b { font: 800 12px/1 system-ui, sans-serif; color: #ffe066; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+#coinpop { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); z-index: 6; pointer-events: none; text-align: center;
+  background: rgba(10,40,20,.82); padding: 12px 22px; border-radius: 16px; min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+#coinpop b { display: block; font-size: 28px; font-weight: 900; color: #ffe066; }
+#coinpop span { display: block; margin-top: 4px; font-size: 14px; font-weight: 700; white-space: pre-line; }
+#coinpop.hidden { display: none; }
+#cardbody tr.coins th, #cardbody tr.coins td { color: #ffe066; font-size: 13px; }
+#cardcoins { margin-top: 8px; font-size: 14px; font-weight: 700; color: #ffe066; }
+@media (max-width: 600px), (max-height: 500px) {
+  #coincount { padding: 1px 6px 1px 4px; } #coincount i { width: 12px; height: 12px; } #coincount b { font-size: 11px; }
+  #coinpop { top: 48%; padding: 10px 16px; } #coinpop b { font-size: 24px; } #coinpop span { font-size: 13px; }
+}
 body[data-world="river"] #scorebox .title { color: #9fe3ff; }
 body[data-world="lava"] #scorebox .title { color: #ffb066; }
 /* Home screen: side-scrolling world select (swipe / arrows), background fades per world */
@@ -268,6 +285,27 @@ body.charging #minimap { opacity: .55; }
 #heightbar #heightname { font: 800 11px/1 system-ui, sans-serif; color: #fff8e0; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 #heightbar.off { opacity: .42; cursor: default; } #heightbar.off .hfill, #heightbar.off .hthumb { background: #9aa; border-color: #9aa; }
 body.charging #heightbar { opacity: .55; }
+
+/* Special-coin progress on world cards: 9 gold/gray dots (a hole lights up when all 3 are found) */
+.pickcourse .pholes { display: flex; gap: 4px; margin-top: 6px; }
+.pickcourse .pholes i, .wpcoinslots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.28); box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+.pickcourse .pholes i.got, .wpcoinslots i.got { background: #ffd24a; box-shadow: 0 0 6px rgba(255,210,74,.7); }
+#worldpage { width: min(420px, calc(100% - 24px)); margin: 0 auto; text-align: left; color: #fff8e0; }
+#worldpage .wptitle { font: 900 24px/1.1 system-ui, sans-serif; text-align: center; }
+#worldpage .wpcoins { font: 800 16px/1 system-ui, sans-serif; color: #ffd24a; text-align: center; margin: 4px 0 8px; }
+#wpholes { display: flex; flex-direction: column; gap: 4px; max-height: min(58vh, 520px); overflow: auto; -webkit-overflow-scrolling: touch; }
+.wphole { display: grid; grid-template-columns: 28px 1fr auto; grid-template-rows: auto auto; gap: 0 8px; align-items: center; background: rgba(0,0,0,.28); border-radius: 10px; padding: 5px 10px; }
+.wphole b { grid-row: 1 / span 2; font: 900 18px/1 system-ui, sans-serif; color: #ffe066; }
+.wphole .wpname { font: 800 14px/1.2 system-ui, sans-serif; }
+.wphole .wppar { font: 700 11px/1 system-ui, sans-serif; opacity: .75; }
+.wphole .wpbest { font: 800 12px/1 system-ui, sans-serif; color: #ffe066; }
+.wphole .wpcoinslots { display: flex; gap: 4px; grid-column: 3; grid-row: 1 / span 2; }
+#worldplay { display: block; margin: 14px auto 0; font: 900 16px/1 system-ui, sans-serif; background: #ffd24a; color: #3a2a00; border: 0; border-radius: 99px; padding: 10px 28px; }
+@media (max-height: 500px) {
+  #worldpage .wptitle { font-size: 22px; } #wpholes { max-height: 42vh; } .wphole { padding: 5px 8px; }
+}
+
+#picker.holes .picksub, #picker.holes #homemsg { display: none; }
 </style>
 </head>
 <body>
@@ -275,7 +313,7 @@ body.charging #heightbar { opacity: .55; }
   <div id="hud">
     <div id="topleft">
     <div id="scorebox">
-      <div class="coursename" id="coursename">Maple Park</div>
+      <div class="scorehead"><div class="coursename" id="coursename">Maple Park</div><div id="coincount" aria-label="Coins"><i></i><b id="cointotal">0</b></div></div>
       <div class="title" id="holetitle">HOLE 1/9 · PAR 3</div>
       <div class="row"><span>Disc</span><b id="discname">Driver</b></div>
       <div class="row hintrow"><span></span><i id="dischint">suggested</i></div>
@@ -294,7 +332,7 @@ body.charging #heightbar { opacity: .55; }
       <div class="btnrow"><button id="cardbtn" aria-label="Scorecard">▦ Card</button><button id="restartbtn" aria-label="Restart">↻ Restart</button></div>
       <div id="restartmenu" class="hidden"><button id="restarthole">Restart hole</button><button id="restartround">Restart round</button><button id="restartcourse">Home</button><button id="restartcancel" class="ghost">Cancel</button></div>
       <div id="help">
-        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q left · E right (tap again: 2, 3) · W straight<br /><b>Height</b> ↑ ↓ (S cycles) · Low / Normal / High / Sky<br /><b>Tomahawk</b> T (over trees, lands dead)<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
+        <span class="desk"><b>Throw</b> drag back on the field, let go<br />(pull further = harder; back to start cancels)<br /><b>Keys</b> aim ← → / A D · hold SPACE, release<br /><b>Curve</b> Q left · E right (tap again: 2, 3) · W straight<br /><b>Height</b> ↑ ↓ (S cycles) · Skimmer / Normal / High / Sky<br /><b>Tomahawk</b> T (over trees, lands dead)<br /><b>Disc</b> 1 Driver · 2 Mid · 3 Putter<br /><b>Card</b> C · <b>Next hole</b> Enter<br /><b>Restart</b> R hole · Shift+R round</span>
         <span class="touch"><b>Pull back</b> anywhere to throw<br />Arrow = aim &amp; power · let go<br />Slide back to start to cancel</span>
       </div>
     </div>
@@ -320,11 +358,12 @@ body.charging #heightbar { opacity: .55; }
         <button id="aimright" aria-label="Aim right">▶</button>
       </div>
     </div>
-    <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a world</div><div id="homestage"><button id="homeprev" class="homearrow" aria-label="Previous world">◀</button><div id="homeviewport"><div id="picklist"></div></div><button id="homenext" class="homearrow" aria-label="Next world">▶</button></div><div id="homeground"><div id="homedisc"><i></i></div></div><div id="homedots"></div><div id="homemsg"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
+    <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a world</div><div id="homestage"><button id="homeprev" class="homearrow" aria-label="Previous world">◀</button><div id="homeviewport"><div id="picklist"></div></div><button id="homenext" class="homearrow" aria-label="Next world">▶</button></div><div id="homeground"><div id="homedisc"><i></i></div></div><div id="homedots"></div><div id="worldpage" class="hidden"><div class="wptitle" id="wptitle">Maple Park</div><div class="wpcoins" id="wpcoins">0/27</div><div id="wpholes"></div><button id="worldplay">Play ▶</button></div><div id="homemsg"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
     <div id="mapfull" class="hidden" role="dialog" aria-label="Hole map"><div class="mapfullhead"><b id="mapfulltitle">Hole map</b><button id="mapclose" aria-label="Close map">✕ Close</button></div><canvas id="mapfullcanvas"></canvas><div class="mapkey"><i class="k-tee"></i>Tee <i class="k-bask"></i>Basket <i class="k-disc"></i>Disc <i class="k-trail"></i>Throws <span id="mapkeydanger"><i class="k-danger"></i><span id="mapdanger">Water</span></span> <span id="mapkeydrop"><i class="k-drop"></i>Drop zone</span></div></div>
     <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
     <div id="storycap" class="hidden"></div>
     <div id="storyphoto" class="hidden"><div class="ph"><canvas></canvas><span>Is that… BIGFOOT?!</span></div></div>
+    <div id="coinpop" class="hidden"><b id="coinpopplus">+0</b><span id="coinpopsub"></span></div>
     <div id="banner" class="hidden"><div id="bannertext"></div><div id="bannersub"></div><button id="nextbtn" class="hidden">Next hole ▶</button><button id="againbtn" class="hidden">Play again</button></div>
     <div id="scorecard" class="hidden"><div class="cardpanel"><div id="cardtitle">Scorecard</div><div id="cardsub"></div><div id="cardbody"></div><div class="cardbtns"><button id="cardagain" class="hidden">Play again ↻</button><button id="cardcourse" class="ghost">Home</button><button id="cardclose" class="ghost">Close</button></div></div></div>
   </div>
@@ -443,7 +482,7 @@ const PARK_COURSE = {
       name: 'Lefty Bend', par: 3, tip: 'Dogleg left round a maple wall. Left Curve (Q) the Driver round the corner.',
       tee: [0, 0], basket: [-32, -72], width: 14, ob: 17,
       path: [[0, 0], [0, -40], [-14, -62], [-32, -72]],
-      trees: [{ x: -9, z: -22, s: 1.1 }, { x: -12, z: -31, s: 1.3 }, { x: -16, z: -40, s: 1.2 }, { x: -21, z: -48, s: 1.3 }, { x: -6, z: -36, s: 1 }, { x: -27, z: -55, s: 1.1 },
+      trees: [{ x: -9, z: -22, s: 1.1, tunnel: true, cw: 1.45 }, { x: -12, z: -31, s: 1.3, tunnel: true, cw: 1.5 }, { x: -16, z: -40, s: 1.2, tunnel: true, cw: 1.5 }, { x: -21, z: -48, s: 1.3, tunnel: true, cw: 1.5 }, { x: -6, z: -36, s: 1, tunnel: true, cw: 1.35 }, { x: -27, z: -55, s: 1.1 },
         { x: 9, z: -52, s: 1.2 }, { x: 6, z: -62, s: 1.3 }, { x: 0, z: -71, s: 1.2 }, { x: -9, z: -79, s: 1.1 }],
     },
     {
@@ -463,7 +502,7 @@ const PARK_COURSE = {
       name: 'Right Hook', par: 4, tip: 'Long dogleg right along a maple hedge. Right Curve (E) turns it over the corner.',
       tee: [0, 0], basket: [46, -112], width: 16, ob: 15,
       path: [[0, 0], [0, -65], [22, -95], [46, -112]],
-      rows: [{ from: [10, -36], to: [30, -82], step: 4.5, s: 1.25 }],
+      rows: [{ from: [10, -36], to: [30, -82], step: 4.5, s: 1.25, tunnel: true, cw: 1.45 }],
       trees: [{ x: -7, z: -84, s: 1.1 }, { x: 4, z: -104, s: 1.2 }, { x: 18, z: -116, s: 1.1 }],
       fallen: { root: [-11, -45], tip: [1, -53], r: 0.5 }, // a knocked-over tree lying in from the left (solid: trunk, root plate, crown); the right side stays open
     },
@@ -522,7 +561,8 @@ const RIVER_COURSE = {
       path: [[0, 0], [0, -34], [3, -68]],
       rivers: [{ pts: [[-70, -26], [-25, -34], [0, -36], [25, -33], [70, -40]], w: 11 }],
       bridges: [{ from: [-13, -26], to: [-13, -46], w: 2.6 }],
-      trees: [{ x: -9, z: -56, s: 1 }, { x: 10, z: -18, s: 1 }, { x: 12, z: -62, s: 0.9 }],
+      trees: [{ x: -9, z: -56, s: 1 }, { x: 10, z: -18, s: 1 }, { x: 12, z: -62, s: 0.9 },
+        { x: 16, z: -50, s: 1.15, tunnel: true, cw: 1.5 }, { x: 16, z: -58, s: 1.2, tunnel: true, cw: 1.5 }],
       rocks: [{ x: 7, z: -28, s: 1.2 }, { x: -6, z: -43, s: 0.9 }],
     },
     {
@@ -549,7 +589,7 @@ const RIVER_COURSE = {
       tee: [0, 0], basket: [17, -110], width: 14, ob: 24,
       path: [[0, 0], [-8, -45], [-6, -88], [17, -110]],
       rivers: [{ pts: [[4, -14], [4, -50], [6, -90], [8, -128]], w: 10, open: [false, true] }, { pts: [[-60, -136], [0, -130], [60, -140]], w: 10 }],
-      rows: [{ from: [23, -12], to: [23, -98], step: 5.5, s: 1 }],
+      rows: [{ from: [23, -12], to: [23, -98], step: 5.5, s: 1 }, { from: [14, -36], to: [16, -92], step: 5, s: 1.15, tunnel: true, cw: 1.5 }],
       trees: [{ x: -19, z: -30, s: 1.1 }, { x: -20, z: -70, s: 1.1 }],
       rocks: [{ x: 3, z: -10, s: 1.3 }],
     },
@@ -652,6 +692,7 @@ const ICE_COURSE = {
       tee: [0, 0], basket: [44, -128], width: 14, ob: 11,
       path: [[0, 0], [-8, -50], [10, -104], [44, -128]],
       bergs: [{ x: 16, z: -56, r: 12, h: 15 }],
+      arches: [{ x: 30, z: -80, yaw: 0.4, span: 7, h: 1.4, tube: 0.6 }],
       rivers: [{ pts: [[-30, -10], [-33, -60], [-22, -150]], w: 9 }],
       icePatches: [{ x: 32, z: -121, r: 7 }], snowDrifts: [{ x: 54, z: -136, r: 5 }, { x: 4, z: -96, r: 6 }],
       pillars: [{ x: -2, z: -78, r: 1, h: 5, kind: 'serac' }],
@@ -666,6 +707,7 @@ const ICE_COURSE = {
       banks: [{ from: [-18, -146], to: [2, -148], h: 0.9, w: 2 }],
       penguins: [{ x: 22, z: -60, n: 6, r: 3.5 }],
       rocks: [{ x: -14, z: -30, s: 1.2 }, { x: 12, z: -64, s: 0.9 }],
+      arches: [{ x: 16, z: -80, yaw: 0, span: 7, h: 1.4, tube: 0.6 }],
     },
     {
       name: 'Snow Ledge', par: 3, tip: 'The basket sits up on a ledge. The icy front face slides short shots back down.',
@@ -694,6 +736,7 @@ const ICE_COURSE = {
       pillars: [{ x: 9, z: -45, r: 1.2, h: 6, kind: 'serac' }, { x: -12, z: -150, r: 1.2, h: 6, kind: 'serac' }, { x: 22, z: -170, r: 1.2, h: 6, kind: 'serac' }],
       banks: [{ from: [-2, -227], to: [26, -229], h: 1, w: 2.2 }],
       penguins: [{ x: 26, z: -150, n: 5, r: 3 }],
+      arches: [{ x: 16, z: -90, yaw: 0, span: 7, h: 1.4, tube: 0.6 }],
     },
     {
       name: 'Station Finish', par: 4, tip: 'Dogleg left to the research station. Thread the arch, or curve over the snow bank.',
@@ -781,6 +824,7 @@ const LAVA_COURSE = {
       icePatches: [{ x: 4, z: -86, r: 9 }], snowDrifts: [{ x: -10, z: -72, r: 5 }],
       banks: [{ from: [-16, -151], to: [4, -152], h: 1, w: 2.2 }],
       rocks: [{ x: 12, z: -20, s: 1.2 }],
+      arches: [{ x: 16, z: -80, yaw: 0, span: 7, h: 1.4, tube: 0.6 }],
     },
     {
       name: 'Crater Rim', par: 3, tip: 'The basket sits on a ledge at the crater rim, with lava on three sides. Deep ash on the front slope stops short throws dead; too long and you are in the lava.',
@@ -800,6 +844,7 @@ const LAVA_COURSE = {
       pillars: [{ x: 12, z: -50, r: 1.2, h: 6, kind: 'basalt' }, { x: -11, z: -152, r: 1.2, h: 6, kind: 'basalt' }, { x: 3, z: -216, r: 1.2, h: 6, kind: 'basalt' }],
       snowDrifts: [{ x: -2, z: -94, r: 7 }, { x: -19, z: -222, r: 6 }], icePatches: [{ x: -6, z: -235, r: 6 }],
       banks: [{ from: [-22, -261], to: [2, -262], h: 1, w: 2.2 }],
+      arches: [{ x: -16, z: -80, yaw: 0, span: 7, h: 1.4, tube: 0.6 }],
     },
     {
       name: 'Caldera Finish', par: 4, tip: 'Dogleg right around a lava lake. Thread the lava-rock arch, go around it, or cut the corner over the lava.',
@@ -861,6 +906,7 @@ const MOON_COURSE = {
       tee: [0, 0], basket: [-12, -165], width: 17, ob: 13,
       path: [[0, 0], [4, -82], [-12, -165]],
       pillars: [{ x: -4, z: -58, r: 1.6, h: 2.4, kind: 'boulder' }, { x: 9, z: -75, r: 1.8, h: 2.6, kind: 'boulder' }, { x: -1, z: -100, r: 1.5, h: 2.2, kind: 'boulder' }, { x: -14, z: -122, r: 1.7, h: 2.5, kind: 'boulder' }, { x: 2, z: -138, r: 1.4, h: 2, kind: 'boulder' }],
+      arches: [{ x: 16, z: -90, yaw: 0, span: 7, h: 1.4, tube: 0.6 }],
       craters: [{ x: 12, z: -112, r: 6 }],
     },
     {
@@ -882,6 +928,7 @@ const MOON_COURSE = {
       tee: [0, 0], basket: [36, -150], width: 15, ob: 13,
       path: [[0, 0], [0, -88], [36, -150]],
       pillars: [{ x: 12, z: -78, r: 2, h: 2.8, kind: 'boulder' }, { x: 18, z: -90, r: 1.8, h: 2.6, kind: 'boulder' }],
+      arches: [{ x: 6, z: -100, yaw: 0.5, span: 7, h: 1.4, tube: 0.6 }],
       craters: [{ x: -8, z: -112, r: 6 }],
     },
     {
@@ -898,6 +945,7 @@ const MOON_COURSE = {
       path: [[0, 0], [-4, -82], [-20, -160]],
       craters: [{ x: 9, z: -96, r: 6 }, { x: -18, z: -112, r: 5 }],
       pillars: [{ x: -14, z: -60, r: 1.6, h: 2.4, kind: 'boulder' }, { x: -6, z: -176, r: 1.4, h: 2, kind: 'boulder' }],
+      arches: [{ x: -14, z: -100, yaw: -0.4, span: 7, h: 1.4, tube: 0.6 }],
     },
   ],
 };
@@ -908,6 +956,1904 @@ const COURSES = [PARK_COURSE, RIVER_COURSE, ICE_COURSE, LAVA_COURSE, MOON_COURSE
 const PRACTICE_HOLE = {
   name: 'Practice Field', par: 3, tip: '', tee: [0, 0], basket: [0, -200], width: 120, ob: 60,
   path: [[0, 0], [0, -200]], trees: [], noForest: true,
+};
+
+// ---- coins.js ----
+// Special coins: 3 per hole (easy / curve / sky-or-skimmer). Each has a proof throw (calm wind, seed 2026) that flies through it.
+// proof: { from: 'tee' | [x, z], disc, power, curve, yaw, height }
+const COIN_R = 1.2;
+const COIN_SPOTS = {
+  "park": [
+    [
+      {
+        "x": 6.09,
+        "y": 1.64,
+        "z": -75.37,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.0605,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -12.97,
+        "y": 3.19,
+        "z": -74.36,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.0605,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -28.54,
+        "y": 1.23,
+        "z": -65.88,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": -0.0395,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": -22.21,
+        "y": 1.64,
+        "z": -72.28,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": -0.3182,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -46.44,
+        "y": 0.33,
+        "z": -63.11,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": -0.5182,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -7.69,
+        "y": 0.5,
+        "z": -18.73,
+        "proof": {
+          "from": [
+            -5.21,
+            -12.74
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": -0.3883,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": 1.52,
+        "y": 1.64,
+        "z": -75.6,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -17.45,
+        "y": 3.19,
+        "z": -73.44,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -25.92,
+        "y": 1.23,
+        "z": -66.95,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 2,
+        "y": 3.14,
+        "z": -71.55,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -7.71,
+        "y": 3.78,
+        "z": -76.37,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.2,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -25.92,
+        "y": 1.23,
+        "z": -66.95,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 15.75,
+        "y": 1.64,
+        "z": -73.96,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.1897,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 4.26,
+        "y": 3.19,
+        "z": -75.36,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.2897,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 9.03,
+        "y": 0.5,
+        "z": -32.62,
+        "proof": {
+          "from": [
+            7.32,
+            -26.36
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.2709,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": 7.16,
+        "y": 0.31,
+        "z": -75.07,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -17.45,
+        "y": 3.19,
+        "z": -73.44,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -3.54,
+        "y": 1.23,
+        "z": -71.7,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.32,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": -2.87,
+        "y": 1.64,
+        "z": -75.56,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": -0.0581,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -21.68,
+        "y": 3.19,
+        "z": -72.3,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": -0.0581,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -48.8,
+        "y": 1.23,
+        "z": -52.66,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": -0.3781,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 4.5,
+        "y": 3.07,
+        "z": -75.37,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": 0.1376,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -4.24,
+        "y": 3.65,
+        "z": -76.9,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1,
+          "yaw": 0.2576,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -24.14,
+        "y": 0.42,
+        "z": -71.14,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": -1.37,
+          "yaw": 0.2576,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 5.06,
+        "y": 1.64,
+        "z": -75.44,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.0468,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -13.99,
+        "y": 3.19,
+        "z": -74.17,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.0468,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -29.44,
+        "y": 1.23,
+        "z": -65.48,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": -0.0532,
+          "height": "sky"
+        }
+      }
+    ]
+  ],
+  "river": [
+    [
+      {
+        "x": -11.14,
+        "y": 0.92,
+        "z": -40.65,
+        "proof": {
+          "from": "tee",
+          "disc": "mid",
+          "power": 0.92,
+          "curve": 0,
+          "yaw": -0.2759,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 26.48,
+        "y": 3.39,
+        "z": -38.5,
+        "proof": {
+          "from": "tee",
+          "disc": "mid",
+          "power": 0.92,
+          "curve": 1.37,
+          "yaw": 0.3641,
+          "height": "high"
+        }
+      },
+      {
+        "x": 14.9,
+        "y": 0.5,
+        "z": -46.66,
+        "proof": {
+          "from": [
+            12.95,
+            -40.48
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.3097,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -10.86,
+        "y": 1.64,
+        "z": -74.83,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": -0.1643,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 8.7,
+        "y": 2.18,
+        "z": -76.21,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 1,
+          "yaw": -0.0643,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -15.81,
+        "y": 3.27,
+        "z": -68.67,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.1357,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 2.17,
+        "y": 3.8,
+        "z": -69.49,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -31.69,
+        "y": 3.19,
+        "z": -68.51,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": -0.2,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -6.27,
+        "y": 0.76,
+        "z": -69.69,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.2,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 5.55,
+        "y": 1.64,
+        "z": -75.41,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.0533,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 1.76,
+        "y": 1.86,
+        "z": -83.75,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.3533,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 12.7,
+        "y": 0.5,
+        "z": -32.73,
+        "proof": {
+          "from": [
+            10.38,
+            -26.68
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.3709,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -16.18,
+        "y": 4.25,
+        "z": -54.7,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": 0,
+          "yaw": -0.32,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -40.62,
+        "y": 6.7,
+        "z": -55.08,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": -1.37,
+          "yaw": -0.32,
+          "height": "high"
+        }
+      },
+      {
+        "x": -31.99,
+        "y": 12.18,
+        "z": -55.23,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": -0.2,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 24.33,
+        "y": 1.64,
+        "z": -71.59,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.3074,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 35.79,
+        "y": 2.18,
+        "z": -67.84,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 1,
+          "yaw": 0.3074,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 30.12,
+        "y": 0.58,
+        "z": -62.22,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 1.37,
+          "yaw": 0.2074,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 6.24,
+        "y": 1.64,
+        "z": -75.36,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.0624,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -12.83,
+        "y": 3.19,
+        "z": -74.38,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.0624,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 14.13,
+        "y": 0.58,
+        "z": -67.67,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 1.37,
+          "yaw": -0.0376,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": -15.18,
+        "y": 7.07,
+        "z": -47.51,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": -0.357,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -14.12,
+        "y": 1.86,
+        "z": -82.57,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.163,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -36.7,
+        "y": 0.91,
+        "z": -45.35,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1.37,
+          "yaw": -0.357,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": -19.46,
+        "y": 1.64,
+        "z": -73.07,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": -0.2805,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -27.49,
+        "y": 1.02,
+        "z": -77.38,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": -0.0805,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -23.66,
+        "y": 3.27,
+        "z": -66.38,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.0195,
+          "height": "sky"
+        }
+      }
+    ]
+  ],
+  "antarctica": [
+    [
+      {
+        "x": 5.18,
+        "y": 1.64,
+        "z": -75.44,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.0483,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -13.88,
+        "y": 3.19,
+        "z": -74.19,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.0483,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -35.73,
+        "y": 1.23,
+        "z": -62.27,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": -0.1517,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 9.06,
+        "y": 1.64,
+        "z": -75.07,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.1,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -30.5,
+        "y": 0.98,
+        "z": -89.48,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.1,
+          "height": "high"
+        }
+      },
+      {
+        "x": -3.54,
+        "y": 1.23,
+        "z": -71.7,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.32,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 0.16,
+        "y": 0.32,
+        "z": -82.31,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -5.82,
+        "y": 4.82,
+        "z": -85.57,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.32,
+          "height": "high"
+        }
+      },
+      {
+        "x": -25.92,
+        "y": 1.23,
+        "z": -66.95,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 39.6,
+        "y": 1.64,
+        "z": -64.41,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.5311,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -28.04,
+        "y": 1.12,
+        "z": -81.4,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.0111,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 29.04,
+        "y": 0.36,
+        "z": -77.54,
+        "proof": {
+          "from": [
+            26.49,
+            -70.64
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.3588,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -17.74,
+        "y": 5.03,
+        "z": -49.65,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": 0,
+          "yaw": -0.3788,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -43.13,
+        "y": 0.57,
+        "z": -50.61,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1.37,
+          "yaw": -0.3788,
+          "height": "high"
+        }
+      },
+      {
+        "x": 15.45,
+        "y": 0.36,
+        "z": -77.42,
+        "proof": {
+          "from": [
+            14.04,
+            -70.19
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.1974,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": 2.2,
+        "y": 0.63,
+        "z": -75.95,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": 0.0666,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 8.69,
+        "y": 7.08,
+        "z": -74.86,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.3866,
+          "height": "high"
+        }
+      },
+      {
+        "x": -14.46,
+        "y": 1.23,
+        "z": -70.32,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.1666,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 1.52,
+        "y": 1.64,
+        "z": -75.6,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -17.45,
+        "y": 3.19,
+        "z": -73.44,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -25.92,
+        "y": 1.23,
+        "z": -66.95,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 5.73,
+        "y": 1.64,
+        "z": -75.4,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.0558,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -36.02,
+        "y": 3.19,
+        "z": -66.33,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": -0.2642,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 15.5,
+        "y": 0.36,
+        "z": -87.41,
+        "proof": {
+          "from": [
+            14.25,
+            -80.15
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.1759,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -22.46,
+        "y": 1.64,
+        "z": -72.2,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": -0.3218,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -39.77,
+        "y": 3.19,
+        "z": -64.15,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": -0.3218,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -51.05,
+        "y": 1.23,
+        "z": -50.47,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": -0.4218,
+          "height": "sky"
+        }
+      }
+    ]
+  ],
+  "volcano": [
+    [
+      {
+        "x": 11.69,
+        "y": 6.38,
+        "z": -28.1,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.3533,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -14.11,
+        "y": 1.55,
+        "z": -28.66,
+        "proof": {
+          "from": "tee",
+          "disc": "mid",
+          "power": 0.78,
+          "curve": -1.37,
+          "yaw": -0.2867,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 15.22,
+        "y": 15.21,
+        "z": -28.45,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": 1.37,
+          "yaw": 0.3533,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": -8.31,
+        "y": 1.64,
+        "z": -75.16,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": -0.1303,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -15.61,
+        "y": 1.02,
+        "z": -80.62,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.0697,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -13.47,
+        "y": 3.27,
+        "z": -69.17,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.1697,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 15.14,
+        "y": 2.95,
+        "z": -42.72,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": 0.32,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -4.13,
+        "y": 1.79,
+        "z": -79.81,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.2,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -30.74,
+        "y": 7.67,
+        "z": -43.66,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1.37,
+          "yaw": -0.32,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 2,
+        "y": 3.14,
+        "z": -71.55,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -4.53,
+        "y": 8.54,
+        "z": -71.16,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 1.37,
+          "yaw": -0.32,
+          "height": "high"
+        }
+      },
+      {
+        "x": -6.27,
+        "y": 0.76,
+        "z": -69.69,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.2,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": -18.48,
+        "y": 7.69,
+        "z": -82.38,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": 0,
+          "yaw": -0.0157,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -19.29,
+        "y": 4.67,
+        "z": -73.98,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": -1,
+          "yaw": 0.0843,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -26.96,
+        "y": 1.23,
+        "z": -66.54,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": -0.0157,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 17.92,
+        "y": 3.77,
+        "z": -56.39,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": 0,
+          "yaw": 0.2772,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 35.21,
+        "y": 5.53,
+        "z": -59.57,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": 1.37,
+          "yaw": 0.2772,
+          "height": "high"
+        }
+      },
+      {
+        "x": 15.45,
+        "y": 0.36,
+        "z": -77.42,
+        "proof": {
+          "from": [
+            14.04,
+            -70.19
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.1974,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": 3.95,
+        "y": 4.18,
+        "z": -75.18,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": 0,
+          "yaw": 0.0483,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -3.38,
+        "y": 2.02,
+        "z": -79.04,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": -1,
+          "yaw": 0.2483,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -14.16,
+        "y": 5.23,
+        "z": -67.68,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.1483,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": -1.52,
+        "y": 1.64,
+        "z": -75.6,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": -0.0403,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 27.08,
+        "y": 0.53,
+        "z": -76.09,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 1,
+          "yaw": 0.1597,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -15.52,
+        "y": 0.36,
+        "z": -77.41,
+        "proof": {
+          "from": [
+            -14.04,
+            -70.19
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": -0.1974,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": 28.48,
+        "y": 1.64,
+        "z": -70.04,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": 0,
+          "yaw": 0.3661,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 17.41,
+        "y": 3.19,
+        "z": -73.44,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1,
+          "yaw": 0.4661,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 22.5,
+        "y": 5.23,
+        "z": -65.38,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 1,
+          "curve": -1.37,
+          "yaw": 0.6861,
+          "height": "sky"
+        }
+      }
+    ]
+  ],
+  "moon": [
+    [
+      {
+        "x": 14.39,
+        "y": 0.59,
+        "z": -74.63,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": 0,
+          "yaw": 0.2326,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 8.65,
+        "y": 0.8,
+        "z": -81.79,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": -1.37,
+          "yaw": 0.3526,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -6.36,
+        "y": 0.41,
+        "z": -94.22,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": 1,
+          "yaw": 0.3526,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -1.12,
+        "y": 3.85,
+        "z": -76.29,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": 0,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 8.26,
+        "y": 0.38,
+        "z": -74.71,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": -1.37,
+          "yaw": 0.32,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -19.64,
+        "y": 0.38,
+        "z": -72.81,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.45,
+          "curve": -1.37,
+          "yaw": 0.32,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": 22.46,
+        "y": 9.65,
+        "z": -56.98,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.92,
+          "curve": 0,
+          "yaw": 0.3616,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -31.13,
+        "y": 3.37,
+        "z": -57.24,
+        "proof": {
+          "from": "tee",
+          "disc": "mid",
+          "power": 0.78,
+          "curve": -1.37,
+          "yaw": -0.2784,
+          "height": "high"
+        }
+      },
+      {
+        "x": 33.23,
+        "y": 8.98,
+        "z": -56.01,
+        "proof": {
+          "from": "tee",
+          "disc": "mid",
+          "power": 0.92,
+          "curve": 1.37,
+          "yaw": 0.3616,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": -6.65,
+        "y": 3.85,
+        "z": -76.01,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": -0.0726,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -16.13,
+        "y": 4.46,
+        "z": -73.48,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1,
+          "yaw": -0.0726,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 15.52,
+        "y": 0.56,
+        "z": -87.41,
+        "proof": {
+          "from": [
+            14.25,
+            -80.15
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.1759,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -2.05,
+        "y": 0.33,
+        "z": -78.58,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": 0,
+          "yaw": 0.0222,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -11.34,
+        "y": 1.03,
+        "z": -74.65,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": -1,
+          "yaw": 0.0222,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 7.78,
+        "y": 0.34,
+        "z": -79.41,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.45,
+          "curve": 1,
+          "yaw": 0.3422,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -3.72,
+        "y": 3.85,
+        "z": -76.21,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": -0.034,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -13.29,
+        "y": 4.46,
+        "z": -74.04,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1,
+          "yaw": -0.034,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -21.9,
+        "y": 1.82,
+        "z": -72.27,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.62,
+          "curve": 0,
+          "yaw": -0.234,
+          "height": "sky"
+        }
+      }
+    ],
+    [
+      {
+        "x": 16.71,
+        "y": 3.85,
+        "z": -74.45,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": 0.2355,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 6.91,
+        "y": 4.46,
+        "z": -74.91,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1,
+          "yaw": 0.2355,
+          "height": "normal"
+        }
+      },
+      {
+        "x": 5.82,
+        "y": 0.56,
+        "z": -97.37,
+        "proof": {
+          "from": [
+            5.4,
+            -90.02
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": 0.0599,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -4.03,
+        "y": 3.85,
+        "z": -76.19,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": -0.0381,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -13.59,
+        "y": 4.46,
+        "z": -73.99,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1,
+          "yaw": -0.0381,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -11.12,
+        "y": 0.35,
+        "z": -108.41,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 1,
+          "yaw": 0.2819,
+          "height": "low"
+        }
+      }
+    ],
+    [
+      {
+        "x": -10.58,
+        "y": 3.85,
+        "z": -75.56,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": 0,
+          "yaw": -0.1244,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -19.91,
+        "y": 4.46,
+        "z": -72.54,
+        "proof": {
+          "from": "tee",
+          "disc": "driver",
+          "power": 0.78,
+          "curve": -1,
+          "yaw": -0.1244,
+          "height": "normal"
+        }
+      },
+      {
+        "x": -13.65,
+        "y": 0.56,
+        "z": -97.39,
+        "proof": {
+          "from": [
+            -12.61,
+            -90.1
+          ],
+          "disc": "driver",
+          "power": 0.5,
+          "curve": 0,
+          "yaw": -0.1391,
+          "height": "low"
+        }
+      }
+    ]
+  ]
 };
 
 // ---- game.js ----
@@ -1705,7 +3651,7 @@ function makeHole(data, index) {
     for (let i = 0; i <= n; i++) {
       const p = a.clone().lerp(b, i / n);
       if (r.gap && p.x > r.gap[0] && p.x < r.gap[1]) continue;
-      trees.push({ x: p.x, z: p.y, s: r.s, kind: WORLD.trees });
+      trees.push({ x: p.x, z: p.y, s: r.s, kind: r.kind || WORLD.trees, tunnel: !!r.tunnel, ch: r.ch, cw: r.cw, w: r.w });
     }
   }
   if (!data.noForest) {
@@ -1895,7 +3841,10 @@ function makeHole(data, index) {
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), (i * 2.39) % 6.28);
       // optional per-tree shape (data): w = trunk thickness, cw/ch = canopy width/height (collisions use the same factors)
       mtx.compose(ps.set(t.x, t.y, t.z), q, sc.set(t.s * (t.w || 1), t.s, t.s * (t.w || 1))); trunk.setMatrixAt(j, mtx);
-      mtx.compose(ps, q, sc.set(t.s * (t.cw || 1), t.s * (t.ch || 1), t.s * (t.cw || 1))); crowns.forEach(c => c.setMatrixAt(j, mtx)); mats0.push(mtx.clone());
+      // tunnel trees: drop the crown so the leaves hang at the skim gap (~1.15 m); trunks stay solid
+      const visBase = kind === 'maple' ? 2.55 : kind === 'willow' ? 1.35 : 1.9;
+      const drop = t.tunnel ? Math.max(0, visBase * t.s * (t.ch || 1) - 1.15) : 0;
+      mtx.compose(ps.set(t.x, t.y - drop, t.z), q, sc.set(t.s * (t.cw || 1), t.s * (t.ch || 1), t.s * (t.cw || 1))); crowns.forEach(c => c.setMatrixAt(j, mtx)); mats0.push(mtx.clone());
       if (kind === 'maple') col.setHex(MAPLE[Math.floor(rnd() * MAPLE.length)]); else col.setHSL(0, 0, 1).offsetHSL((rnd() - 0.5) * 0.05, (rnd() - 0.5) * 0.1, (rnd() - 0.5) * 0.12);
       crowns.forEach((c, k) => c.setColorAt(j, k === 1 ? col.clone().offsetHSL(0, 0, 0.05) : col)); ghosts.forEach(g => g.setColorAt(j, col)); cols.push(col.clone());
     });
@@ -2030,11 +3979,12 @@ function makeHole(data, index) {
     }
     for (const a of arches) { // half ring + legs down to the ground
       const g = new THREE.Group();
-      const am = WORLD.lava ? MAT.lavaRock : MAT.iceSolid;
+      const moon = WORLD.id === 'moon', am = WORLD.lava ? MAT.lavaRock : moon ? MAT.boulderD : MAT.iceSolid;
       const ring = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube, 8, 20, Math.PI), am); ring.position.y = a.c; g.add(ring);
       if (a.c > 0.01) for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(a.tube, a.tube * 1.15, a.c, 8).translate(0, a.c / 2, 0), am); leg.position.x = sx * a.R; g.add(leg); }
-      const cap = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube * (WORLD.lava ? 0.18 : 0.55), 6, 20, Math.PI * 0.6), WORLD.lava ? MAT.lavaVein : MAT.snowCap); cap.position.y = a.c + a.tube * (WORLD.lava ? 0.9 : 0.55); cap.rotation.z = Math.PI * 0.2; g.add(cap);
-      if (!WORLD.lava) { const ic = new THREE.Mesh(GEO.icicles, MAT.iceSolid); ic.scale.set(a.R * 0.45, 1, 1); ic.position.y = a.c + a.R - a.tube * 0.9; g.add(ic); } // icicles hanging under the crown
+      const capMat = WORLD.lava ? MAT.lavaVein : moon ? MAT.boulderD : MAT.snowCap;
+      const cap = new THREE.Mesh(new THREE.TorusGeometry(a.R, a.tube * (WORLD.lava || moon ? 0.18 : 0.55), 6, 20, Math.PI * 0.6), capMat); cap.position.y = a.c + a.tube * (WORLD.lava || moon ? 0.9 : 0.55); cap.rotation.z = Math.PI * 0.2; g.add(cap);
+      if (!WORLD.lava && !moon && a.h > 2.2) { const ic = new THREE.Mesh(GEO.icicles, MAT.iceSolid); ic.scale.set(a.R * 0.45, 1, 1); ic.position.y = a.c + a.R - a.tube * 0.9; g.add(ic); } // icicles hanging under tall ice arches
       g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       g.position.set(a.x, a.y, a.z); g.rotation.y = -a.yaw; group.add(g);
     }
@@ -2392,6 +4342,32 @@ function spawnPuff(x, z) { // little burst of snow where the disc lands in deep 
     m.userData = { v: new THREE.Vector3(Math.cos(a) * sp, 1.5 + Math.random() * 2.2, Math.sin(a) * sp), t: 0, drop: true, floor: y - 0.05 }; m.scale.setScalar(0.7 + Math.random()); scene.add(m); splashes.push(m); }
   S.puffs = (S.puffs || 0) + 1;
 }
+// Looks only: a few puffs trailing a skimming disc (snow, ash, dust, or a mist over water). Never changes flight.
+const SKIM_PUFF_MAT = new THREE.MeshBasicMaterial({ color: 0xc8b48a, transparent: true, opacity: 0.7, depthWrite: false });
+function skimPuffColor() {
+  if (WORLD.snow) return 0xf4f8ff;
+  if (WORLD.embers || WORLD.id === 'lava') return 0x6a625c;
+  if (WORLD.id === 'moon') return 0xb0b0b6;
+  return 0xc4a878;
+}
+function spawnSkimTrail() {
+  if (S.sim || S.htUsed !== 0 || !HEIGHTS[0].skim) return;
+  const p = S.pos, gy = H.groundY(p.x, p.z), clear = p.y - gy, vh = Math.hypot(S.vel.x, S.vel.z);
+  if (clear > 1.15 || vh < 3.5) return;
+  S.skimT = (S.skimT || 0) + 1; if (S.skimT % 4) return; // every few flight steps
+  const wet = !!(H.hasWater && H.isWater(p.x, p.z));
+  const col = wet ? 0xd8eef8 : skimPuffColor();
+  const n = wet ? 3 : 2;
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(DROP_GEO, SKIM_PUFF_MAT.clone()); m.material.color.setHex(col);
+    const bx = p.x - S.vel.x * 0.03, bz = p.z - S.vel.z * 0.03;
+    m.position.set(bx + (Math.random() - 0.5) * 0.25, gy + 0.06 + Math.random() * 0.12, bz + (Math.random() - 0.5) * 0.25);
+    const a = Math.random() * 6.28, sp = 0.15 + Math.random() * 0.45;
+    m.userData = { v: new THREE.Vector3(Math.cos(a) * sp, 0.4 + Math.random() * 0.9, Math.sin(a) * sp), t: 0, drop: true, floor: gy, life: 0.55 };
+    m.scale.setScalar(wet ? 0.55 : 0.4 + Math.random() * 0.35); scene.add(m); splashes.push(m);
+  }
+  S.skimPuffs = (S.skimPuffs || 0) + 1;
+}
 function updateSplashes(dt) {
   for (let i = splashes.length - 1; i >= 0; i--) {
     const m = splashes[i], u = m.userData; u.t += dt;
@@ -2565,6 +4541,7 @@ const ui = { hname: $('heightname'),
   title: $('holetitle'), course: $('coursename'), disc: $('discname'), discHint: $('dischint'), throws: $('throws'), dist: $('dist'), curve: $('curve'), total: $('total'),
   banner: $('banner'), btext: $('bannertext'), bsub: $('bannersub'), again: $('againbtn'), next: $('nextbtn'),
   card: $('scorecard'), cardBody: $('cardbody'), cardTitle: $('cardtitle'), cardSub: $('cardsub'), cardAgain: $('cardagain'), menu: $('restartmenu'),
+  coinTotal: $('cointotal'), coinPop: $('coinpop'), coinPopPlus: $('coinpopplus'), coinPopSub: $('coinpopsub'),
 };
 // Curve: negative bends the disc LEFT on screen, positive bends it RIGHT. The buttons/keys step through 3 levels per side;
 // S.curve holds the physics multiplier. The bend grows faster than the multiplier, so these give ~30 / 45 / 60 m on a full Driver.
@@ -2637,7 +4614,7 @@ function loadHole(idx, { practice = false } = {}) {
   setFlagWind();
   clearConfetti(); hideBanner(); hideCard();
   S.lie.copy(H.tee); S.prevLie.copy(H.tee);
-  resetToLie(true); buildStory(idx); snapCamera(); mmReset();
+  resetToLie(true); buildStory(idx); if (!S.coins) initCoins(); restreakFromScores(); hideCoinPop(); spawnHoleCoins(); snapCamera(); mmReset();
   ui.title.textContent = practice ? 'PRACTICE' : `HOLE ${idx + 1}/${COURSE.holes.length} · PAR ${H.par}`;
   if (!practice) flashBanner(`Hole ${idx + 1} · Par ${H.par} · ${Math.round(H.length)} m`, `${H.name} — ${H.tip}\n${windWords(S.wind, yawToward(H.tee, H.teeAim))}`, 3200, true);
 }
@@ -2700,11 +4677,181 @@ function applyWorld(w) {
 const bestKey = id => `discgolflab.best.${id}`;
 function loadBest(id) { try { const v = Number(localStorage.getItem(bestKey(id))); return v > 0 ? v : null; } catch { return null; } }
 function saveBest(id, strokes) { try { const b = loadBest(id); if (!b || strokes < b) localStorage.setItem(bestKey(id), String(strokes)); } catch {} }
+const holeBestKey = id => `discgolflab.holes.${id}`;
+function loadHoleBests(id) {
+  try { const a = JSON.parse(localStorage.getItem(holeBestKey(id)) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+function saveHoleBest(id, idx, score) {
+  if (S.devRound || S.practice || !(score > 0)) return;
+  try { const a = loadHoleBests(id); const prev = Number(a[idx]); if (!(prev > 0) || score < prev) { a[idx] = score; localStorage.setItem(holeBestKey(id), JSON.stringify(a)); } } catch {}
+}
+function coinsFoundOnHole(courseId, holeIdx) {
+  const o = readJson(COIN_KEYS.found, {});
+  let n = 0; for (let i = 0; i < 3; i++) if (o[`${courseId}:${holeIdx}:${i}`]) n++;
+  return n;
+}
+function coinsFoundOnCourse(courseId) {
+  let n = 0; for (let i = 0; i < 9; i++) n += coinsFoundOnHole(courseId, i); return n;
+}
+
+// ---------- Coins (earn only: no shop) ----------
+const COIN_KEYS = { total: 'discgolflab.coins.total', found: 'discgolflab.coins.found', paid: 'discgolflab.coins.paid' };
+const COIN_PAY = { bogey: 5, par: 10, birdie: 25, eagle: 50, ace: 100 };
+const COIN_SPECIAL = 100; // hidden special coins: once per device, 100 each
+function coinPayout(score, par) {
+  if (!(score > 0) || par == null) return 0;
+  const d = score - par;
+  if (score === 1 || d <= -3) return COIN_PAY.ace;
+  if (d === -2) return COIN_PAY.eagle;
+  if (d === -1) return COIN_PAY.birdie;
+  if (d === 0) return COIN_PAY.par;
+  if (d === 1) return COIN_PAY.bogey;
+  return 0;
+}
+function coinStreakAfter(streak, score, par) { // par or better stacks x1, x1.5, x2, then x3; bogey or worse resets
+  if (score - par <= 0) { const n = (streak || 0) + 1; return { streak: n, mult: n <= 1 ? 1 : n === 2 ? 1.5 : n === 3 ? 2 : 3 }; }
+  return { streak: 0, mult: 1 };
+}
+function coinDay() { return S.coins?.dayOverride || new Date().toLocaleDateString('en-CA'); }
+function canSaveCoins() { return !S.devRound && !S.practice; }
+function readJson(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key) || ''); return v && typeof v === 'object' ? v : fallback; } catch { return fallback; } }
+function writeJson(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }
+function loadCoinTotal() { try { const n = Number(localStorage.getItem(COIN_KEYS.total)); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; } catch { return 0; } }
+function persistCoinTotal() { if (!canSaveCoins()) return; try { localStorage.setItem(COIN_KEYS.total, String(S.coins.saved)); } catch {} }
+function initCoins() {
+  const saved = loadCoinTotal();
+  S.coins = { saved, shown: saved, session: 0, streak: 0, live: [], perHole: [], lastPayout: null, dayOverride: S.coins?.dayOverride || null, sparks: [] };
+}
+function resetCoinRound() { if (!S.coins) initCoins(); S.coins.streak = 0; S.coins.perHole = Array(COURSE.holes.length).fill(null); S.coins.lastPayout = null; hideCoinPop(); }
+function addCoins(n) {
+  if (!n) return;
+  S.coins.session += n; S.coins.shown += n;
+  if (canSaveCoins()) { S.coins.saved += n; persistCoinTotal(); }
+  if (ui.coinTotal) ui.coinTotal.textContent = String(S.coins.shown);
+}
+function paidKey(courseId, holeIdx, day) { return `${courseId}:${holeIdx}:${day}`; }
+function foundKey(courseId, holeIdx, i) { return `${courseId}:${holeIdx}:${i}`; }
+function holeAlreadyPaidToday(courseId, holeIdx) { return !!readJson(COIN_KEYS.paid, {})[paidKey(courseId, holeIdx, coinDay())]; }
+function markHolePaidToday(courseId, holeIdx) {
+  if (!canSaveCoins()) return;
+  const o = readJson(COIN_KEYS.paid, {}); o[paidKey(courseId, holeIdx, coinDay())] = true; writeJson(COIN_KEYS.paid, o);
+}
+function coinWasFound(id) { return !!readJson(COIN_KEYS.found, {})[id]; }
+function markCoinFound(id) {
+  if (!canSaveCoins()) return;
+  const o = readJson(COIN_KEYS.found, {}); o[id] = true; writeJson(COIN_KEYS.found, o);
+}
+function segPointDist(ax, ay, az, bx, by, bz, px, py, pz) {
+  const ux = bx - ax, uy = by - ay, uz = bz - az, L = ux * ux + uy * uy + uz * uz;
+  const t = L ? THREE.MathUtils.clamp(((px - ax) * ux + (py - ay) * uy + (pz - az) * uz) / L, 0, 1) : 0;
+  return Math.hypot(ax + ux * t - px, ay + uy * t - py, az + uz * t - pz);
+}
+function makeCoinMesh() {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshPhongMaterial({ color: 0xffd24a, emissive: 0x5a3a00, emissiveIntensity: 0.35, shininess: 80 });
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.07, 20), mat); disc.rotation.x = Math.PI / 2;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.04, 8, 20), mat); rim.rotation.x = Math.PI / 2;
+  disc.castShadow = rim.castShadow = true; g.add(disc, rim); return g;
+}
+function spawnHoleCoins() {
+  (S.coins.live || []).forEach(c => { if (c.mesh?.parent) c.mesh.parent.remove(c.mesh); });
+  S.coins.live = [];
+  if (!H || S.practice || S.holeIdx < 0) return;
+  const spots = (COIN_SPOTS[COURSE.id] || [])[S.holeIdx] || [];
+  spots.forEach((s, i) => {
+    const id = foundKey(COURSE.id, S.holeIdx, i), already = coinWasFound(id);
+    const mesh = makeCoinMesh(); mesh.position.set(s.x, s.y, s.z); mesh.visible = !already; H.group.add(mesh);
+    S.coins.live.push({ x: s.x, y: s.y, z: s.z, i, id, mesh, got: already, proof: s.proof || null });
+  });
+}
+function coinChime() {
+  try {
+    S.coins.audio = S.coins.audio || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = S.coins.audio; if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime;
+    const beep = (f, o, d) => { const osc = ctx.createOscillator(), g = ctx.createGain(); osc.type = 'triangle'; osc.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + o); g.gain.exponentialRampToValueAtTime(0.1, t0 + o + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + o + d);
+      osc.connect(g).connect(ctx.destination); osc.start(t0 + o); osc.stop(t0 + o + d + 0.02); };
+    beep(988, 0, 0.09); beep(1319, 0.07, 0.16);
+  } catch {}
+}
+function coinSparkle(x, y, z) {
+  const list = S.coins.sparks; const n = 10;
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xfff3a0 : 0xffd24a, transparent: true, opacity: 1, depthWrite: false }));
+    const a = i / n * 6.28, sp = 1.6 + Math.random() * 2.2;
+    m.position.set(x, y, z); m.userData = { vx: Math.cos(a) * sp, vy: 1.2 + Math.random() * 2.4, vz: Math.sin(a) * sp, t: 0 };
+    scene.add(m); list.push(m);
+  }
+}
+function updateCoinFx(dt) {
+  const live = S.coins?.live; if (live) for (const c of live) if (c.mesh && c.mesh.visible) { c.mesh.rotation.y += dt * 2.4; c.mesh.position.y = c.y + Math.sin((performance.now() / 1000) * 2.2 + c.i) * 0.08; }
+  const sparks = S.coins?.sparks; if (!sparks?.length) return;
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const m = sparks[i], u = m.userData; u.t += dt; u.vy -= 6 * dt; m.position.x += u.vx * dt; m.position.y += u.vy * dt; m.position.z += u.vz * dt;
+    m.material.opacity = Math.max(0, 1 - u.t / 0.7); m.scale.setScalar(1 - u.t * 0.7);
+    if (u.t > 0.7) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); sparks.splice(i, 1); }
+  }
+}
+function collectCoinsAlong(ax, ay, az, bx, by, bz) {
+  if (S.sim || !S.coins?.live) return 0;
+  let n = 0;
+  for (const c of S.coins.live) {
+    if (c.got) continue;
+    if (segPointDist(ax, ay, az, bx, by, bz, c.x, c.y, c.z) > COIN_R) continue;
+    c.got = true; n++; if (c.mesh) c.mesh.visible = false;
+    markCoinFound(c.id); addCoins(COIN_SPECIAL);
+    coinChime(); coinSparkle(c.x, c.y, c.z);
+    const rec = S.coins.perHole[S.holeIdx] || (S.coins.perHole[S.holeIdx] = { hidden: 0, payout: 0, streak: S.coins.streak, mult: 1, reduced: false });
+    rec.hidden = (rec.hidden || 0) + 1;
+  }
+  return n;
+}
+function awardHolePayout(score, par) {
+  const base = coinPayout(score, par);
+  const st = coinStreakAfter(S.coins.streak, score, par);
+  const full = Math.round(base * (base ? st.mult : 1));
+  const reduced = holeAlreadyPaidToday(COURSE.id, S.holeIdx);
+  const pay = reduced ? Math.round(full * 0.2) : full;
+  if (score - par <= 0) S.coins.streak = st.streak; else S.coins.streak = 0;
+  addCoins(pay); markHolePaidToday(COURSE.id, S.holeIdx);
+  const hidden = S.coins.perHole[S.holeIdx]?.hidden || 0;
+  const rec = { hidden, payout: pay, base, mult: st.mult, streak: S.coins.streak, reduced, name: scoreName(score, par) };
+  S.coins.perHole[S.holeIdx] = rec; S.coins.lastPayout = rec;
+  showCoinPop(rec);
+  return rec;
+}
+function showCoinPop(rec) {
+  if (!ui.coinPop) return;
+  const lines = [];
+  if (rec.base) lines.push(`${rec.name.replace(/!$/, '')} ${rec.base}${rec.mult > 1 ? ` × ${rec.mult} streak` : ''}`);
+  else lines.push(rec.name || 'No score bonus');
+  if (rec.reduced) lines.push('Already played today · 20%');
+  if (rec.hidden) lines.push(`${rec.hidden} special`);
+  ui.coinPopPlus.textContent = `+${rec.payout}`;
+  ui.coinPopSub.textContent = lines.join('\n');
+  ui.coinPop.classList.remove('hidden');
+}
+function hideCoinPop() { ui.coinPop?.classList.add('hidden'); }
+function resetCoinStorage() {
+  try { localStorage.removeItem(COIN_KEYS.total); localStorage.removeItem(COIN_KEYS.found); localStorage.removeItem(COIN_KEYS.paid); } catch {}
+  initCoins(); resetCoinRound(); spawnHoleCoins(); if (ui.coinTotal) ui.coinTotal.textContent = '0';
+}
+function coinsState() {
+  const live = (S.coins?.live || []).map(c => ({ x: c.x, y: c.y, z: c.z, i: c.i, id: c.id, got: !!c.got, visible: !!c.mesh?.visible }));
+  return { saved: S.coins.saved, shown: S.coins.shown, session: S.coins.session, streak: S.coins.streak, lastPayout: S.coins.lastPayout, perHole: S.coins.perHole, live, canSave: canSaveCoins(), day: coinDay(), found: readJson(COIN_KEYS.found, {}), paid: readJson(COIN_KEYS.paid, {}), devRound: !!S.devRound, practice: !!S.practice };
+}
+function restreakFromScores() {
+  if (!S.coins) return; let st = 0;
+  for (let i = 0; i < S.scores.length; i++) { if (S.scores[i] == null) break; st = coinStreakAfter(st, S.scores[i], COURSE.holes[i].par).streak; }
+  S.coins.streak = st;
+}
+
 const coursePar = c => c.holes.reduce((a, h) => a + h.par, 0);
 function loadCourse(id) {
   const c = COURSES.find(c => c.id === id); if (!c) return false;
   COURSE = c; applyWorld(WORLDS[c.world] || WORLDS.park);
-  S.scores = Array(COURSE.holes.length).fill(null); newRoundSeed();
+  S.scores = Array(COURSE.holes.length).fill(null); newRoundSeed(); if (S.coins) resetCoinRound();
   hidePicker(); hideMenu(); hideCard();
   ui.course.textContent = COURSE.name;
   loadHole(0); return true;
@@ -2725,7 +4872,7 @@ const HOME_CLUE = {
   volcano: { txt: 'The ground is cracking… and glowing.', svg: '<svg viewBox="0 0 120 92"><rect x="6" y="20" width="108" height="64" rx="12" fill="#2b1a18"/><path d="M14 52 L34 44 L44 58 L62 40 L74 56 L90 46 L106 54" fill="none" stroke="#ffb347" stroke-width="5" stroke-linejoin="round"/><path d="M44 58 L48 76 M74 56 L70 74" stroke="#ff7a1a" stroke-width="3.5"/><path d="M60 18 C 52 8, 68 6, 60 -2" stroke="#bbb" stroke-width="4" fill="none" opacity=".7"/></svg>' },
   moon: { txt: 'A huge shadow swept over the dust…', svg: '<svg viewBox="0 0 120 92"><ellipse cx="60" cy="70" rx="50" ry="13" fill="#000" opacity=".55"/><ellipse cx="60" cy="70" rx="30" ry="7" fill="#000" opacity=".5"/><g fill="#fff"><circle cx="18" cy="14" r="1.6"/><circle cx="96" cy="10" r="1.3"/><circle cx="76" cy="26" r="1.1"/><circle cx="34" cy="30" r="1"/></g></svg>' },
 };
-const picker = { el: document.getElementById('picker'), list: document.getElementById('picklist'), back: document.getElementById('pickback'), resume: null, sel: 0, discAt: -1, msgT: 0 };
+const picker = { el: document.getElementById('picker'), list: document.getElementById('picklist'), back: document.getElementById('pickback'), resume: null, sel: 0, discAt: -1, msgT: 0, page: 'worlds', world: null };
 const homeUI = { vp: $('homeviewport'), prev: $('homeprev'), next: $('homenext'), disc: $('homedisc'), dots: $('homedots'), msg: $('homemsg') };
 function worldUnlocked(i) {
   if (!S.unlocks || i <= 0) return true;
@@ -2742,7 +4889,8 @@ function renderPicker() {
       <span class="pstars" aria-label="${st} of 3 stars">${'★'.repeat(st)}<span class="off">${'★'.repeat(3 - st)}</span></span>
       <span class="pinfo">${c.holes.length} holes · Par ${par}</span>
       <span class="pbest">${b ? `Best ${b} (${fmtToPar(b - par)})` : 'Not played yet'}</span>
-      <span class="pplay">Tap to play ▶</span></button>`; });
+      <span class="pholes" aria-label="${coinsFoundOnCourse(c.id)} of 27 special coins">${c.holes.map((_, i) => `<i class="${coinsFoundOnHole(c.id, i) === 3 ? 'got' : ''}"></i>`).join('')}</span>
+      <span class="pplay">Tap to see holes ▶</span></button>`; });
   for (let k = 0; k < HOME_SOON; k++) cards.push(`<div class="upcoming" data-i="${COURSES.length + k}"><span class="psil">?</span><span class="pname">Coming soon</span></div>`);
   picker.list.innerHTML = cards.join('');
   homeUI.dots.innerHTML = Array.from({ length: homeCount() }, (_, i) => `<span class="${i >= COURSES.length ? 'soon' : ''}"></span>`).join('');
@@ -2789,8 +4937,30 @@ function homePlay() {
   const i = picker.sel, c = COURSES[i];
   if (!c) { homeMsg('New worlds are on the way!'); return; }
   if (!worldUnlocked(i)) { const el = picker.list.children[i]; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); homeMsg(`Shoot par on ${COURSES[i - 1].name} to open ${c.name}`); return; }
-  loadCourse(c.id);
+  showWorldPage(c);
 }
+function hideWorldPage() {
+  const el = $('worldpage'); if (!el) return;
+  el.classList.add('hidden'); picker.page = 'worlds'; picker.el.classList.remove('holes');
+  $('homestage')?.classList.remove('hidden'); $('homeground')?.classList.remove('hidden'); $('homedots')?.classList.remove('hidden');
+  picker.back.classList.toggle('hidden', !picker.resume);
+}
+function showWorldPage(c) {
+  const el = $('worldpage'); if (!el) { loadCourse(c.id); return; }
+  picker.page = 'holes'; picker.world = c; picker.el.classList.add('holes');
+  $('homestage')?.classList.add('hidden'); $('homeground')?.classList.add('hidden'); $('homedots')?.classList.add('hidden');
+  el.classList.remove('hidden'); picker.back.classList.remove('hidden');
+  const found = coinsFoundOnCourse(c.id), bests = loadHoleBests(c.id);
+  $('wptitle').textContent = c.name;
+  $('wpcoins').textContent = `${found}/27`;
+  $('wpholes').innerHTML = c.holes.map((h, i) => {
+    const n = coinsFoundOnHole(c.id, i), b = Number(bests[i]);
+    const best = b > 0 ? `Best ${b} (${fmtToPar(b - h.par)})` : '—';
+    const slots = [0, 1, 2].map(k => `<i class="${k < n ? 'got' : ''}"></i>`).join('');
+    return `<div class="wphole"><b>${i + 1}</b><span class="wpname">${h.name}</span><span class="wppar">Par ${h.par}</span><span class="wpbest">${best}</span><span class="wpcoinslots">${slots}</span></div>`;
+  }).join('');
+}
+function worldPlay() { const c = picker.world || COURSES[picker.sel]; if (c) loadCourse(c.id); }
 function homeMsg(t) { homeUI.msg.textContent = t; }
 homeUI.prev.addEventListener('click', () => homeSelect(picker.sel - 1));
 homeUI.next.addEventListener('click', () => homeSelect(picker.sel + 1));
@@ -2809,6 +4979,7 @@ homeUI.next.addEventListener('click', () => homeSelect(picker.sel + 1));
 function showPicker(canGoBack = true) {
   endPull(null, true);
   picker.sel = Math.max(0, COURSES.indexOf(COURSE)); picker.el.classList.remove('hidden'); // shown first so the cards can measure the screen
+  picker.page = 'worlds'; hideWorldPage();
   renderPicker();
   picker.resume = canGoBack ? S.phase : null;
   picker.back.classList.toggle('hidden', !canGoBack);
@@ -2817,6 +4988,7 @@ function showPicker(canGoBack = true) {
 }
 function hidePicker() { picker.el.classList.add('hidden'); }
 function closePicker() {
+  if (picker.page === 'holes') { hideWorldPage(); return; }
   if (!picker.resume) return;
   hidePicker();
   if (S.phase === 'menu') S.phase = picker.resume === 'charging' ? 'aim' : picker.resume;
@@ -2826,7 +4998,7 @@ function closePicker() {
 const pickerOpen = () => !picker.el.classList.contains('hidden');
 function restartHole() { loadHole(S.practice ? 0 : S.holeIdx, { practice: S.practice }); }
 function newRoundSeed() { if (!S.fixedSeed) S.roundSeed = 1 + Math.floor(Math.random() * 1e9); S.devRound = false; } // a fresh round (new course / restart round) is a real round again; a dev jump marks it after this
-function restartRound() { S.scores = Array(COURSE.holes.length).fill(null); newRoundSeed(); loadHole(0); }
+function restartRound() { S.scores = Array(COURSE.holes.length).fill(null); newRoundSeed(); resetCoinRound(); loadHole(0); }
 function nextHole() {
   if (S.phase !== 'holed') return false;
   if (S.holeIdx >= COURSE.holes.length - 1) { endRound(); return true; }
@@ -2848,7 +5020,7 @@ function throwDisc(power, curve = S.curve) {
   S.prevLie.copy(S.lie);
   S.pos.set(S.lie.x, S.lie.y + RELEASE_HEIGHT, S.lie.z);
   const sp = toma ? tomaSpeed(speed, q, S.disc) : hspeed; S.vel.copy(S.dir0).multiplyScalar(sp * Math.cos(launch)); S.vel.y = sp * Math.sin(launch); S.tomaUsed = toma;
-  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.dusted = false; S.ventT = 0; S.vented = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y; S.acc = 0; S.fs = newFlightState(); S.fs.bank = curve * 0.3;
+  S.v0 = speed; S.curveUsed = curve; S.knocked = false; S.puffed = false; S.dusted = false; S.skimT = 0; S.ventT = 0; S.vented = false; S.phase = 'flying'; S.power = power; S.flightTime = 0; S.trail = []; S.restTimer = 0; S.maxY = S.pos.y; S.acc = 0; S.fs = newFlightState(); S.fs.bank = curve * 0.3;
   document.body.classList.add('played');
   mmTrailStart();
   S.lastThrow = { disc: S.disc, power, curve, speed, from: S.lie.clone(), yaw: S.yaw, tomahawk: toma, height: HEIGHTS[ht].key };
@@ -2872,10 +5044,10 @@ const VENT = { top: 14, maxT: 0.9, gain: 1.8 }; // updraft reaches 14 m up; at m
 // roll = friction factor while rolling on edge (0 = can't roll: deep snow just swallows an edge landing)
 const SURFACE = { ground: { friction: 9, keep: 0.7, bounce: 0.25, slope: 3, roll: 0.5 }, ice: { friction: 1.6, keep: 0.93, bounce: 0.12, slope: 7, roll: 1 }, snow: { friction: 34, keep: 0.25, bounce: 0.05, slope: 1, roll: 0 } };
 // Throw height (slider / ↑ ↓ / S): Normal is index 1 and changes nothing (today's flight, so the collision lock is untouched).
-// Low: flat and fast, less wind, skids and rolls on. High: higher arc and hang time, more wind, less roll. Sky lob: very high and steep,
+// Skimmer (key 'low'): knee-height and flat, shorter, a short skid, less wind; can slip under a tree tunnel. High: higher arc and hang time, more wind, less roll. Sky lob: very high and steep,
 // drops almost straight down, most wind, sticks where it lands. Tomahawk ignores it. Stacks with curve.
 const HEIGHTS = [
-  { key: 'low', curveK: 1, fadeK: 1, tilt: 0, carryK: 0.95, dragK: 1, name: 'Low', dLaunch: -4.5, speedK: { driver: 1.0, mid: 1.0, putter: 1.0 }, liftK: 0.8, windK: 0.6, keepK: 1.12, bounceK: 0.7, fricK: 0.62 },
+  { key: 'low', curveK: 0.65, fadeK: 0.5, tilt: -0.04, carryK: 0.7, dragK: 1.85, name: 'Skimmer', dLaunch: -6, speedK: { driver: 0.84, mid: 0.86, putter: 0.9 }, liftK: 0.08, windK: 0.4, keepK: 0.28, bounceK: 0.1, fricK: 5.2, noRoll: true, skim: true, skimY: 0.5 },
   { key: 'normal', tilt: 0, carryK: 1, name: 'Normal', dLaunch: 0, speedK: {}, liftK: 1, windK: 1, keepK: 1, bounceK: 1, fricK: 1 },
   { key: 'high', curveK: 1, fadeK: 0.45, tilt: 0.1, carryK: 0.96, dragK: 1, name: 'High', dLaunch: 8, speedK: { driver: 0.94, mid: 0.97, putter: 1.0 }, liftK: 1.0, windK: 1.45, keepK: 0.7, bounceK: 0.75, fricK: 1.7 },
   { key: 'sky', curveK: 0.7, fadeK: 0.05, tilt: 0.26, carryK: 0.72, dragK: 1.2, name: 'Sky', launchAbs: [44, 4], speedK: { driver: 0.9, mid: 0.93, putter: 1.02 }, liftK: 0.6, windK: 1.9, keepK: 0.28, bounceK: 0.35, fricK: 3.4, noRoll: true },
@@ -2948,6 +5120,14 @@ function stepPhysics(dt) {
       v.y += o.up * k * dt; v.x += o.push[0] * k * dt; v.z += o.push[1] * k * dt; S.ventT += dt;
       if (!S.sim && !S.vented) { S.vented = true; S.ventBoosts = (S.ventBoosts || 0) + 1; }
     }
+    // Skimmer: settle to ~knee height and fly flat. No climb — rising ground and rocks can clip it.
+    if (HT?.skim) {
+      const tgt = DISC_R + (HT.skimY || 0.5), clear = p.y - gy;
+      if (clear > tgt + 0.04) v.y -= Math.min(22, (clear - tgt) * 18) * dt;
+      else if (v.y < 0) v.y += Math.min(-v.y, (tgt + 0.06 - clear) * 30 * dt); // hold the floor on flat ground; a rising hill can still clip it
+      v.y = Math.min(v.y, 0.35);
+      v.y -= v.y * 3 * dt;
+    }
   }
   p.addScaledVector(v, dt);
   S.maxY = Math.max(S.maxY, p.y);
@@ -2963,7 +5143,7 @@ function stepPhysics(dt) {
     const reach = t.w || t.cw ? Math.max(3, 2.2 * t.s * (t.cw || 1) + 0.2, 0.38 * t.s * (t.w || 1) + 0.3) : 3; // shaped trees reach further
     if (Math.abs(dx) > reach || Math.abs(dz) > reach) continue;
     const d = Math.hypot(dx, dz), hy = p.y - t.y;
-    const trunkR = 0.38 * t.s * (t.w || 1) + DISC_R, canopyBase = 2.0 * t.s * (t.ch || 1), canopyTop = 7.5 * t.s * (t.ch || 1);
+    const trunkR = 0.38 * t.s * (t.w || 1) + DISC_R, canopyBase = t.tunnel ? 1.15 : 2.0 * t.s * (t.ch || 1), canopyTop = 7.5 * t.s * (t.ch || 1);
     if (hy >= canopyTop) continue;
     const nx = dx / (d || 1), nz = dz / (d || 1);
     if (d < trunkR) {
@@ -3139,6 +5319,8 @@ function updateFlight(dt) {
   while (S.acc >= PHYS_DT - 1e-9 && n++ < 60) {
     S.acc -= PHYS_DT;
     const r = stepPhysics(PHYS_DT);
+    collectCoinsAlong(TMP.prev.x, TMP.prev.y, TMP.prev.z, S.pos.x, S.pos.y, S.pos.z);
+    spawnSkimTrail();
     if (r && r !== 'tree' && r !== 'water') S.events.push({ type: r, disc: S.disc, throw: S.throws });
     if (r === 'made') { onMade(); return; }
     if (r === 'water') { onSplash(); return; }
@@ -3192,9 +5374,10 @@ function finishSplash() {
 function finishHole(score, made) {
   S.phase = 'holed';
   if (made) S.lie.set(H.basket.x, H.basket.y, H.basket.z);
-  if (!S.practice) S.scores[S.holeIdx] = score;
+  if (!S.practice) { S.scores[S.holeIdx] = score; saveHoleBest(COURSE.id, S.holeIdx, score); }
   const par = H.par, diff = score - par;
   S.result = { throws: score, name: scoreName(score, par), diff, made, hole: S.holeIdx + 1 };
+  if (!S.practice) awardHolePayout(score, par);
   showHoledBanner();
   if (made) burstConfetti();
   if (!S.practice && S.holeIdx === COURSE.holes.length - 1 && COURSE.story?.reveal) startReveal(); // story payoff, then the scorecard
@@ -3268,12 +5451,16 @@ function renderCard() {
     const cls = d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : d === 1 ? 'bogey' : 'dbogey';
     return `<td><span class="mark ${cls}">${s}</span></td>`;
   };
+  const coinCell = (i) => { const c = S.coins?.perHole?.[i]; if (!c || (c.payout == null && !c.hidden)) return '<td class="empty">–</td>'; return `<td>${(c.payout || 0) + (c.hidden || 0) * COIN_SPECIAL}</td>`; };
+  const coinTot = (S.coins?.perHole || []).reduce((a, c) => a + (c ? (c.payout || 0) + (c.hidden || 0) * COIN_SPECIAL : 0), 0);
+  const hiddenTot = (S.coins?.perHole || []).reduce((a, c) => a + (c ? (c.hidden || 0) : 0), 0);
   const rows = [
     `<tr><th>Hole</th>${holes.map((h, i) => `<th class="${i === S.holeIdx && S.phase !== 'done' ? 'cur' : ''}">${i + 1}</th>`).join('')}<th>Tot</th></tr>`,
     `<tr><th>Par</th>${holes.map(h => `<td>${h.par}</td>`).join('')}<td><b>${r.coursePar}</b></td></tr>`,
     `<tr><th>Score</th>${holes.map((h, i) => cell(i)).join('')}<td><b id="cardtotal">${r.played ? r.strokes : '–'}</b></td></tr>`,
+    `<tr class="coins"><th>Coins</th>${holes.map((h, i) => coinCell(i)).join('')}<td><b>${coinTot || '–'}</b></td></tr>`,
   ];
-  ui.cardBody.innerHTML = `<table>${rows.join('')}</table>`;
+  ui.cardBody.innerHTML = `<table>${rows.join('')}</table><div id="cardcoins">This round: ${coinTot} coin${coinTot === 1 ? '' : 's'}${hiddenTot ? ` (${hiddenTot} special)` : ''} · Total: ${S.coins?.shown ?? 0}</div>`;
   ui.cardTitle.textContent = r.finished ? `${COURSE.name} — Round complete!` : `${COURSE.name} — Scorecard`;
   ui.cardSub.textContent = r.played ? `${r.strokes} throws through ${r.played} hole${r.played > 1 ? 's' : ''} · ${fmtToPar(r.toPar)} vs par ${r.par}` : `Course par ${r.coursePar}`;
 }
@@ -3407,7 +5594,7 @@ function drawPullUI() {
 
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
-  if (pickerOpen()) { if (k === 'escape') closePicker(); else if (k === 'arrowleft' || k === 'a') homeSelect(picker.sel - 1); else if (k === 'arrowright' || k === 'd') homeSelect(picker.sel + 1); else if ((k === 'enter' || k === ' ') && !e.repeat) { e.preventDefault(); homePlay(); } return; }
+  if (pickerOpen()) { if (k === 'escape') closePicker(); else if (picker.page === 'holes') { if ((k === 'enter' || k === ' ') && !e.repeat) { e.preventDefault(); worldPlay(); } return; } else if (k === 'arrowleft' || k === 'a') homeSelect(picker.sel - 1); else if (k === 'arrowright' || k === 'd') homeSelect(picker.sel + 1); else if ((k === 'enter' || k === ' ') && !e.repeat) { e.preventDefault(); homePlay(); } return; }
   if (k === 'm' && !e.repeat && S.phase !== 'charging') { mapOpen(); return; } // M: map full screen on/off
   if (mm.full) { if (k === 'escape') mapOpen(false); return; } // nothing else (no aiming, no throwing) while the big map is up
   if (!keys[k] && TURN_KEYS[k]) turnTaps.add(k); // a fresh press: not yet seen by a frame
@@ -3418,7 +5605,7 @@ addEventListener('keydown', e => {
   if (k === 'e' && !e.repeat) { S.tomahawk = false; stepCurve(1); }
   if (k === 'w' && !e.repeat) { S.tomahawk = false; S.curve = 0; }
   if (k === 't' && !e.repeat) toggleTomahawk();
-  if (k === 'arrowup') setHeight(S.height + 1); // throw height: ↑ higher, ↓ lower, S cycles Low → Normal → High → Sky → Low (W is Straight)
+  if (k === 'arrowup') setHeight(S.height + 1); // throw height: ↑ higher, ↓ lower, S cycles Skimmer → Normal → High → Sky → Skimmer (W is Straight)
   if (k === 'arrowdown') setHeight(S.height - 1);
   if (k === 's' && !e.repeat) setHeight((S.height + 1) % HEIGHTS.length);
   if (k === 'c' && !e.repeat) toggleCard();
@@ -3464,7 +5651,9 @@ for (const b of document.querySelectorAll('#curvebtns button[data-curve]')) {
   b.addEventListener('pointerdown', e => { e.preventDefault(); S.tomahawk = false; const c = Number(b.dataset.curve); if (c === 0) S.curve = 0; else stepCurve(c); });
 }
 // Throw height: the right-edge slider. A drag that starts on it never reaches the canvas, so it can't start a throw.
-function setHeight(h) { S.height = THREE.MathUtils.clamp(Math.round(h), 0, HEIGHTS.length - 1); }
+function setHeight(h) { S.height = THREE.MathUtils.clamp(Math.round(h), 0, HEIGHTS.length - 1);
+  const hb = $('heightbar'); if (hb && ui.hname && !S.tomahawk) { const nm = HEIGHTS[S.height].name; ui.hname.textContent = nm; hb.style.setProperty('--h', S.height); hb.setAttribute('aria-valuenow', S.height); hb.setAttribute('aria-valuetext', nm); }
+}
 { const hb = $('heightbar'), tr = hb.querySelector('.htrack'); let hid = null;
   const fromY = (y) => { const r = tr.getBoundingClientRect(); setHeight(3 - THREE.MathUtils.clamp((y - r.top) / Math.max(1, r.height), 0, 1) * 3); };
   hb.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (S.tomahawk) return; hid = e.pointerId; try { hb.setPointerCapture(e.pointerId); } catch {} fromY(e.clientY); });
@@ -3483,6 +5672,7 @@ $('restartcancel').addEventListener('click', hideMenu);
 $('restartcourse').addEventListener('click', () => showPicker(true));
 $('cardcourse').addEventListener('click', () => showPicker(true));
 picker.back.addEventListener('click', closePicker);
+$('worldplay')?.addEventListener('click', worldPlay);
 $('cardbtn').addEventListener('click', toggleCard);
 $('cardclose').addEventListener('click', () => { if (S.phase !== 'done') hideCard(); });
 ui.cardAgain.addEventListener('click', restartRound);
@@ -4622,7 +6812,7 @@ function dumpSnow(x, z, top) { // snow chunks sliding off a ledge
 }
 function startReveal() {
   const cave = H.story?.built; if (!cave || !(cave.bear || cave.reveal)) return false;
-  S.reveal = { t: 0, stage: 'rumble', done: false }; ui.banner.classList.add('veil'); hideStoryCaption(); return true;
+  S.reveal = { t: 0, stage: 'rumble', done: false }; ui.banner.classList.add('veil'); hideCoinPop(); hideStoryCaption(); return true;
 }
 function finishReveal() {
   if (!S.reveal || S.reveal.done) return; S.reveal.done = true; S.reveal.stage = 'done'; ui.banner.classList.remove('veil');
@@ -4803,7 +6993,7 @@ function frame(now) {
   if (S.phase === 'charging' && S.charge) S.power = keyChargePower(); // wall clock, fills to 100% and holds
   if (S.phase === 'flying') updateFlight(dt);
   if (S.phase === 'splash' && (S.splashT -= dt) <= 0) finishSplash();
-  updateSplashes(dt);
+  updateSplashes(dt); updateCoinFx(dt);
   animateFlag(now / 1000); updateLeaves(dt, now / 1000); updateSnow(dt, now / 1000); updatePenguins(dt, now / 1000); updateFrogs(dt); updateStory(dt); updateEmbers(dt, now / 1000); updateVents(dt, now / 1000);
   rippleTex.offset.x = (rippleTex.offset.x + dt * 0.035) % 1; rippleTex.offset.y = (rippleTex.offset.y + dt * 0.012) % 1;
 
@@ -4860,6 +7050,7 @@ function frame(now) {
   setText(ui.dist, `${(S.phase === 'flying' ? Math.hypot(S.pos.x - H.basket.x, S.pos.z - H.basket.z) : distToBasket()).toFixed(1)} m`);
   setText(ui.total, r.played ? `${fmtToPar(r.toPar)} thru ${r.played}` : 'E');
   setText(ui.curve, curveName(S.curve));
+  if (ui.coinTotal) setText(ui.coinTotal, S.coins ? S.coins.shown : 0);
   { const hb = $('heightbar'), off = !!S.tomahawk, nm = off ? 'n/a' : HEIGHTS[S.height].name; // slider greys out for tomahawk (it ignores height)
     hb.classList.toggle('off', off); if (hb.style.getPropertyValue('--h') !== String(S.height)) hb.style.setProperty('--h', S.height);
     if (ui.hname.textContent !== nm) { ui.hname.textContent = nm; hb.setAttribute('aria-valuenow', S.height); hb.setAttribute('aria-valuetext', nm); } }
@@ -4882,6 +7073,7 @@ function frame(now) {
   S.unlocks = UNLOCK_WORLDS || q.get('unlocks') === '1';
   if (q.get('wind') === 'calm') S.windMode = 'calm';
   if (q.get('seed')) { S.roundSeed = Number(q.get('seed')) || 1; S.fixedSeed = true; }
+  initCoins();
   if (!(want && loadCourse(want))) { loadCourse(COURSES[0].id); showPicker(false); }
 }
 requestAnimationFrame(frame);
@@ -4902,12 +7094,14 @@ window.__game = {
     cardOpen: !ui.card.classList.contains('hidden'), menuOpen: !ui.menu.classList.contains('hidden'), pickerOpen: pickerOpen(), course: COURSE.id, world: WORLD.id }),
   get basket() { return { x: H.basket.x, y: H.basket.y, z: H.basket.z }; },
   hole: () => ({ n: S.holeIdx + 1, name: H.name, par: H.par, tee: { x: H.tee.x, z: H.tee.z }, basket: { x: H.basket.x, y: H.basket.y, z: H.basket.z }, length: H.length,
-    path: H.data.path, width: H.data.width, inBoundsR: H.inBoundsR, trees: H.trees.map(t => ({ x: t.x, z: t.z, s: t.s, y: t.y, border: !!t.border, w: t.w || 1, cw: t.cw || 1 })) }),
+    path: H.data.path, width: H.data.width, inBoundsR: H.inBoundsR, trees: H.trees.map(t => ({ x: t.x, z: t.z, s: t.s, y: t.y, border: !!t.border, w: t.w || 1, cw: t.cw || 1, tunnel: !!t.tunnel })), arches: (H.arches || []).map(a => ({ x: a.x, z: a.z, y: a.y, span: a.span, h: a.h, yaw: a.yaw })) }),
   course: () => ({ id: COURSE.id, name: COURSE.name, world: COURSE.world, holes: COURSE.holes.map(h => ({ name: h.name, par: h.par, tee: h.tee, basket: h.basket, drop: h.drop || null })), par: roundStats().coursePar }),
   courses: () => COURSES.map(c => ({ id: c.id, name: c.name, holes: c.holes.length, par: coursePar(c), best: loadBest(c.id) })),
   loadCourse, showPicker,
-  homeSelect: (x) => homeSelect(typeof x === 'string' ? COURSES.findIndex(c => c.id === x) : x), homePlay, setUnlocks(on) { S.unlocks = !!on; if (pickerOpen()) renderPicker(); },
-  home: () => ({ open: pickerOpen(), sel: picker.sel, id: COURSES[picker.sel]?.id || null, discAt: picker.discAt, bg: picker.bg, unlocks: !!S.unlocks, unlockConst: UNLOCK_WORLDS, msg: homeUI.msg.textContent,
+  homeSelect: (x) => homeSelect(typeof x === 'string' ? COURSES.findIndex(c => c.id === x) : x), homePlay, worldPlay, showWorldPage, hideWorldPage,
+  holeBests: (id) => loadHoleBests(id), coinsFound: (id, i) => i == null ? coinsFoundOnCourse(id) : coinsFoundOnHole(id, i),
+  setUnlocks(on) { S.unlocks = !!on; if (pickerOpen()) renderPicker(); },
+  home: () => ({ open: pickerOpen(), page: picker.page || 'worlds', sel: picker.sel, id: COURSES[picker.sel]?.id || null, discAt: picker.discAt, bg: picker.bg, unlocks: !!S.unlocks, unlockConst: UNLOCK_WORLDS, msg: homeUI.msg.textContent,
     worlds: COURSES.map((c, i) => ({ id: c.id, open: worldUnlocked(i), best: loadBest(c.id), par: coursePar(c), stars: starsFor(loadBest(c.id), coursePar(c)) })), soon: HOME_SOON }),
   starsFor,
   setWind(mph, deg) { S.wind = makeWind(mph, deg); setFlagWind(); },
@@ -4994,7 +7188,7 @@ window.__game = {
   setAim(yaw) { S.yaw = yaw; },
   aimAtBasket() { S.yaw = yawToward(S.lie, H.basket); },
   aimAt(x, z) { S.yaw = yawToward(S.lie, new THREE.Vector3(x, 0, z)); },
-  setCurve(c) { S.curve = c; S.tomahawk = false; }, setHeight: (h) => setHeight(typeof h === 'string' ? HEIGHTS.findIndex(x => x.key === h) : h), height: () => ({ idx: S.height, key: HEIGHTS[S.height].key, used: HEIGHTS[S.htUsed].key }), HEIGHTS, setTomahawk: (on) => toggleTomahawk(on), TOMA, tomahawk: () => ({ on: !!S.tomahawk, used: !!S.tomaUsed, flip: S.fs?.flip || 0, discRollZ: +disc.rotation.z.toFixed(3) }),
+  setCurve(c) { S.curve = c; S.tomahawk = false; }, setHeight: (h) => { const i = typeof h === 'string' ? HEIGHTS.findIndex(x => x.key === h || x.name.toLowerCase() === h.toLowerCase()) : h; if (i >= 0) setHeight(i); }, height: () => ({ idx: S.height, key: HEIGHTS[S.height].key, used: HEIGHTS[S.htUsed].key, name: HEIGHTS[S.height].name }), HEIGHTS, setTomahawk: (on) => toggleTomahawk(on), TOMA, tomahawk: () => ({ on: !!S.tomahawk, used: !!S.tomaUsed, flip: S.fs?.flip || 0, discRollZ: +disc.rotation.z.toFixed(3) }),
   curveLevels: CURVE_LEVELS,
   throwWith(power, curve) { return throwDisc(power, curve ?? S.curve); },
   discs: DISC_ORDER, selectDisc, discRange: DISC_RANGE,
@@ -5009,6 +7203,20 @@ window.__game = {
   nearObstacle: () => { const T = H.tee, all = [...H.trees, ...(H.solids || [])].map(o => ({ x: o.x, z: o.z, d: Math.hypot(o.x - T.x, o.z - T.z) })).filter(o => o.d > 12 && o.d < 70).sort((a, b) => a.d - b.d);
     return all[0] ? { x: all[0].x, z: all[0].z, tx: T.x, tz: T.z } : null; },
   fastForward() { let n = 0; while (S.phase === 'flying' && n++ < 60 * 40) updateFlight(1 / 60); finishSplash(); return this.state(); },
+  stepFlight(n = 1) { let i = 0; while (S.phase === 'flying' && i++ < n) updateFlight(1 / 60); return this.state(); },
+  coins: () => coinsState(), skimPuffs: () => S.skimPuffs || 0,
+  coinPayout, coinStreakAfter, COIN_R, COIN_PAY, COIN_SPECIAL,
+  coinDay, setCoinDay: (d) => { S.coins.dayOverride = d || null; },
+  resetCoinStorage, persistCoinTotal,
+  clearLiveCoins: () => { (S.coins.live || []).forEach(c => { if (c.mesh?.parent) c.mesh.parent.remove(c.mesh); }); S.coins.live = []; },
+  addTestCoin: (x, y, z, id = 'test:0:0') => {
+    const mesh = makeCoinMesh(); mesh.position.set(x, y, z); H.group.add(mesh);
+    const c = { x, y, z, i: S.coins.live.length, id, mesh, got: coinWasFound(id) };
+    if (c.got) mesh.visible = false; S.coins.live.push(c); return { id, already: c.got };
+  },
+  pathHitsCoin: (path, coin) => { let best = Infinity; for (let i = 1; i < path.length; i++) { const a = path[i - 1], b = path[i]; best = Math.min(best, segPointDist(a.x, a.y, a.z, b.x, b.y, b.z, coin.x, coin.y, coin.z)); } return best; },
+  coinSpots: () => COIN_SPOTS,
+  hideCoinPop, showCoinPop,
 };
 
 // ======================= DEV TOOLS (hole jumper) — START =======================
