@@ -1033,18 +1033,15 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": -7.69,
-        "y": 0.5,
-        "z": -18.73,
+        "x": -8.45,
+        "y": 0.61,
+        "z": -21.8,
         "proof": {
-          "from": [
-            -5.21,
-            -12.74
-          ],
+          "from": "tee",
           "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": -0.3883,
+          "power": 1,
+          "curve": 0.25,
+          "yaw": -0.3896,
           "height": "low"
         }
       }
@@ -1159,18 +1156,15 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": 9.03,
-        "y": 0.5,
-        "z": -32.62,
+        "x": 11.8,
+        "y": 0.32,
+        "z": -39.58,
         "proof": {
-          "from": [
-            7.32,
-            -26.36
-          ],
+          "from": "tee",
           "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": 0.2709,
+          "power": 1,
+          "curve": 0.25,
+          "yaw": 0.2701,
           "height": "low"
         }
       }
@@ -1369,18 +1363,18 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": 14.9,
-        "y": 0.5,
-        "z": -46.66,
+        "x": 16.62,
+        "y": 0.61,
+        "z": -49.11,
         "proof": {
           "from": [
-            12.95,
-            -40.48
+            8.21,
+            -25.7
           ],
           "disc": "driver",
-          "power": 0.5,
+          "power": 1,
           "curve": 0,
-          "yaw": 0.3097,
+          "yaw": 0.309,
           "height": "low"
         }
       }
@@ -1495,18 +1489,15 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": 12.7,
+        "x": 14.86,
         "y": 0.5,
-        "z": -32.73,
+        "z": -36.15,
         "proof": {
-          "from": [
-            10.38,
-            -26.68
-          ],
+          "from": "tee",
           "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": 0.3709,
+          "power": 1,
+          "curve": 0.25,
+          "yaw": 0.3701,
           "height": "low"
         }
       }
@@ -1869,18 +1860,18 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": 29.04,
-        "y": 0.36,
-        "z": -77.54,
+        "x": 30.22,
+        "y": 0.71,
+        "z": -80.21,
         "proof": {
           "from": [
             26.49,
             -70.64
           ],
           "disc": "driver",
-          "power": 0.5,
+          "power": 1,
           "curve": 0,
-          "yaw": 0.3588,
+          "yaw": 0.354,
           "height": "low"
         }
       }
@@ -2503,9 +2494,9 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": -6.36,
-        "y": 0.41,
-        "z": -94.22,
+        "x": 14.75,
+        "y": 0.52,
+        "z": -36.05,
         "proof": {
           "from": "tee",
           "disc": "driver",
@@ -2544,9 +2535,9 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": -19.64,
-        "y": 0.38,
-        "z": -72.81,
+        "x": 9.0,
+        "y": 0.55,
+        "z": -34.32,
         "proof": {
           "from": "tee",
           "disc": "driver",
@@ -2670,9 +2661,9 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": 7.78,
-        "y": 0.34,
-        "z": -79.41,
+        "x": 12.86,
+        "y": 0.56,
+        "z": -32.16,
         "proof": {
           "from": "tee",
           "disc": "driver",
@@ -2796,9 +2787,9 @@ const COIN_SPOTS = {
         }
       },
       {
-        "x": -11.12,
-        "y": 0.35,
-        "z": -108.41,
+        "x": 11.74,
+        "y": 0.56,
+        "z": -35.72,
         "proof": {
           "from": "tee",
           "disc": "driver",
@@ -5047,7 +5038,7 @@ const SURFACE = { ground: { friction: 9, keep: 0.7, bounce: 0.25, slope: 3, roll
 // Skimmer (key 'low'): knee-height and flat, shorter, a short skid, less wind; can slip under a tree tunnel. High: higher arc and hang time, more wind, less roll. Sky lob: very high and steep,
 // drops almost straight down, most wind, sticks where it lands. Tomahawk ignores it. Stacks with curve.
 const HEIGHTS = [
-  { key: 'low', curveK: 0.65, fadeK: 0.5, tilt: -0.04, carryK: 0.7, dragK: 1.85, name: 'Skimmer', dLaunch: -6, speedK: { driver: 0.84, mid: 0.86, putter: 0.9 }, liftK: 0.08, windK: 0.4, keepK: 0.28, bounceK: 0.1, fricK: 5.2, noRoll: true, skim: true, skimY: 0.5 },
+  { key: 'low', curveK: 0.65, fadeK: 0.5, tilt: -0.04, carryK: 0.5, dragK: 1.5, name: 'Skimmer', dLaunch: -6, speedK: { driver: 1, mid: 0.94, putter: 0.92 }, liftK: 0.08, windK: 0.4, keepK: 0.28, bounceK: 0.1, fricK: 5.2, noRoll: true, skim: true, skimY: 0.5, skimMinK: 0.75 },
   { key: 'normal', tilt: 0, carryK: 1, name: 'Normal', dLaunch: 0, speedK: {}, liftK: 1, windK: 1, keepK: 1, bounceK: 1, fricK: 1 },
   { key: 'high', curveK: 1, fadeK: 0.45, tilt: 0.1, carryK: 0.96, dragK: 1, name: 'High', dLaunch: 8, speedK: { driver: 0.94, mid: 0.97, putter: 1.0 }, liftK: 1.0, windK: 1.45, keepK: 0.7, bounceK: 0.75, fricK: 1.7 },
   { key: 'sky', curveK: 0.7, fadeK: 0.05, tilt: 0.26, carryK: 0.72, dragK: 1.2, name: 'Sky', launchAbs: [44, 4], speedK: { driver: 0.9, mid: 0.93, putter: 1.02 }, liftK: 0.6, windK: 1.9, keepK: 0.28, bounceK: 0.35, fricK: 3.4, noRoll: true },
@@ -5120,13 +5111,23 @@ function stepPhysics(dt) {
       v.y += o.up * k * dt; v.x += o.push[0] * k * dt; v.z += o.push[1] * k * dt; S.ventT += dt;
       if (!S.sim && !S.vented) { S.vented = true; S.ventBoosts = (S.ventBoosts || 0) + 1; }
     }
-    // Skimmer: settle to ~knee height and fly flat. No climb — rising ground and rocks can clip it.
+    // Skimmer: settle to ~knee height and fly flat. Hold that floor while it still has steam (a share of launch speed), then let it sink into a short skid.
+    // No climb — rising ground and rocks can clip it.
     if (HT?.skim) {
-      const tgt = DISC_R + (HT.skimY || 0.5), clear = p.y - gy;
-      if (clear > tgt + 0.04) v.y -= Math.min(22, (clear - tgt) * 18) * dt;
-      else if (v.y < 0) v.y += Math.min(-v.y, (tgt + 0.06 - clear) * 30 * dt); // hold the floor on flat ground; a rising hill can still clip it
-      v.y = Math.min(v.y, 0.35);
-      v.y -= v.y * 3 * dt;
+      const tgt = DISC_R + (HT.skimY || 0.5), clear = p.y - gy, steam = vh > S.v0 * (HT.skimMinK || 0);
+      if (steam) {
+        // brake the drop as we reach the floor so we don't punch through, then hold; never add upward speed (hills still win)
+        if (clear > tgt) {
+          if (clear > tgt + 0.04) v.y -= Math.min(22, (clear - tgt) * 18) * dt;
+          if (v.y < 0) { const maxDown = Math.max(0.25, (clear - tgt) * 8); if (-v.y > maxDown) v.y = -maxDown; }
+        } else if (v.y < 0) v.y = 0;
+        v.y = Math.min(v.y, 0.35);
+        v.y -= v.y * 3 * dt;
+      } else {
+        // out of steam: settle onto the ground (soft enough to skip the hard bounce) so leftover speed becomes a short skid
+        if (clear > DISC_R + 0.02) v.y = Math.max(v.y - 8 * dt, -1.8);
+        v.y = Math.min(v.y, 0.35);
+      }
     }
   }
   p.addScaledVector(v, dt);
