@@ -3737,33 +3737,37 @@ function makeTurtle(opts = {}) {
   const SK = 0x6f7f45, SKd = 0x56633a, BE = 0xb8a66a, BK = 0x3e3424, PK = 0xc46a6a, AM = 0xd8a42a, K = 0x0d0d0b, Wt = 0xffffff;
   const SH = 0x5a5a34, SHl = 0x6e683c, SHd = 0x2e3018, MO = 0x5f8a2c, PL = 0xc4a86a, PLd = 0xa89058;
   const g = new THREE.Group();
-  // ----- shell: dome + plastron + scutes + rim (one mesh, matte horn) -----
-  const a = 1.15, b = 0.82, c = 1.32; // half-width, height, half-length
-  const sh = [[E_(1, a, b, c, 0, 0.12, 0, 0, 0, 0, 20, 14), SHd, { lump: 0.03, freq: 2 }], // carapace dome
-    [E_(1, a * 0.92, 0.28, c * 0.9, 0, -0.22, 0.02), PL, { ao: 0.28 }], // plastron (the underside)
-    [E_(1, a * 0.78, 0.1, c * 0.72, 0, -0.36, 0.02), PLd, { ao: 0.2 }]]; // plastron mid-seam
-  // ph is polar from the up axis (0 = top), th is around
-  const on2 = (th, ph) => { const x = a * Math.sin(ph) * Math.sin(th), y = b * Math.cos(ph), z = c * Math.sin(ph) * Math.cos(th);
-    const n = new THREE.Vector3(x / (a * a), y / (b * b), z / (c * c)).normalize(); return [new THREE.Vector3(x, y + 0.12, z), n]; };
-  const plate = (th, ph, w, l, col) => { const [p, n] = on2(th, ph), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n), m = new THREE.Matrix4().compose(new THREE.Vector3(p.x + n.x * 0.04, p.y + n.y * 0.04, p.z + n.z * 0.04), q, new THREE.Vector3(1, 1, 1));
-    const rnd = (th * 13.1 + ph * 7.7) % 1, cc = new THREE.Color(col).lerp(new THREE.Color(SHl), Math.abs(rnd) * 0.4).getHex();
-    sh.push([new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(w, 0.22, l).applyMatrix4(m), cc, { ao: 0.12, lump: 0.02, freq: 4 }]);
-    sh.push([new THREE.TorusGeometry(1, 0.045, 4, 12).rotateX(Math.PI / 2).scale(w * 0.95, 1, l * 0.95).translate(0, 0.02, 0).applyMatrix4(m), SHd, { ao: 0 }]); };
-  for (const [th, ph] of [[0, 0.35], [0, 0.7], [0, 1.05], [Math.PI, 0.7], [Math.PI, 1.05]]) plate(th, ph, 0.42, 0.4, SH); // vertebral row
-  for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) plate(sx * (0.55 + k * 0.7), 0.78, 0.36, 0.4, k % 2 ? SH : SHl); // costals along each side
-  for (let k = 0; k < 16; k++) { const th = k / 16 * Math.PI * 2, [p] = on2(th, 1.32), back = Math.cos(th) < -0.55; // marginal rim, a little pointed at the back
-    sh.push([E_(0.26, 1, 0.3, 0.55, p.x * 1.02, p.y - 0.02, p.z * 1.02, 0, th, 0), k % 2 ? SH : SHl, { ao: 0.18 }]);
-    if (back) sh.push([C_(0.12, 0.26, p.x * 1.06, p.y - 0.04, p.z * 1.06, Math.PI / 2, th, 0, 4), SHd]); }
-  sh.push([Y_(0.55, 0.62, 0.28, 0, 0.08, 1.15, Math.PI / 2, 10), SK, { lump: 0.04, freq: 4 }]); // skin collar in the front opening, so the neck is born from the shell
-  sh.push([C_(0.2, 0.7, 0, -0.1, -1.38, -Math.PI / 2, 0, 0, 6), SK, { lump: 0.04 }]); // short tail
-  if (opts.moss) for (let k = 0; k < 6; k++) { const th = (k * 2.15) % 6.28, [p, n] = on2(th, 0.45 + (k % 3) * 0.2); sh.push([E_(0.22 + (k % 3) * 0.08, 1.2, 0.22, 0.9, p.x + n.x * 0.1, p.y + n.y * 0.1, p.z + n.z * 0.1), MO, { lump: 0.07, freq: 5 }]); }
-  const shell = partMesh(sh, SM.shellWet, g);
+  let shell = null;
+  if (!opts.noShell) {
+      // ----- shell: dome + plastron + scutes + rim (one mesh, matte horn) -----
+      const a = 1.15, b = 0.82, c = 1.32; // half-width, height, half-length
+      const sh = [[E_(1, a, b, c, 0, 0.12, 0, 0, 0, 0, 20, 14), SHd, { lump: 0.03, freq: 2 }], // carapace dome
+        [E_(1, a * 0.92, 0.28, c * 0.9, 0, -0.22, 0.02), PL, { ao: 0.28 }], // plastron (the underside)
+        [E_(1, a * 0.78, 0.1, c * 0.72, 0, -0.36, 0.02), PLd, { ao: 0.2 }]]; // plastron mid-seam
+      // ph is polar from the up axis (0 = top), th is around
+      const on2 = (th, ph) => { const x = a * Math.sin(ph) * Math.sin(th), y = b * Math.cos(ph), z = c * Math.sin(ph) * Math.cos(th);
+        const n = new THREE.Vector3(x / (a * a), y / (b * b), z / (c * c)).normalize(); return [new THREE.Vector3(x, y + 0.12, z), n]; };
+      const plate = (th, ph, w, l, col) => { const [p, n] = on2(th, ph), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n), m = new THREE.Matrix4().compose(new THREE.Vector3(p.x + n.x * 0.04, p.y + n.y * 0.04, p.z + n.z * 0.04), q, new THREE.Vector3(1, 1, 1));
+        const rnd = (th * 13.1 + ph * 7.7) % 1, cc = new THREE.Color(col).lerp(new THREE.Color(SHl), Math.abs(rnd) * 0.4).getHex();
+        sh.push([new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(w, 0.22, l).applyMatrix4(m), cc, { ao: 0.12, lump: 0.02, freq: 4 }]);
+        sh.push([new THREE.TorusGeometry(1, 0.045, 4, 12).rotateX(Math.PI / 2).scale(w * 0.95, 1, l * 0.95).translate(0, 0.02, 0).applyMatrix4(m), SHd, { ao: 0 }]); };
+      for (const [th, ph] of [[0, 0.35], [0, 0.7], [0, 1.05], [Math.PI, 0.7], [Math.PI, 1.05]]) plate(th, ph, 0.42, 0.4, SH); // vertebral row
+      for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) plate(sx * (0.55 + k * 0.7), 0.78, 0.36, 0.4, k % 2 ? SH : SHl); // costals along each side
+      for (let k = 0; k < 16; k++) { const th = k / 16 * Math.PI * 2, [p] = on2(th, 1.32), back = Math.cos(th) < -0.55; // marginal rim, a little pointed at the back
+        sh.push([E_(0.26, 1, 0.3, 0.55, p.x * 1.02, p.y - 0.02, p.z * 1.02, 0, th, 0), k % 2 ? SH : SHl, { ao: 0.18 }]);
+        if (back) sh.push([C_(0.12, 0.26, p.x * 1.06, p.y - 0.04, p.z * 1.06, Math.PI / 2, th, 0, 4), SHd]); }
+      sh.push([Y_(0.55, 0.62, 0.28, 0, 0.08, 1.15, Math.PI / 2, 10), SK, { lump: 0.04, freq: 4 }]); // skin collar in the front opening, so the neck is born from the shell
+      if (!opts.noTail) sh.push([C_(0.2, 0.7, 0, -0.1, -1.38, -Math.PI / 2, 0, 0, 6), SK, { lump: 0.04 }]); // short tail (merged into the shell on holes 6 and 8)
+      if (opts.moss) for (let k = 0; k < 6; k++) { const th = (k * 2.15) % 6.28, [p, n] = on2(th, 0.45 + (k % 3) * 0.2); sh.push([E_(0.22 + (k % 3) * 0.08, 1.2, 0.22, 0.9, p.x + n.x * 0.1, p.y + n.y * 0.1, p.z + n.z * 0.1), MO, { lump: 0.07, freq: 5 }]); }
+      const shellMesh = partMesh(sh, SM.shellWet, g);
+    shell = shellMesh;
+  }
   // ----- neck (short, thick, wrinkled) growing out of the collar -----
   const neck = new THREE.Group(); neck.position.set(0, 0.14, 1.22); g.add(neck);
   const nk = [[E_(0.52, 1.05, 0.9, 0.7, 0, 0.02, 0.08), SK, { lump: 0.06, freq: 5 }], [E_(0.44, 1.02, 0.95, 0.75, 0, 0.06, 0.55), SK, { lump: 0.05, freq: 5 }],
     [E_(0.38, 1.0, 0.9, 0.5, 0, 0.1, 0.95), SK, { lump: 0.04, freq: 4 }], [E_(0.36, 1.1, 0.45, 0.8, 0, -0.22, 0.45), BE, { ao: 0.22 }]]; // pale throat
   for (let k = 0; k < 3; k++) nk.push([E_(0.48, 1.05, 0.22, 0.85, 0, 0.04, 0.22 + k * 0.28), SKd, { lump: 0.03, freq: 6 }]); // skin folds, inside the neck outline
-  partMesh(nk, SM.turtleWet, neck);
+  partMesh(nk, SM.turtleWet, neck).userData.kind = 'neck';
   // ----- head: one hooked-beak skull (eyes set in, not stuck on) -----
   const head = new THREE.Group(); head.position.set(0, 0.16, 1.15); neck.add(head);
   const hd = [[E_(0.58, 1.05, 0.88, 1.05, 0, 0.02, 0.05), SK, { lump: 0.045, freq: 3 }], // skull
@@ -3773,25 +3777,35 @@ function makeTurtle(opts = {}) {
     [E_(0.04, 1, 1, 1, -0.1, 0.08, 1.08), K, { ao: 0 }], [E_(0.04, 1, 1, 1, 0.1, 0.08, 1.08), K, { ao: 0 }]]; // nostrils
   for (const sx of [-1, 1]) { hd.push([E_(0.2, 1, 0.9, 0.7, sx * 0.42, 0.22, 0.38), SKd], // socket
     [E_(0.16, 1, 1, 0.75, sx * 0.46, 0.24, 0.48), AM, { ao: 0 }], [E_(0.045, 0.55, 2.1, 0.55, sx * 0.52, 0.25, 0.58), K, { ao: 0 }], [E_(0.035, 1, 1, 1, sx * 0.54, 0.32, 0.6), Wt, { ao: 0 }]); } // amber eye, slit, glint
-  partMesh(hd, SM.turtleWet, head);
+  partMesh(hd, SM.turtleWet, head).userData.kind = 'head';
   const jaw = new THREE.Group(); jaw.position.set(0, -0.22, 0.28); head.add(jaw);
   partMesh([[E_(0.38, 1.05, 0.3, 0.9, 0, -0.02, 0.22), BE, { ao: 0.16 }], [E_(0.3, 1, 0.2, 0.8, 0, 0.07, 0.24), PK, { ao: 0 }], // jaw + pink mouth
-    [C_(0.11, 0.16, 0, 0.0, 0.78, Math.PI * 0.5, 0, Math.PI, 8), BK, { ao: 0 }]], SM.turtleWet, jaw); // lower beak
+    [C_(0.11, 0.16, 0, 0.0, 0.78, Math.PI * 0.5, 0, Math.PI, 8), BK, { ao: 0 }]], SM.turtleWet, jaw).userData.kind = 'jaw'; // lower beak
   // ----- four flippers, attached at the shell (front pair paddles) -----
   const flip = (sx, z, rear) => { const fl = new THREE.Group(); fl.position.set(sx * (rear ? 0.9 : 1.02), -0.12, z); g.add(fl);
     const parts = [[E_(0.7, 1.15, 0.22, 0.55, sx * 0.35, 0, 0, 0, sx * 0.2), SK, { lump: 0.03, freq: 3 }], [E_(0.55, 1.05, 0.16, 0.4, sx * 0.7, -0.04, 0.04, 0, sx * 0.2), BE, { ao: 0.12 }]];
     if (!rear) for (let k = 0; k < 3; k++) parts.push([C_(0.05, 0.2, sx * (1.05 + k * 0.06), -0.02, 0.16 - k * 0.14, Math.PI / 2, 0, 0, 5), 0xe6dcc0, { ao: 0 }]);
-    partMesh(parts, SM.turtleWet, fl); return fl; };
-  const flips = [flip(-1, 0.5, false), flip(1, 0.5, false), flip(-1, -0.62, true), flip(1, -0.62, true)];
+    partMesh(parts, SM.turtleWet, fl).userData.kind = sx < 0 ? 'flipL' : 'flipR'; return fl; };
+  const flips = [flip(-1, 0.5, false), flip(1, 0.5, false)];
+  if (!opts.noRear) { flips.push(flip(-1, -0.62, true), flip(1, -0.62, true)); }
   // water line: a soft ring that tick() pins to the water surface around the shell
-  const water = new THREE.Group(); g.add(water);
-  const mkRing = (r0, r1, op) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 24), SM.ripple.clone()); m.material.opacity = op; m.rotation.x = -Math.PI / 2; m.renderOrder = 3; m.castShadow = false; water.add(m); return m; };
-  const rings = [mkRing(0.85, 1.15, 0.7), mkRing(1.15, 1.45, 0.4)];
-  const tick = (t) => { g.updateMatrixWorld(true); const wy = g.getWorldPosition(TMP.rp).y, s = g.scale.y || 1;
-    water.position.set(0, (0.12 - wy) / s, 0); const top = wy + 0.95 * s, bot = wy - 0.55 * s; water.visible = !!g.visible && bot < 0.25 && top > -0.05;
-    const pulse = 0.9 + 0.1 * Math.sin((t || 0) * 2.2); rings[0].scale.setScalar(pulse); rings[1].scale.setScalar(pulse);
+  let water = null, rings = [];
+  if (!opts.noWater) {
+    water = new THREE.Group(); g.add(water);
+    const mkRing = (r0, r1, op) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 24), SM.ripple.clone()); m.material.opacity = op; m.rotation.x = -Math.PI / 2; m.renderOrder = 3; m.castShadow = false; water.add(m); return m; };
+    rings = [mkRing(0.85, 1.15, 0.7), mkRing(1.15, 1.45, 0.4)];
+  }
+  let tail = null;
+  if (opts.tail) { // a separate tail group (hole 9 pulls this out from under the back rim)
+    tail = new THREE.Group(); g.add(tail);
+    partMesh([[C_(0.22, 0.9, 0, 0.02, -0.15, -Math.PI / 2, 0, 0, 6), SK, { lump: 0.04 }], [E_(0.16, 1, 0.2, 0.45, 0, 0, -0.72), SK, { lump: 0.03 }]], SM.turtleWet, tail).userData.kind = 'tail';
+  }
+  const tick = (t) => { g.updateMatrixWorld(true);
+    if (water) { const wy = g.getWorldPosition(TMP.rp).y, s = g.scale.y || 1;
+      water.position.set(0, (0.12 - wy) / s, 0); const top = wy + 0.95 * s, bot = wy - 0.55 * s; water.visible = !!g.visible && bot < 0.25 && top > -0.05;
+      const pulse = 0.9 + 0.1 * Math.sin((t || 0) * 2.2); rings[0].scale.setScalar(pulse); rings[1].scale.setScalar(pulse); }
     flips.forEach((f, i) => { const padd = Math.sin((t || 0) * 2.6 + i * 1.1); f.rotation.x = padd * (i < 2 ? 0.28 : 0.16); f.rotation.z = (i % 2 ? 1 : -1) * (0.12 + padd * 0.1); }); };
-  g.userData = { neck, head, jaw, flips, shell, water, tick }; return g;
+  g.userData = { neck, head, jaw, flips, shell, water, tail, tick }; return g;
 }
 // a pooled set of bubbles (no per-frame allocation): spawn() reuses the oldest
 function bubblePool(parent, n, size = 1) {
@@ -4100,42 +4114,79 @@ const STORY_CLUES = {
       u.tick(t); if (d.stage !== was) { if (d.stage === 'rise' || d.stage === 'sink') { for (let i = 0; i < 7; i++) { const a = i * 0.9; pool.spawn(c.at[0] + Math.cos(a) * 2.2, 0.1, c.at[1] + Math.sin(a) * 2.2, 1.1 + Math.random() * 0.5); } if (d.stage === 'rise') spawnSplash(c.at[0], c.at[1]); } was = d.stage; } } };
     return st;
   },
-  island(g, c, rnd) { // Turtle Island: moss + palm + rocks on the island green; the island (its shell) slowly breathes; bubbles around the edge
-    const R = c.r; g.rotation.y = 0;
+  island(g, c, rnd) { // Turtle Island IS the turtle: the green is a mossy shell that slowly breathes; after the last putt the head and flippers slide out from under the rim
+    const R = c.r, face = Math.atan2(-c.at[0], -c.at[1]); // +z of the shell faces the tee
+    const SH = 0x5a5a34, SHl = 0x6e683c, SHd = 0x2e3018, MO = 0x5f8a2c, MOd = 0x4a6e24;
     const shellBits = new THREE.Group(); g.add(shellBits);
-    for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28 + 0.2; sm(SG.lump, i % 2 ? SM.moss : SM.shell, 1.3, 0.35, 0.9, Math.cos(a) * (R - 0.4), 0.12, Math.sin(a) * (R - 0.4), shellBits).rotation.y = -a; } // shell-plate rim
+    // looks only: a very low mossy dome, faint plate seams under the grass, and a scalloped rim at the waterline.
+    // playable footprint, height and collision stay exactly as they are (no course data, no raised putting surface).
+    const carapace = new THREE.Group(); carapace.rotation.y = face; shellBits.add(carapace);
+    const bits = [];
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + 0.18; // low moss ring just outside the putting green, suggesting a soft dome
+      bits.push([E_(1.7, 1.15, 0.055, 1.05, Math.sin(a) * 5.7, 0.105, Math.cos(a) * 5.7, 0, a, 0, 10, 6), i % 2 ? MO : MOd, { lump: 0.03, freq: 3 }]); }
+    [5.05, 3.25, -3.25, -5.05].forEach((z, i) => bits.push([E_(1.15, 1, 0.055, 1.05, 0, 0.115, z, 0, 0, 0, 10, 6), i % 2 ? SH : SHl, { ao: 0.14, lump: 0.015 }])); // vertebral scutes, clear of the basket
+    for (const sx of [-1, 1]) [4.15, 1.55, -1.55, -4.15].forEach((z, i) => bits.push([E_(1.05, 1, 0.05, 1.1, sx * 3.15, 0.112, z, 0, 0, 0, 10, 6), (i + (sx < 0)) % 2 ? SH : SHl, { ao: 0.12, lump: 0.015 }]));
+    bits.push([E_(0.07, 1, 0.02, 6.3, 0, 0.102, 0, 0, 0, 0, 8, 5), SHd, { ao: 0 }]); // faint seams under the grass
+    bits.push([E_(5.1, 1, 0.018, 0.055, 0, 0.102, 2.25, 0, 0, 0, 8, 5), SHd, { ao: 0 }], [E_(5.1, 1, 0.018, 0.055, 0, 0.102, -2.25, 0, 0, 0, 8, 5), SHd, { ao: 0 }]);
+    for (const sx of [-1, 1]) bits.push([E_(0.055, 1, 0.018, 3.1, sx * 1.65, 0.102, 0, 0, 0, 0, 8, 5), SHd, { ao: 0 }]);
+    for (let k = 0; k < 18; k++) { const th = k / 18 * Math.PI * 2 + 0.04, rr = R * 1.015, w = 0.82 + (k % 3) * 0.08, l = 0.68 + (k % 2) * 0.12; // scalloped shell rim at the waterline, slightly overhanging the beach
+      bits.push([E_(1, w, 0.28, l, Math.sin(th) * rr, 0.10, Math.cos(th) * rr, 0, th, 0, 10, 8), k % 2 ? SH : SHl, { ao: 0.18, lump: 0.03 }]);
+      if (k % 3 === 0) bits.push([E_(0.42, 1.1, 0.16, 0.65, Math.sin(th) * (rr - 0.2), 0.16, Math.cos(th) * (rr - 0.2), 0, th, 0, 8, 6), MO, { lump: 0.05 }]); }
+    partMesh(bits, SM.shellWet, carapace).userData.kind = 'shell';
     const palm = new THREE.Group(); palm.position.set(-4.5, 0, -3.2); shellBits.add(palm);
     for (let i = 0; i < 6; i++) sm(SG.ball, SM.palm, 0.22, 0.55, 0.22, i * 0.12, 0.45 + i * 0.85, 0, palm);
     for (let i = 0; i < 7; i++) { const f = new THREE.Mesh(SG.frond, SM.frond); f.position.set(0.7, 5.2, 0); f.rotation.set(0.5, i / 7 * 6.28, 0); palm.add(f); }
     for (const [x, z, s] of [[4.6, -3, 0.9], [5.5, -1.6, 0.6], [-5.5, 2.5, 0.7], [-3, 5.4, 0.5]]) sm(SG.lump, MAT.rock, s * 1.6, s * 1.4, s * 1.6, x, 0.15, z, shellBits);
     for (let i = 0; i < 10; i++) { const a = rnd() * 6.28, r = rnd() * (R - 2); if (Math.hypot(Math.cos(a) * r, Math.sin(a) * r) < 2.5) continue; sm(SG.lump, SM.mossLight, 0.6, 0.12, 0.5, Math.cos(a) * r, 0.1, Math.sin(a) * r, shellBits); }
-    // the island's own meshes (sand, grass, green, basket) breathe with it: tiny, visual only (the basket stays catchable)
+    // the island's own meshes (sand, grass, green, basket) breathe with it: tiny, visual only (the basket stays catchable, the disc never moves)
     const bob = H.group.children.filter(o => [MAT.islandSand, MAT.islandGrass, MAT.green].includes(o.material) || o.userData.basketGroup);
-    const base = bob.map(o => o.position.y);
-    const pool = bubblePool(H.group, 14, 0.6); let last = 0;
-    const turtle = makeTurtle(); turtle.visible = false; g.add(turtle);
-    const face = Math.atan2(-c.at[0], -c.at[1]); // toward the tee side
-    // he comes up in the open water off the island: the whole turtle (shell, neck, head, flippers) stays over the pond, clear of the beach
-    const TR = R + 3.2, Y0 = -1.7, Y1 = 0.42; turtle.scale.setScalar(0.75);
-    turtle.position.set(Math.sin(face) * TR, Y0, Math.cos(face) * TR); turtle.rotation.y = face;
-    const st = { turtle, R, TR, face, bob, base, breathe: 0, island: g };
-    st.update = (dt, t) => { pool.update(dt); const y = (Math.sin(t * 1.1) * 0.05 + st.breathe); st.y = y;
-      bob.forEach((o, i) => { o.position.y = base[i] + y; }); shellBits.position.y = y; turtle.userData.tick(t);
-      if (t - last > 0.45) { last = t; const a = Math.random() * 6.28; pool.spawn(g.position.x + Math.cos(a) * (R + 0.6), 0.1, g.position.z + Math.sin(a) * (R + 0.6), 0.6 + Math.random() * 0.6); } };
-    // reveal: rumble + bubbles, the whole turtle rises out of the water and sits in it, looks at you and snaps, then sinks straight back down (the island stays where it is)
+    const base = bob.map(o => o.position.clone());
+    const pool = bubblePool(H.group, 16, 0.6); let last = 0;
+    const rings = [0, 1, 2, 3].map(() => { const r = new THREE.Mesh(SG.ring, SM.ripple.clone()); r.position.y = 0.13; r.renderOrder = 3; r.visible = false; g.add(r); return r; });
+    // same art as holes 6/8, scaled up; only the head, neck, flippers and tail — the island itself is the shell
+    const turtle = makeTurtle({ noShell: true, noRear: true, noTail: true, noWater: true, tail: true });
+    turtle.rotation.y = face; turtle.visible = false; g.add(turtle);
+    const u = turtle.userData, neckSc = 2.3, flipSc = 2.7, tailSc = 2.1;
+    const neckMount = new THREE.Group(); turtle.add(neckMount); neckMount.add(u.neck); u.neck.position.set(0, 0, 0); u.neck.scale.setScalar(neckSc);
+    const flipMounts = u.flips.slice(0, 2).map((f, i) => { const sx = i ? 1 : -1, m = new THREE.Group(); turtle.add(m); m.add(f); f.position.set(0, 0, 0); f.scale.setScalar(flipSc); m.userData.sx = sx; return m; });
+    const tailMount = new THREE.Group(); turtle.add(tailMount); tailMount.add(u.tail); u.tail.position.set(0, 0, 0); u.tail.scale.setScalar(tailSc);
+    const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
+    const pose = (k) => { const e = ease(k); st.k = k; turtle.visible = k > 0.04;
+      neckMount.position.set(0, -0.62 + e * 0.76, R + 0.05 + e * 0.5); neckMount.rotation.x = 1.38 - e * 1.52; // folds down under the front rim, then slides out at water level
+      u.neck.rotation.x = 0; u.head.rotation.x = e * -0.06;
+      flipMounts.forEach(m => { const sx = m.userData.sx; m.position.set(sx * (R + 0.35 + e * 0.55), -0.5 + e * 0.7, 3.8); m.rotation.z = -sx * (0.95 - e * 1.08); m.rotation.x = 0; });
+      tailMount.position.set(0, -0.4 + e * 0.44, -(R + 0.05 + e * 0.6)); tailMount.rotation.x = -0.95 + e * 0.75; };
+    const st = { turtle, island: g, y: 0, k: 0, pose, footprint: { x: c.at[0], z: c.at[1], r: R }, carapace, breathe: 0, shake: 0 };
+    pose(0);
+    const edge = (a, off = 0.6) => [g.position.x + Math.cos(a) * (R + off), g.position.z + Math.sin(a) * (R + off)];
+    st.update = (dt, t) => { pool.update(dt); const y = Math.sin(t * 1.1) * 0.05 + st.breathe; st.y = y;
+      const sx = st.shake * Math.sin(t * 28), sz = st.shake * Math.cos(t * 23);
+      bob.forEach((o, i) => { o.position.set(base[i].x + sx, base[i].y + y, base[i].z + sz); }); shellBits.position.set(sx, y, sz);
+      u.tick(t);
+      if (t - last > 0.45) { last = t; const a = Math.random() * 6.28, [x, z] = edge(a); pool.spawn(x, 0.1, z, 0.6 + Math.random() * 0.6); } };
+    // reveal: the island rumbles (ripples spread out); the head, flippers and tail slide out from under the rim at water level, he looks and snaps, then pulls back in. The island never swims away.
     st.reveal = {
-      update(t, Rv) { const u = turtle.userData, ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
-        if (t < 1.1) { Rv.stage = 'rumble'; shakeCamera(0.12, 0.3); st.breathe = Math.sin(t * 25) * 0.08; if (Math.random() < 0.5) { const a = Math.random() * 6.28; pool.spawn(g.position.x + Math.cos(a) * (R + 0.5), 0.1, g.position.z + Math.sin(a) * (R + 0.5), 1.2); } }
-        else if (t < 2.1) { Rv.stage = 'rise'; st.breathe = 0; turtle.visible = true; turtle.position.y = Y0 + (Y1 - Y0) * ease((t - 1.1) / 0.8); u.neck.rotation.x = -0.2 * (1 - ease((t - 1.1) / 0.9)); shakeCamera(0.2, 0.3); if (!Rv.splash) { Rv.splash = true; const w = turtle.getWorldPosition(TMP.rp); spawnSplash(w.x, w.z); } }
-        else if (t < 4.3) { Rv.stage = 'look'; const k = t - 2.1; u.head.rotation.y = Math.sin(k * 1.6) * 0.35 * Math.max(0, 1 - k / 2.2); u.jaw.rotation.x = k > 1.2 && k < 1.7 ? 0.45 : 0.05; // snap!
-          if (!Rv.shown) { Rv.shown = true; shakeCamera(0.4, 1.2); } }
-        else if (t < 5.3) { Rv.stage = 'sink'; const k = ease((t - 4.3) / 0.9); turtle.position.y = Y1 - (Y1 - Y0) * k; u.neck.rotation.x = -0.2 * k; u.head.rotation.y = 0; u.jaw.rotation.x = 0.05;
-          if (!Rv.sunk) { Rv.sunk = true; const w = turtle.getWorldPosition(TMP.rp); for (let i = 0; i < 8; i++) { const a = i * 0.8; pool.spawn(w.x + Math.cos(a) * 1.6, 0.1, w.z + Math.sin(a) * 1.6, 1.2); } } }
-        else if (t < 6.0) { Rv.stage = 'gone'; turtle.visible = false; turtle.position.y = Y0; }
+      update(t, Rv) {
+        if (t < 1.6) { Rv.stage = 'rumble'; shakeCamera(0.14, 0.35); st.breathe = Math.sin(t * 24) * 0.08; st.shake = 0.09 * (1 - t / 1.6); pose(0);
+          rings.forEach((r, i) => { const f = Math.max(0, Math.min(1, (t - i * 0.28) / 1.5)); r.visible = f > 0 && f < 1; r.scale.setScalar(R * 0.4 + f * (R + 10)); r.material.opacity = 0.7 * (1 - f); });
+          if (Math.random() < 0.55) { const a = Math.random() * 6.28, [x, z] = edge(a, 0.4); pool.spawn(x, 0.1, z, 1.2); } }
+        else if (t < 3.6) { Rv.stage = 'rise'; st.breathe = 0; st.shake = 0.03 * (1 - (t - 1.6) / 2); const k = ease((t - 1.6) / 2); pose(k);
+          rings.forEach((r, i) => { const f = Math.max(0, Math.min(1, (t - 0.4 - i * 0.28) / 1.8)); r.visible = f > 0 && f < 1; r.scale.setScalar(R * 0.4 + f * (R + 10)); r.material.opacity = 0.45 * (1 - f); });
+          if (!Rv.splash) { Rv.splash = true; const w = neckMount.getWorldPosition(new THREE.Vector3()); spawnSplash(w.x, w.z);
+            flipMounts.forEach(m => { const p = m.getWorldPosition(new THREE.Vector3()); spawnSplash(p.x, p.z); }); } }
+        else if (t < 5.5) { Rv.stage = 'look'; pose(1); st.shake = 0; rings.forEach(r => { r.visible = false; });
+          const k = t - 3.6; u.head.rotation.y = Math.sin(k * 1.5) * 0.32 * Math.max(0, 1 - k / 1.9); u.jaw.rotation.x = k > 0.7 && k < 1.15 ? 0.5 : 0.05; // snap once
+          if (!Rv.shown) { Rv.shown = true; shakeCamera(0.28, 1.0); } }
+        else if (t < 7.3) { Rv.stage = 'sink'; const k = ease((t - 5.5) / 1.8); pose(1 - k); u.head.rotation.y = 0; u.jaw.rotation.x = 0.05;
+          if (!Rv.sunk) { Rv.sunk = true; for (let i = 0; i < 8; i++) { const a = i * 0.8, [x, z] = edge(a, 0.5); pool.spawn(x, 0.1, z, 1.2); } } }
+        else if (t < 7.9) { Rv.stage = 'gone'; pose(0); turtle.visible = false; u.head.rotation.y = 0; u.jaw.rotation.x = 0; rings.forEach(r => { r.visible = false; }); }
         else return true;
         u.tick(t); return false; },
-      finish() { turtle.visible = false; turtle.position.y = Y0; },
-      cam() { const w = g.localToWorld(new THREE.Vector3(Math.sin(face) * (R + 11.5), 3.0, Math.cos(face) * (R + 11.5))).add(new THREE.Vector3(Math.cos(face) * 6, 0, -Math.sin(face) * 6)), look = g.localToWorld(new THREE.Vector3(Math.sin(face) * (TR + 0.4), 0.9, Math.cos(face) * (TR + 0.4))); return { pos: w, look }; },
+      finish() { pose(0); turtle.visible = false; st.breathe = 0; st.shake = 0; u.head.rotation.y = 0; u.jaw.rotation.x = 0; rings.forEach(r => { r.visible = false; }); },
+      cam() { const hx = new THREE.Vector3(), ix = g.position.x, iz = g.position.z, fx = Math.sin(face), fz = Math.cos(face), sx = fz;
+        if (turtle.visible) u.head.getWorldPosition(hx); else hx.set(ix + fx * R, 0.7, iz + fz * R);
+        const look = new THREE.Vector3(ix * 0.25 + hx.x * 0.75, 0.7, iz * 0.25 + hx.z * 0.75);
+        return { pos: new THREE.Vector3(ix + sx * 10, 5.8, iz + fz * 22.5), look }; },
     };
     return st;
   },
@@ -4919,7 +4970,17 @@ window.__game = {
     const m = sc.userData.marks || {}; return { spots: m.spots || null, forest: sc.userData.forest || 0, marks: Object.keys(m), aurora: m.aurora || 0, anger: m.anger ?? null, ruins: m.ruins ?? null, lights: m.lights ?? null, fx: sc.userData.fx.length, tris: Math.round(tris), meshes, fogFar: scene.fog.far }; },
   storyShadow: () => { const b = H.story?.built, sh = b?.shadow; return sh ? { visible: sh.visible, x: +sh.position.x.toFixed(2), z: +sh.position.z.toFixed(2), turtle: !!b.diver?.visible, y: b.diver ? +b.diver.position.y.toFixed(2) : null, tx: b.diver ? +b.diver.position.x.toFixed(2) : null, tz: b.diver ? +b.diver.position.z.toFixed(2) : null, stage: b.stage, k: +(b.k || 0).toFixed(2), foot: b.diver ? (() => { const y = b.diver.position.y, v = b.diver.visible; b.diver.position.y = 0; b.diver.visible = true; const bx = new THREE.Box3().setFromObject(b.diver).union(new THREE.Box3().setFromObject(sh)); b.diver.position.y = y; b.diver.visible = v; return [bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2)); })() : null } : null; },
   storyRock: () => { const b = H.story?.built, r = b?.rock; if (!r) return null; const w = r.getWorldPosition(new THREE.Vector3()); return { visible: r.visible, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2) }; },
-  storyIsland: () => { const b = H.story?.built; return b?.turtle ? { y: b.y || 0, turtle: b.turtle.visible, headY: +b.turtle.position.y.toFixed(2), parts: (() => { const t = b.turtle, y = t.position.y, v = t.visible; t.position.y = 0.9; t.visible = true; t.updateMatrixWorld(true); const o = []; t.traverse(m => { if (m.isMesh) { const bx = new THREE.Box3().setFromObject(m); o.push([bx.min.x, bx.max.x, bx.min.z, bx.max.z].map(q => +q.toFixed(2))); } }); t.position.y = y; t.visible = v; t.updateMatrixWorld(true); return o; })(), island: b.island ? [+b.island.position.x.toFixed(2), +b.island.position.z.toFixed(2)] : null, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } } : null; },
+  storyIsland: () => { const b = H.story?.built; if (!b?.turtle) return null;
+    const k0 = b.k || 0, v0 = b.turtle.visible, jaw0 = b.turtle.userData.jaw?.rotation.x || 0, hy0 = b.turtle.userData.head?.rotation.y || 0;
+    if (b.pose) b.pose(1); b.turtle.visible = true; b.turtle.updateMatrixWorld(true);
+    const rec = (m, kind) => { const bx = new THREE.Box3().setFromObject(m); return { kind: kind || m.userData.kind || 'part', x0: +bx.min.x.toFixed(2), x1: +bx.max.x.toFixed(2), y0: +bx.min.y.toFixed(2), y1: +bx.max.y.toFixed(2), z0: +bx.min.z.toFixed(2), z1: +bx.max.z.toFixed(2) }; };
+    const parts = []; b.turtle.traverse(m => { if (m.isMesh && m.userData.kind) parts.push(rec(m)); });
+    const shell = []; (b.carapace || b.turtle).traverse?.(m => { if (m.isMesh && m.userData.kind === 'shell') shell.push(rec(m, 'shell')); });
+    if (b.carapace) b.carapace.traverse(m => { if (m.isMesh && m.userData.kind === 'shell' && !shell.length) shell.push(rec(m, 'shell')); });
+    const headW = b.turtle.userData.head ? b.turtle.userData.head.getWorldPosition(new THREE.Vector3()) : null;
+    if (b.pose) b.pose(k0); b.turtle.visible = v0; if (b.turtle.userData.jaw) b.turtle.userData.jaw.rotation.x = jaw0; if (b.turtle.userData.head) b.turtle.userData.head.rotation.y = hy0; b.turtle.updateMatrixWorld(true);
+    const headNow = b.turtle.userData.head && b.turtle.visible ? b.turtle.userData.head.getWorldPosition(new THREE.Vector3()) : (b.turtle.userData.head ? b.turtle.userData.head.getWorldPosition(new THREE.Vector3()) : { y: -1 });
+    return { y: b.y || 0, k: +(k0).toFixed(3), turtle: !!v0 && k0 > 0.05, headY: +headNow.y.toFixed(2), parts, shell, island: b.island ? [+b.island.position.x.toFixed(2), +b.island.position.z.toFixed(2)] : null, footprint: b.footprint || null, basketPhys: { x: H.basket.x, y: H.basket.y, z: H.basket.z } }; },
   treeFade: () => { const v = H.group.userData.treeViz || []; return { trees: v.reduce((n, g) => n + g.list.length, 0), faded: v.reduce((n, g) => n + g.faded.reduce((a, b) => a + b, 0), 0), styles: v.map(g => g.list.length) }; },
   viewAt: (p, l) => { S.viewProp = p ? { pos: new THREE.Vector3(...p), look: new THREE.Vector3(...l) } : null; }, // tests: free close-up camera
   viewStory: (d = 6, h = 2.2, side = 0) => { if (!d) { S.viewProp = null; return; } const g = H.story?.group; if (!g) return null; const p = g.getWorldPosition(new THREE.Vector3()), t = H.tee;
