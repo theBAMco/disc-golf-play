@@ -167,7 +167,10 @@ body[data-world="lava"] #scorebox .title { color: #ffb066; }
 #hud button.pickcourse.sel, #picklist .upcoming.sel { transform: scale(1); opacity: 1; }
 #hud button.pickcourse:active { transform: scale(.98); }
 .pickcourse .pworld { font-size: 12px; font-weight: 900; letter-spacing: 2px; opacity: .85; text-transform: uppercase; }
-.pickcourse .pname, .upcoming .pname { font-size: 30px; font-weight: 900; line-height: 1.05; }
+.pickcourse .pname, .upcoming .pname { font-size: 30px; font-weight: 900; line-height: 1.05; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.pickcourse .pcoin { width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto;
+  background: radial-gradient(circle at 35% 30%, #fff6b3 0%, #ffd24a 50%, #c98c12 100%);
+  box-shadow: inset 0 0 0 2px rgba(140,86,0,.45), 0 0 8px rgba(255,210,74,.75), 0 2px 4px rgba(0,0,0,.35); }
 .pickcourse .pclue { width: 120px; height: 92px; margin: 6px 0 0; display: grid; place-items: center; }
 .pickcourse .pclue svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
 .pickcourse .pcluetxt { font-size: 13px; font-weight: 700; font-style: italic; opacity: .95; min-height: 2.4em; padding: 0 4px; }
@@ -286,20 +289,24 @@ body.charging #minimap { opacity: .55; }
 #heightbar.off { opacity: .42; cursor: default; } #heightbar.off .hfill, #heightbar.off .hthumb { background: #9aa; border-color: #9aa; }
 body.charging #heightbar { opacity: .55; }
 
-/* Special-coin progress on world cards: 9 gold/gray dots (a hole lights up when all 3 are found) */
-.pickcourse .pholes { display: flex; gap: 4px; margin-top: 6px; }
-.pickcourse .pholes i, .wpcoinslots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.28); box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
-.pickcourse .pholes i.got, .wpcoinslots i.got { background: #ffd24a; box-shadow: 0 0 6px rgba(255,210,74,.7); }
+/* Big special coin indicator on world page: one big coin, gray until found, gold after */
 #worldpage { width: min(420px, calc(100% - 24px)); margin: 0 auto; text-align: left; color: #fff8e0; }
 #worldpage .wptitle { font: 900 24px/1.1 system-ui, sans-serif; text-align: center; }
-#worldpage .wpcoins { font: 800 16px/1 system-ui, sans-serif; color: #ffd24a; text-align: center; margin: 4px 0 8px; }
+#worldpage .wpcoins { display: flex; justify-content: center; margin: 8px 0 10px; }
+#worldpage .wpbigcoin { display: block; width: 42px; height: 42px; border-radius: 50%; position: relative;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.35) 0%, rgba(180,188,196,.42) 55%, rgba(110,118,128,.5) 100%);
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.22), inset 0 0 0 6px rgba(0,0,0,.18), 0 3px 8px rgba(0,0,0,.3); }
+#worldpage .wpbigcoin::after { content: ""; position: absolute; inset: 9px; border-radius: 50%; border: 2px solid rgba(255,255,255,.22); }
+#worldpage .wpbigcoin.got {
+  background: radial-gradient(circle at 35% 30%, #fff7b8 0%, #ffd24a 52%, #c98c12 100%);
+  box-shadow: inset 0 0 0 3px rgba(255,245,180,.7), inset 0 0 0 6px rgba(155,95,0,.4), 0 0 18px rgba(255,210,74,.75), 0 3px 8px rgba(0,0,0,.35); }
+#worldpage .wpbigcoin.got::after { border-color: rgba(155,95,0,.42); }
 #wpholes { display: flex; flex-direction: column; gap: 4px; max-height: min(58vh, 520px); overflow: auto; -webkit-overflow-scrolling: touch; }
 .wphole { display: grid; grid-template-columns: 28px 1fr auto; grid-template-rows: auto auto; gap: 0 8px; align-items: center; background: rgba(0,0,0,.28); border-radius: 10px; padding: 5px 10px; }
 .wphole b { grid-row: 1 / span 2; font: 900 18px/1 system-ui, sans-serif; color: #ffe066; }
 .wphole .wpname { font: 800 14px/1.2 system-ui, sans-serif; }
-.wphole .wppar { font: 700 11px/1 system-ui, sans-serif; opacity: .75; }
-.wphole .wpbest { font: 800 12px/1 system-ui, sans-serif; color: #ffe066; }
-.wphole .wpcoinslots { display: flex; gap: 4px; grid-column: 3; grid-row: 1 / span 2; }
+.wphole .wppar { font: 700 11px/1 system-ui, sans-serif; opacity: .75; grid-column: 2; }
+.wphole .wpbest { font: 800 12px/1 system-ui, sans-serif; color: #ffe066; grid-column: 3; grid-row: 1 / span 2; }
 #worldplay { display: block; margin: 14px auto 0; font: 900 16px/1 system-ui, sans-serif; background: #ffd24a; color: #3a2a00; border: 0; border-radius: 99px; padding: 10px 28px; }
 @media (max-height: 500px) {
   #worldpage .wptitle { font-size: 22px; } #wpholes { max-height: 42vh; } .wphole { padding: 5px 8px; }
@@ -358,7 +365,7 @@ body.charging #heightbar { opacity: .55; }
         <button id="aimright" aria-label="Aim right">▶</button>
       </div>
     </div>
-    <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a world</div><div id="homestage"><button id="homeprev" class="homearrow" aria-label="Previous world">◀</button><div id="homeviewport"><div id="picklist"></div></div><button id="homenext" class="homearrow" aria-label="Next world">▶</button></div><div id="homeground"><div id="homedisc"><i></i></div></div><div id="homedots"></div><div id="worldpage" class="hidden"><div class="wptitle" id="wptitle">Maple Park</div><div class="wpcoins" id="wpcoins">0/27</div><div id="wpholes"></div><button id="worldplay">Play ▶</button></div><div id="homemsg"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
+    <div id="picker" class="hidden"><div class="pickpanel"><div class="picktitle">Disc Golf Lab</div><div class="picksub">Choose a world</div><div id="homestage"><button id="homeprev" class="homearrow" aria-label="Previous world">◀</button><div id="homeviewport"><div id="picklist"></div></div><button id="homenext" class="homearrow" aria-label="Next world">▶</button></div><div id="homeground"><div id="homedisc"><i></i></div></div><div id="homedots"></div><div id="worldpage" class="hidden"><div class="wptitle" id="wptitle">Maple Park</div><div class="wpcoins" id="wpcoins" aria-label="Special coin not found"><i class="wpbigcoin" id="wpbigcoin"></i></div><div id="wpholes"></div><button id="worldplay">Play ▶</button></div><div id="homemsg"></div><button id="pickback" class="ghost hidden">Back</button></div></div>
     <div id="mapfull" class="hidden" role="dialog" aria-label="Hole map"><div class="mapfullhead"><b id="mapfulltitle">Hole map</b><button id="mapclose" aria-label="Close map">✕ Close</button></div><canvas id="mapfullcanvas"></canvas><div class="mapkey"><i class="k-tee"></i>Tee <i class="k-bask"></i>Basket <i class="k-disc"></i>Disc <i class="k-trail"></i>Throws <span id="mapkeydanger"><i class="k-danger"></i><span id="mapdanger">Water</span></span> <span id="mapkeydrop"><i class="k-drop"></i>Drop zone</span></div></div>
     <div id="pullanchor" class="hidden"></div><div id="pullband" class="hidden"></div><div id="pullread" class="hidden"></div>
     <div id="storycap" class="hidden"></div>
@@ -398,6 +405,8 @@ if (!THREE) { if (window.__bootFail) window.__bootFail('The 3D engine did not lo
 //   snowDrifts { x, z, r } or { pts, w }  deep snow: a disc stops almost dead (puff of snow)
 //   pillars   { x, z, r, h, kind: 'pillar'|'serac' }  solid ice columns;  bergs { x, z, r, h }  giant icebergs (solid)
 //   arches    { x, z, yaw, span, h }  ice arch: throw through the opening (span wide, h high); the ring itself is solid
+//   iceCaves  { x, z, yaw, span, h, depth }  glacier ledge with an ice tunnel (skimmer height) carved underneath
+//   landers   { x, z, yaw }  old lunar lander (Moon world): solid multi-tier obstacle
 //   banks     { from, to, h, w }  low snow banks that stop a rolling disc
 //   penguins  { x, z, n, r }  a colony (decoration);  station { x, z, yaw }  research hut (solid)
 // Water (river world, but any course may use it). Landing or stopping in water = Splash: +1 throw.
@@ -715,6 +724,7 @@ const ICE_COURSE = {
       path: [[0, 0], [4, -60]],
       hills: [{ x: 4, z: -60, r: 11, h: 4.5 }],
       icePatches: [{ x: 4, z: -51, r: 6.5 }], ponds: [{ x: 4, z: -77, r: 6 }],
+      iceCaves: [{ x: 10.5, z: -38, yaw: 0.27, span: 4.2, h: 1.45, depth: 5.0 }],
       rocks: [{ x: -6, z: -56, s: 1.2 }, { x: 14, z: -60, s: 1.4 }, { x: 10, z: -50, s: 0.8 }],
       penguins: [{ x: -12, z: -40, n: 4, r: 2.5 }],
     },
@@ -922,6 +932,7 @@ const MOON_COURSE = {
       path: [[0, 0], [0, -120], [-8, -235]],
       craters: [{ x: 19, z: -150, r: 7 }, { x: -22, z: -198, r: 6 }],
       pillars: [{ x: -5, z: -112, r: 1.6, h: 2.4, kind: 'boulder' }],
+      landers: [{ x: 13, z: -84, yaw: -0.35 }],
     },
     {
       name: 'Base Lights', par: 4, tip: 'Dogleg right past the base lights. A Right Curve (E) wraps around the boulders.',
@@ -959,1892 +970,63 @@ const PRACTICE_HOLE = {
 };
 
 // ---- coins.js ----
-// Special coins: 3 per hole (easy / curve / sky-or-skimmer). Each has a proof throw (calm wind, seed 2026) that flies through it.
-// proof: { from: 'tee' | [x, z], disc, power, curve, yaw, height }
+// Special big coins: ONE hidden coin per world, worth 1,000 shop coins, collected once per device.
+// Going for it costs about one throw against par (a risk-versus-par choice).
+//
+// Each entry maps a course id to:
+//   hole: 0-based hole index where the coin sits
+//   x, y, z: world coordinates of the coin
+//   sparkle: [x, y, z] optional tee-visible sparkle clue position (defaults to coin [x, y, z])
+//   proof: { disc, height, power, yaw, curve } a verified scripted throw from the tee that collects it
+
 const COIN_R = 1.2;
+
 const COIN_SPOTS = {
-  "park": [
-    [
-      {
-        "x": 6.09,
-        "y": 1.64,
-        "z": -75.37,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.0605,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -12.97,
-        "y": 3.19,
-        "z": -74.36,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.0605,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -28.54,
-        "y": 1.23,
-        "z": -65.88,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": -0.0395,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": -22.21,
-        "y": 1.64,
-        "z": -72.28,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": -0.3182,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -46.44,
-        "y": 0.33,
-        "z": -63.11,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": -0.5182,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -8.45,
-        "y": 0.61,
-        "z": -21.8,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0.25,
-          "yaw": -0.3896,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": 1.52,
-        "y": 1.64,
-        "z": -75.6,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -17.45,
-        "y": 3.19,
-        "z": -73.44,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -25.92,
-        "y": 1.23,
-        "z": -66.95,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 2,
-        "y": 3.14,
-        "z": -71.55,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -7.71,
-        "y": 3.78,
-        "z": -76.37,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.2,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -25.92,
-        "y": 1.23,
-        "z": -66.95,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 15.75,
-        "y": 1.64,
-        "z": -73.96,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.1897,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 4.26,
-        "y": 3.19,
-        "z": -75.36,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.2897,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 11.8,
-        "y": 0.32,
-        "z": -39.58,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0.25,
-          "yaw": 0.2701,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": 7.16,
-        "y": 0.31,
-        "z": -75.07,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -17.45,
-        "y": 3.19,
-        "z": -73.44,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -3.54,
-        "y": 1.23,
-        "z": -71.7,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.32,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": -2.87,
-        "y": 1.64,
-        "z": -75.56,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": -0.0581,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -21.68,
-        "y": 3.19,
-        "z": -72.3,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": -0.0581,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -48.8,
-        "y": 1.23,
-        "z": -52.66,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": -0.3781,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 4.5,
-        "y": 3.07,
-        "z": -75.37,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": 0.1376,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -4.24,
-        "y": 3.65,
-        "z": -76.9,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1,
-          "yaw": 0.2576,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -24.14,
-        "y": 0.42,
-        "z": -71.14,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": -1.37,
-          "yaw": 0.2576,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 5.06,
-        "y": 1.64,
-        "z": -75.44,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.0468,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -13.99,
-        "y": 3.19,
-        "z": -74.17,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.0468,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -29.44,
-        "y": 1.23,
-        "z": -65.48,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": -0.0532,
-          "height": "sky"
-        }
-      }
-    ]
-  ],
-  "river": [
-    [
-      {
-        "x": -11.14,
-        "y": 0.92,
-        "z": -40.65,
-        "proof": {
-          "from": "tee",
-          "disc": "mid",
-          "power": 0.92,
-          "curve": 0,
-          "yaw": -0.2759,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 26.48,
-        "y": 3.39,
-        "z": -38.5,
-        "proof": {
-          "from": "tee",
-          "disc": "mid",
-          "power": 0.92,
-          "curve": 1.37,
-          "yaw": 0.3641,
-          "height": "high"
-        }
-      },
-      {
-        "x": 16.62,
-        "y": 0.61,
-        "z": -49.11,
-        "proof": {
-          "from": [
-            8.21,
-            -25.7
-          ],
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.309,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -10.86,
-        "y": 1.64,
-        "z": -74.83,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": -0.1643,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 8.7,
-        "y": 2.18,
-        "z": -76.21,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 1,
-          "yaw": -0.0643,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -15.81,
-        "y": 3.27,
-        "z": -68.67,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.1357,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 2.17,
-        "y": 3.8,
-        "z": -69.49,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -31.69,
-        "y": 3.19,
-        "z": -68.51,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": -0.2,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -6.27,
-        "y": 0.76,
-        "z": -69.69,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.2,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 5.55,
-        "y": 1.64,
-        "z": -75.41,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.0533,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 1.76,
-        "y": 1.86,
-        "z": -83.75,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.3533,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 14.86,
-        "y": 0.5,
-        "z": -36.15,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0.25,
-          "yaw": 0.3701,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -16.18,
-        "y": 4.25,
-        "z": -54.7,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": 0,
-          "yaw": -0.32,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -40.62,
-        "y": 6.7,
-        "z": -55.08,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": -1.37,
-          "yaw": -0.32,
-          "height": "high"
-        }
-      },
-      {
-        "x": -31.99,
-        "y": 12.18,
-        "z": -55.23,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": -0.2,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 24.33,
-        "y": 1.64,
-        "z": -71.59,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.3074,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 35.79,
-        "y": 2.18,
-        "z": -67.84,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 1,
-          "yaw": 0.3074,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 30.12,
-        "y": 0.58,
-        "z": -62.22,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 1.37,
-          "yaw": 0.2074,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 6.24,
-        "y": 1.64,
-        "z": -75.36,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.0624,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -12.83,
-        "y": 3.19,
-        "z": -74.38,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.0624,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 14.13,
-        "y": 0.58,
-        "z": -67.67,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 1.37,
-          "yaw": -0.0376,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": -15.18,
-        "y": 7.07,
-        "z": -47.51,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": -0.357,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -14.12,
-        "y": 1.86,
-        "z": -82.57,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.163,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -36.7,
-        "y": 0.91,
-        "z": -45.35,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1.37,
-          "yaw": -0.357,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": -19.46,
-        "y": 1.64,
-        "z": -73.07,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": -0.2805,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -27.49,
-        "y": 1.02,
-        "z": -77.38,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": -0.0805,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -23.66,
-        "y": 3.27,
-        "z": -66.38,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.0195,
-          "height": "sky"
-        }
-      }
-    ]
-  ],
-  "antarctica": [
-    [
-      {
-        "x": 5.18,
-        "y": 1.64,
-        "z": -75.44,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.0483,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -13.88,
-        "y": 3.19,
-        "z": -74.19,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.0483,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -35.73,
-        "y": 1.23,
-        "z": -62.27,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": -0.1517,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 9.06,
-        "y": 1.64,
-        "z": -75.07,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.1,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -30.5,
-        "y": 0.98,
-        "z": -89.48,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.1,
-          "height": "high"
-        }
-      },
-      {
-        "x": -3.54,
-        "y": 1.23,
-        "z": -71.7,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.32,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 0.16,
-        "y": 0.32,
-        "z": -82.31,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -5.82,
-        "y": 4.82,
-        "z": -85.57,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.32,
-          "height": "high"
-        }
-      },
-      {
-        "x": -25.92,
-        "y": 1.23,
-        "z": -66.95,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 39.6,
-        "y": 1.64,
-        "z": -64.41,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.5311,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -28.04,
-        "y": 1.12,
-        "z": -81.4,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.0111,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 30.22,
-        "y": 0.71,
-        "z": -80.21,
-        "proof": {
-          "from": [
-            26.49,
-            -70.64
-          ],
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.354,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -17.74,
-        "y": 5.03,
-        "z": -49.65,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": 0,
-          "yaw": -0.3788,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -43.13,
-        "y": 0.57,
-        "z": -50.61,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1.37,
-          "yaw": -0.3788,
-          "height": "high"
-        }
-      },
-      {
-        "x": 15.45,
-        "y": 0.36,
-        "z": -77.42,
-        "proof": {
-          "from": [
-            14.04,
-            -70.19
-          ],
-          "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": 0.1974,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": 2.2,
-        "y": 0.63,
-        "z": -75.95,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": 0.0666,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 8.69,
-        "y": 7.08,
-        "z": -74.86,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.3866,
-          "height": "high"
-        }
-      },
-      {
-        "x": -14.46,
-        "y": 1.23,
-        "z": -70.32,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.1666,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 1.52,
-        "y": 1.64,
-        "z": -75.6,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -17.45,
-        "y": 3.19,
-        "z": -73.44,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -25.92,
-        "y": 1.23,
-        "z": -66.95,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 5.73,
-        "y": 1.64,
-        "z": -75.4,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.0558,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -36.02,
-        "y": 3.19,
-        "z": -66.33,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": -0.2642,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 15.5,
-        "y": 0.36,
-        "z": -87.41,
-        "proof": {
-          "from": [
-            14.25,
-            -80.15
-          ],
-          "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": 0.1759,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -22.46,
-        "y": 1.64,
-        "z": -72.2,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": -0.3218,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -39.77,
-        "y": 3.19,
-        "z": -64.15,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": -0.3218,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -51.05,
-        "y": 1.23,
-        "z": -50.47,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": -0.4218,
-          "height": "sky"
-        }
-      }
-    ]
-  ],
-  "volcano": [
-    [
-      {
-        "x": 11.69,
-        "y": 6.38,
-        "z": -28.1,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.3533,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -14.11,
-        "y": 1.55,
-        "z": -28.66,
-        "proof": {
-          "from": "tee",
-          "disc": "mid",
-          "power": 0.78,
-          "curve": -1.37,
-          "yaw": -0.2867,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 15.22,
-        "y": 15.21,
-        "z": -28.45,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": 1.37,
-          "yaw": 0.3533,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": -8.31,
-        "y": 1.64,
-        "z": -75.16,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": -0.1303,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -15.61,
-        "y": 1.02,
-        "z": -80.62,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.0697,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -13.47,
-        "y": 3.27,
-        "z": -69.17,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.1697,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 15.14,
-        "y": 2.95,
-        "z": -42.72,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": 0.32,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -4.13,
-        "y": 1.79,
-        "z": -79.81,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.2,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -30.74,
-        "y": 7.67,
-        "z": -43.66,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1.37,
-          "yaw": -0.32,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 2,
-        "y": 3.14,
-        "z": -71.55,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -4.53,
-        "y": 8.54,
-        "z": -71.16,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 1.37,
-          "yaw": -0.32,
-          "height": "high"
-        }
-      },
-      {
-        "x": -6.27,
-        "y": 0.76,
-        "z": -69.69,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.2,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": -18.48,
-        "y": 7.69,
-        "z": -82.38,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": 0,
-          "yaw": -0.0157,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -19.29,
-        "y": 4.67,
-        "z": -73.98,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": -1,
-          "yaw": 0.0843,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -26.96,
-        "y": 1.23,
-        "z": -66.54,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": -0.0157,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 17.92,
-        "y": 3.77,
-        "z": -56.39,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": 0,
-          "yaw": 0.2772,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 35.21,
-        "y": 5.53,
-        "z": -59.57,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": 1.37,
-          "yaw": 0.2772,
-          "height": "high"
-        }
-      },
-      {
-        "x": 15.45,
-        "y": 0.36,
-        "z": -77.42,
-        "proof": {
-          "from": [
-            14.04,
-            -70.19
-          ],
-          "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": 0.1974,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": 3.95,
-        "y": 4.18,
-        "z": -75.18,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": 0,
-          "yaw": 0.0483,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -3.38,
-        "y": 2.02,
-        "z": -79.04,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": -1,
-          "yaw": 0.2483,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -14.16,
-        "y": 5.23,
-        "z": -67.68,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.1483,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": -1.52,
-        "y": 1.64,
-        "z": -75.6,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": -0.0403,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 27.08,
-        "y": 0.53,
-        "z": -76.09,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 1,
-          "yaw": 0.1597,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -15.52,
-        "y": 0.36,
-        "z": -77.41,
-        "proof": {
-          "from": [
-            -14.04,
-            -70.19
-          ],
-          "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": -0.1974,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": 28.48,
-        "y": 1.64,
-        "z": -70.04,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": 0,
-          "yaw": 0.3661,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 17.41,
-        "y": 3.19,
-        "z": -73.44,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1,
-          "yaw": 0.4661,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 22.5,
-        "y": 5.23,
-        "z": -65.38,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 1,
-          "curve": -1.37,
-          "yaw": 0.6861,
-          "height": "sky"
-        }
-      }
-    ]
-  ],
-  "moon": [
-    [
-      {
-        "x": 14.39,
-        "y": 0.59,
-        "z": -74.63,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": 0,
-          "yaw": 0.2326,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 8.65,
-        "y": 0.8,
-        "z": -81.79,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": -1.37,
-          "yaw": 0.3526,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 14.75,
-        "y": 0.52,
-        "z": -36.05,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": 1,
-          "yaw": 0.3526,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -1.12,
-        "y": 3.85,
-        "z": -76.29,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": 0,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 8.26,
-        "y": 0.38,
-        "z": -74.71,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": -1.37,
-          "yaw": 0.32,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 9.0,
-        "y": 0.55,
-        "z": -34.32,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.45,
-          "curve": -1.37,
-          "yaw": 0.32,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": 22.46,
-        "y": 9.65,
-        "z": -56.98,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.92,
-          "curve": 0,
-          "yaw": 0.3616,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -31.13,
-        "y": 3.37,
-        "z": -57.24,
-        "proof": {
-          "from": "tee",
-          "disc": "mid",
-          "power": 0.78,
-          "curve": -1.37,
-          "yaw": -0.2784,
-          "height": "high"
-        }
-      },
-      {
-        "x": 33.23,
-        "y": 8.98,
-        "z": -56.01,
-        "proof": {
-          "from": "tee",
-          "disc": "mid",
-          "power": 0.92,
-          "curve": 1.37,
-          "yaw": 0.3616,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": -6.65,
-        "y": 3.85,
-        "z": -76.01,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": -0.0726,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -16.13,
-        "y": 4.46,
-        "z": -73.48,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1,
-          "yaw": -0.0726,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 15.52,
-        "y": 0.56,
-        "z": -87.41,
-        "proof": {
-          "from": [
-            14.25,
-            -80.15
-          ],
-          "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": 0.1759,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -2.05,
-        "y": 0.33,
-        "z": -78.58,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": 0,
-          "yaw": 0.0222,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -11.34,
-        "y": 1.03,
-        "z": -74.65,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": -1,
-          "yaw": 0.0222,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 12.86,
-        "y": 0.56,
-        "z": -32.16,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.45,
-          "curve": 1,
-          "yaw": 0.3422,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -3.72,
-        "y": 3.85,
-        "z": -76.21,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": -0.034,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -13.29,
-        "y": 4.46,
-        "z": -74.04,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1,
-          "yaw": -0.034,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -21.9,
-        "y": 1.82,
-        "z": -72.27,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.62,
-          "curve": 0,
-          "yaw": -0.234,
-          "height": "sky"
-        }
-      }
-    ],
-    [
-      {
-        "x": 16.71,
-        "y": 3.85,
-        "z": -74.45,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": 0.2355,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 6.91,
-        "y": 4.46,
-        "z": -74.91,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1,
-          "yaw": 0.2355,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 5.82,
-        "y": 0.56,
-        "z": -97.37,
-        "proof": {
-          "from": [
-            5.4,
-            -90.02
-          ],
-          "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": 0.0599,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -4.03,
-        "y": 3.85,
-        "z": -76.19,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": -0.0381,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -13.59,
-        "y": 4.46,
-        "z": -73.99,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1,
-          "yaw": -0.0381,
-          "height": "normal"
-        }
-      },
-      {
-        "x": 11.74,
-        "y": 0.56,
-        "z": -35.72,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 1,
-          "yaw": 0.2819,
-          "height": "low"
-        }
-      }
-    ],
-    [
-      {
-        "x": -10.58,
-        "y": 3.85,
-        "z": -75.56,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": 0,
-          "yaw": -0.1244,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -19.91,
-        "y": 4.46,
-        "z": -72.54,
-        "proof": {
-          "from": "tee",
-          "disc": "driver",
-          "power": 0.78,
-          "curve": -1,
-          "yaw": -0.1244,
-          "height": "normal"
-        }
-      },
-      {
-        "x": -13.65,
-        "y": 0.56,
-        "z": -97.39,
-        "proof": {
-          "from": [
-            -12.61,
-            -90.1
-          ],
-          "disc": "driver",
-          "power": 0.5,
-          "curve": 0,
-          "yaw": -0.1391,
-          "height": "low"
-        }
-      }
-    ]
-  ]
+  park: {
+    // Hole 3 (Fairy Ring): high in the maple tree beside the stuck orange driver (sky lob)
+    hole: 2,
+    x: -5.0,
+    y: 9.6,
+    z: -26.0,
+    sparkle: [-5.0, 9.6, -25.4],
+    proof: { disc: 'driver', height: 3, power: 0.43, yaw: -0.175, curve: 0 },
+  },
+  river: {
+    // Hole 5 (Footbridge): tucked in the alcove behind the waterfall (low Skimmer)
+    hole: 4,
+    x: -10.0,
+    y: 0.65,
+    z: -33.3,
+    sparkle: [-10.0, 1.3, -32.1],
+    proof: { disc: 'driver', height: 0, power: 0.56, yaw: -0.295, curve: 0 },
+  },
+  antarctica: {
+    // Hole 6 (Snow Ledge): inside the ice cave tunnel under the glacier ledge (low Skimmer)
+    hole: 5,
+    x: 10.5,
+    y: 0.65,
+    z: -38.0,
+    sparkle: [10.0, 1.0, -35.4],
+    proof: { disc: 'driver', height: 0, power: 0.72, yaw: 0.27, curve: 0 },
+  },
+  volcano: {
+    // Hole 5 (Steam Vent Gauntlet): floating high over the lava river on a steam vent updraft
+    hole: 4,
+    x: -20.4,
+    y: 7.5,
+    z: -103.3,
+    sparkle: [-20.4, 7.5, -103.3],
+    proof: { disc: 'driver', height: 1, power: 0.9, yaw: 0.09, curve: 0 },
+  },
+  moon: {
+    // Hole 6 (Earthrise Bomber): floating on top of the old lunar lander (floaty low-gravity lob)
+    hole: 5,
+    x: 13.0,
+    y: 5.4,
+    z: -84.0,
+    sparkle: [13.0, 5.4, -84.0],
+    proof: { disc: 'driver', height: 3, power: 0.75, yaw: 0.22, curve: 0 },
+  },
 };
 
 // ---- game.js ----
@@ -3598,6 +1780,10 @@ function makeHole(data, index) {
   for (const o of solids) o.y = groundY(o.x, o.z);
   const arches = (data.arches || []).map(a => { const tube = a.tube || 0.9, R = a.span / 2 + tube, yaw = a.yaw || 0;
     return { x: a.x, z: a.z, y: groundY(a.x, a.z), tube, R, c: a.h - R + tube, h: a.h, span: a.span, dir: new THREE.Vector2(Math.sin(yaw), -Math.cos(yaw)), right: new THREE.Vector2(Math.cos(yaw), Math.sin(yaw)), yaw }; });
+  const iceCaves = (data.iceCaves || []).map(c => { const yaw = c.yaw || 0, span = c.span || 4.2, h = c.h || 1.45, depth = c.depth || 5.0, wallW = c.wallW || 2.1, ledgeH = c.ledgeH || 4.2;
+    return { x: c.x, z: c.z, y: groundY(c.x, c.z), yaw, span, h, depth, wallW, ledgeH, halfW: span / 2 + wallW, halfD: depth / 2, openHalf: span / 2,
+      dir: new THREE.Vector2(Math.sin(yaw), -Math.cos(yaw)), right: new THREE.Vector2(Math.cos(yaw), Math.sin(yaw)) }; });
+  const landers = (data.landers || []).map(l => ({ x: l.x, z: l.z, y: groundY(l.x, l.z), yaw: l.yaw || 0, r: 2.15, h: 4.45 }));
   const vents = (data.vents || []).map(v => ({ x: v.x, z: v.z, r: v.r || 4, up: v.up || 18, push: v.push || [0, 0], y: groundY(v.x, v.z) }));
   const banks = (data.banks || []).map(b => { const a = v2(b.from), c = v2(b.to); return { a, c, w: b.w || 2, h: b.h || 1, samples: [a, c] }; });
   // Segment colliders: upright walls of radius r and height h along a line (a = b: a round post). Wire fences (gap = an x range left open,
@@ -3979,6 +2165,69 @@ function makeHole(data, index) {
       g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       g.position.set(a.x, a.y, a.z); g.rotation.y = -a.yaw; group.add(g);
     }
+    for (const c of iceCaves) { // glacier ledge with a carved ice tunnel underneath (Skimmer height)
+      const g = new THREE.Group(), wallH = c.ledgeH - 0.55, roofH = c.ledgeH - c.h;
+      // dark cave interior floor strip + subtle shadow floor so the tunnel reads clearly from the tee
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(c.span + 0.6, c.depth + 1.0).rotateX(-Math.PI / 2), MAT.ice); floor.position.set(0, 0.03, 0); g.add(floor);
+      // left & right sculpted glacier buttresses flanking the tunnel opening
+      for (const sx of [-1, 1]) {
+        const cx0 = sx * (c.openHalf + c.wallW / 2);
+        const wall = new THREE.Mesh(DETAIL.lumpy(new THREE.BoxGeometry(c.wallW, wallH, c.depth, 3, 4, 4), 0.14, 1.3), MAT.iceSolid);
+        wall.position.set(cx0, wallH / 2 - 0.15, 0); g.add(wall);
+        const buttress = new THREE.Mesh(DETAIL.lumpy(new THREE.ConeGeometry(c.wallW * 0.65, wallH * 0.95, 6), 0.12, 1.5), MAT.seracD);
+        buttress.position.set(cx0 + sx * 0.35, wallH * 0.45, 0.2); g.add(buttress);
+        const sk = new THREE.Mesh(GEO.skirt, MAT.skirt); sk.scale.set(c.wallW * 0.85, 1.5, c.depth * 0.65); sk.position.set(cx0 + sx * 0.3, 0.05, 0); g.add(sk);
+      }
+      // thick glacier overhang slab + deep ice vault lintel over the cave mouth
+      const roof = new THREE.Mesh(DETAIL.lumpy(new THREE.BoxGeometry(c.halfW * 2 + 0.7, roofH, c.depth + 0.9, 5, 2, 4), 0.15, 1.2), MAT.iceSolid);
+      roof.position.set(0, c.h + roofH / 2, 0.18); g.add(roof);
+      // projecting upper glacier ledge shelf + thick snow cornice cap on top
+      const ledge = new THREE.Mesh(DETAIL.lumpy(new THREE.BoxGeometry(c.halfW * 2 + 1.0, 0.95, c.depth + 1.5, 5, 2, 4), 0.14, 1.4), MAT.seracD);
+      ledge.position.set(0, c.ledgeH - 0.55, 0.38); g.add(ledge);
+      const cap = new THREE.Mesh(DETAIL.lumpy(new THREE.BoxGeometry(c.halfW * 2 + 1.2, 0.52, c.depth + 1.6, 6, 2, 5), 0.12, 1.6), MAT.snowCap);
+      cap.position.set(0, c.ledgeH + 0.05, 0.4); g.add(cap);
+      // row of cartoon icicles along the front glacier lip (tucked above the tunnel mouth)
+      for (const ix of [-1.5, -0.75, 0, 0.75, 1.5]) {
+        const len = 0.28 + (Math.abs(ix) > 1 ? 0.18 : 0.05);
+        const ic = new THREE.Mesh(new THREE.ConeGeometry(0.11, len, 5).rotateX(Math.PI), MAT.iceSolid);
+        ic.position.set(ix, c.h + 0.1 - len / 2, c.halfD + 0.42); g.add(ic);
+      }
+      g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      g.position.set(c.x, c.y, c.z); g.rotation.y = -c.yaw; group.add(g);
+    }
+    for (const l of landers) { // old cartoon Apollo-style lunar lander left on the Moon
+      const g = new THREE.Group();
+      // scorched landing pad & dust blast ring underneath
+      const scorch = new THREE.Mesh(new THREE.CircleGeometry(3.2, 24).rotateX(-Math.PI / 2), SM.scorch); scorch.position.y = 0.03; g.add(scorch);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(2.6, 4.1, 24).rotateX(-Math.PI / 2), SM.circleDust); ring.position.y = 0.035; g.add(ring);
+      // 4 splayed legs + round footpads + dust skirts
+      for (let k = 0; k < 4; k++) {
+        const a = (k + 0.5) * Math.PI / 2, fx = Math.cos(a) * 1.95, fz = Math.sin(a) * 1.95;
+        const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.14, 12), SM.gold); pad.position.set(fx, 0.08, fz); g.add(pad);
+        const sk = new THREE.Mesh(GEO.skirt, MAT.skirt); sk.scale.set(0.6, 0.8, 0.6); sk.position.set(fx, 0.02, fz); g.add(sk);
+        const legStart = new THREE.Vector3(Math.cos(a) * 1.15, 1.65, Math.sin(a) * 1.15);
+        const legEnd = new THREE.Vector3(fx, 0.14, fz);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, legStart.distanceTo(legEnd), 8), MAT.metal);
+        leg.position.copy(legStart).lerp(legEnd, 0.5); leg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), legEnd.clone().sub(legStart).normalize()); g.add(leg);
+        const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.35, 6), MAT.metal);
+        strut.position.set(Math.cos(a) * 1.25, 0.95, Math.sin(a) * 1.25); strut.rotation.y = -a; strut.rotation.z = 0.72; g.add(strut);
+      }
+      // octagonal gold-foil descent stage + dark engine bell
+      const descent = new THREE.Mesh(new THREE.CylinderGeometry(1.65, 1.72, 1.35, 8), SM.gold); descent.position.y = 1.75; g.add(descent);
+      const deckRim = new THREE.Mesh(new THREE.CylinderGeometry(1.78, 1.78, 0.14, 8), SM.metalW); deckRim.position.y = 2.45; g.add(deckRim);
+      const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.55, 0.7, 12), SM.tire); bell.position.y = 0.85; g.add(bell);
+      // boxy silver-white ascent cabin + dark cockpit viewports + side RCS thruster pods + off-center dish
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.05, 1.65, 2.05), SM.metalW); cabin.position.y = 3.35; g.add(cabin);
+      const cabinTop = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.35, 0.42, 8), SM.metalW); cabinTop.position.y = 4.32; g.add(cabinTop);
+      const winMat = new THREE.MeshLambertMaterial({ color: 0x101824 });
+      for (const wx of [-0.46, 0.46]) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.36, 0.08), winMat); w.position.set(wx, 3.55, 1.04); w.rotation.z = wx < 0 ? 0.18 : -0.18; g.add(w); }
+      const hatch = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.62, 0.08), SM.panel); hatch.position.set(0, 2.95, 1.04); g.add(hatch);
+      for (const sx of [-1.18, 1.18]) { const rcs = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.38, 0.45), SM.tire); rcs.position.set(sx, 3.6, 0); g.add(rcs); }
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.75, 6), MAT.metal); mast.position.set(-0.72, 4.65, -0.55); g.add(mast);
+      const dish = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4).rotateX(-1.05), SM.metalW); dish.position.set(-0.72, 4.98, -0.55); g.add(dish);
+      g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      g.position.set(l.x, l.y, l.z); g.rotation.y = -l.yaw; g.rotation.z = 0.04; group.add(g);
+    }
     for (const b of banks) { const d = b.c.clone().sub(b.a), len = d.length();
       const m = new THREE.Mesh(DETAIL.lumpy(new THREE.CapsuleGeometry(b.w / 2, len, 4, 10).rotateZ(Math.PI / 2).scale(1, b.h / (b.w / 2), 1), 0.06, 1.4), MAT.bank);
       m.position.set((b.a.x + b.c.x) / 2, groundY((b.a.x + b.c.x) / 2, (b.a.y + b.c.y) / 2), (b.a.y + b.c.y) / 2); m.rotation.y = -Math.atan2(d.y, d.x); m.castShadow = m.receiveShadow = true; group.add(m); }
@@ -4124,7 +2373,7 @@ function makeHole(data, index) {
   // Sun follows the hole so shadows cover it
   const mid = curve.getPoint(0.5);
   const span = Math.max(70, length * 0.65 + 20);
-  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, banks, segs, penguins, frogs, vents, ventFx, plume, anger, volcano };
+  return { data, index, par: data.par, name: data.name, tip: data.tip || '', tee, basket, teeAim, trees, groundY: physY, terrainY: groundY, distToPath: distToPlay, isOB, isWater, hasWater: rivers.length + ponds.length > 0, drop, inBoundsR, length, group, mid, span, surface, solids, arches, iceCaves, landers, banks, segs, penguins, frogs, vents, ventFx, plume, anger, volcano };
 }
 
 // A believable island from overlapping island circles (looks only: the dry land is still exactly the union of the circles):
@@ -4174,7 +2423,7 @@ function convexHull(pts) { // monotone chain, counter-clockwise in (x, z)
 let SHARED = null;
 function sharedSets() {
   if (SHARED) return SHARED;
-  const geo = new Set(), mat = new Set(), tex = new Set([DOT_TEX, rippleTex, lavaTex, snowTex]);
+  const geo = new Set(), mat = new Set(), tex = new Set([DOT_TEX, rippleTex, lavaTex, snowTex, SPARKLE_TEX]);
   const walk = v => { if (!v) return; if (v.isBufferGeometry) geo.add(v); else if (Array.isArray(v)) v.forEach(walk); else if (typeof v === 'object') Object.values(v).forEach(walk); };
   walk(GEO); walk(SCENERY.geo); geo.add(DROP_GEO);
   for (const g of geo) g.addEventListener('dispose', () => { S.sharedDisposed = (S.sharedDisposed || 0) + 1; }); // must never fire (tests)
@@ -4676,19 +2925,18 @@ function saveHoleBest(id, idx, score) {
   if (S.devRound || S.practice || !(score > 0)) return;
   try { const a = loadHoleBests(id); const prev = Number(a[idx]); if (!(prev > 0) || score < prev) { a[idx] = score; localStorage.setItem(holeBestKey(id), JSON.stringify(a)); } } catch {}
 }
-function coinsFoundOnHole(courseId, holeIdx) {
-  const o = readJson(COIN_KEYS.found, {});
-  let n = 0; for (let i = 0; i < 3; i++) if (o[`${courseId}:${holeIdx}:${i}`]) n++;
-  return n;
-}
+function bigCoinKey(courseId) { return `${courseId}:big`; }
 function coinsFoundOnCourse(courseId) {
-  let n = 0; for (let i = 0; i < 9; i++) n += coinsFoundOnHole(courseId, i); return n;
+  return readJson(COIN_KEYS.found, {})[bigCoinKey(courseId)] ? 1 : 0;
+}
+function coinsFoundOnHole(courseId, holeIdx) {
+  return COIN_SPOTS[courseId]?.hole === holeIdx && coinsFoundOnCourse(courseId) ? 1 : 0;
 }
 
 // ---------- Coins (earn only: no shop) ----------
 const COIN_KEYS = { total: 'discgolflab.coins.total', found: 'discgolflab.coins.found', paid: 'discgolflab.coins.paid' };
 const COIN_PAY = { bogey: 5, par: 10, birdie: 25, eagle: 50, ace: 100 };
-const COIN_SPECIAL = 100; // hidden special coins: once per device, 100 each
+const COIN_SPECIAL = 1000; // one hidden big coin per world: once per device, 1,000 shop coins each
 function coinPayout(score, par) {
   if (!(score > 0) || par == null) return 0;
   const d = score - par;
@@ -4705,7 +2953,7 @@ function coinStreakAfter(streak, score, par) { // par or better stacks x1, x1.5,
 }
 function coinDay() { return S.coins?.dayOverride || new Date().toLocaleDateString('en-CA'); }
 function canSaveCoins() { return !S.devRound && !S.practice; }
-function readJson(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key) || ''); return v && typeof v === 'object' ? v : fallback; } catch { return fallback; } }
+function readJson(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key) || ''); return v && typeof v === 'object' && !Array.isArray(v) ? v : fallback; } catch { return fallback; } }
 function writeJson(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }
 function loadCoinTotal() { try { const n = Number(localStorage.getItem(COIN_KEYS.total)); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; } catch { return 0; } }
 function persistCoinTotal() { if (!canSaveCoins()) return; try { localStorage.setItem(COIN_KEYS.total, String(S.coins.saved)); } catch {} }
@@ -4737,23 +2985,42 @@ function segPointDist(ax, ay, az, bx, by, bz, px, py, pz) {
   const t = L ? THREE.MathUtils.clamp(((px - ax) * ux + (py - ay) * uy + (pz - az) * uz) / L, 0, 1) : 0;
   return Math.hypot(ax + ux * t - px, ay + uy * t - py, az + uz * t - pz);
 }
+const SPARKLE_TEX = (() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const x = cv.getContext('2d'), c = 64;
+  const g = x.createRadialGradient(c, c, 2, c, c, 60);
+  g.addColorStop(0, 'rgba(255,255,245,1)'); g.addColorStop(0.22, 'rgba(255,232,120,0.92)');
+  g.addColorStop(0.55, 'rgba(255,196,50,0.3)'); g.addColorStop(1, 'rgba(255,196,50,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  x.fillStyle = 'rgba(255,255,245,0.96)';
+  for (let i = 0; i < 2; i++) {
+    x.save(); x.translate(c, c); x.rotate(i * Math.PI / 2);
+    x.beginPath(); x.moveTo(0, -58); x.quadraticCurveTo(6, -6, 58, 0); x.quadraticCurveTo(6, 6, 0, 58); x.quadraticCurveTo(-6, 6, -58, 0); x.quadraticCurveTo(-6, -6, 0, -58);
+    x.fill(); x.restore();
+  }
+  return new THREE.CanvasTexture(cv);
+})();
+function makeCoinSparkle() {
+  return new THREE.Sprite(new THREE.SpriteMaterial({ map: SPARKLE_TEX, color: 0xffe98a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+}
 function makeCoinMesh() {
   const g = new THREE.Group();
-  const mat = new THREE.MeshPhongMaterial({ color: 0xffd24a, emissive: 0x5a3a00, emissiveIntensity: 0.35, shininess: 80 });
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.07, 20), mat); disc.rotation.x = Math.PI / 2;
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.04, 8, 20), mat); rim.rotation.x = Math.PI / 2;
+  const mat = new THREE.MeshPhongMaterial({ color: 0xffd24a, emissive: 0x5a3a00, emissiveIntensity: 0.42, shininess: 90 });
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.09, 22), mat); disc.rotation.x = Math.PI / 2;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.05, 8, 22), mat); rim.rotation.x = Math.PI / 2;
   disc.castShadow = rim.castShadow = true; g.add(disc, rim); return g;
 }
 function spawnHoleCoins() {
-  (S.coins.live || []).forEach(c => { if (c.mesh?.parent) c.mesh.parent.remove(c.mesh); });
+  (S.coins.live || []).forEach(c => { if (c.mesh?.parent) c.mesh.parent.remove(c.mesh); if (c.sparkle?.parent) c.sparkle.parent.remove(c.sparkle); });
   S.coins.live = [];
   if (!H || S.practice || S.holeIdx < 0) return;
-  const spots = (COIN_SPOTS[COURSE.id] || [])[S.holeIdx] || [];
-  spots.forEach((s, i) => {
-    const id = foundKey(COURSE.id, S.holeIdx, i), already = coinWasFound(id);
-    const mesh = makeCoinMesh(); mesh.position.set(s.x, s.y, s.z); mesh.visible = !already; H.group.add(mesh);
-    S.coins.live.push({ x: s.x, y: s.y, z: s.z, i, id, mesh, got: already, proof: s.proof || null });
-  });
+  const s = COIN_SPOTS[COURSE.id];
+  if (!s || s.hole !== S.holeIdx) return;
+  const id = bigCoinKey(COURSE.id), already = coinWasFound(id);
+  const mesh = makeCoinMesh(); mesh.position.set(s.x, s.y, s.z); mesh.visible = !already; H.group.add(mesh);
+  const sp = makeCoinSparkle(), [sx, sy, sz] = s.sparkle || [s.x, s.y, s.z];
+  sp.position.set(sx, sy, sz); sp.visible = !already; H.group.add(sp);
+  S.coins.live.push({ x: s.x, y: s.y, z: s.z, i: 0, id, mesh, sparkle: sp, got: already, proof: s.proof || null });
 }
 function coinChime() {
   try {
@@ -4776,7 +3043,19 @@ function coinSparkle(x, y, z) {
   }
 }
 function updateCoinFx(dt) {
-  const live = S.coins?.live; if (live) for (const c of live) if (c.mesh && c.mesh.visible) { c.mesh.rotation.y += dt * 2.4; c.mesh.position.y = c.y + Math.sin((performance.now() / 1000) * 2.2 + c.i) * 0.08; }
+  const t = performance.now() / 1000;
+  const live = S.coins?.live;
+  if (live) for (const c of live) {
+    if (c.mesh && c.mesh.visible) { c.mesh.rotation.y += dt * 2.4; c.mesh.position.y = c.y + Math.sin(t * 2.2 + c.i) * 0.08; }
+    if (c.sparkle && c.sparkle.visible) {
+      const pulse = Math.pow(0.5 + 0.5 * Math.sin(t * 3.4 + c.i), 2.2);
+      const camD = camera.position.distanceTo(c.sparkle.position);
+      const baseS = THREE.MathUtils.clamp(camD * 0.055, 0.9, 5.2);
+      c.sparkle.scale.setScalar(baseS * (0.65 + 0.65 * pulse));
+      c.sparkle.material.opacity = 0.45 + 0.55 * pulse;
+      c.sparkle.material.rotation = t * 0.6;
+    }
+  }
   const sparks = S.coins?.sparks; if (!sparks?.length) return;
   for (let i = sparks.length - 1; i >= 0; i--) {
     const m = sparks[i], u = m.userData; u.t += dt; u.vy -= 6 * dt; m.position.x += u.vx * dt; m.position.y += u.vy * dt; m.position.z += u.vz * dt;
@@ -4790,7 +3069,7 @@ function collectCoinsAlong(ax, ay, az, bx, by, bz) {
   for (const c of S.coins.live) {
     if (c.got) continue;
     if (segPointDist(ax, ay, az, bx, by, bz, c.x, c.y, c.z) > COIN_R) continue;
-    c.got = true; n++; if (c.mesh) c.mesh.visible = false;
+    c.got = true; n++; if (c.mesh) c.mesh.visible = false; if (c.sparkle) c.sparkle.visible = false;
     markCoinFound(c.id); addCoins(COIN_SPECIAL);
     coinChime(); coinSparkle(c.x, c.y, c.z);
     const rec = S.coins.perHole[S.holeIdx] || (S.coins.perHole[S.holeIdx] = { hidden: 0, payout: 0, streak: S.coins.streak, mult: 1, reduced: false });
@@ -4818,7 +3097,7 @@ function showCoinPop(rec) {
   if (rec.base) lines.push(`${rec.name.replace(/!$/, '')} ${rec.base}${rec.mult > 1 ? ` × ${rec.mult} streak` : ''}`);
   else lines.push(rec.name || 'No score bonus');
   if (rec.reduced) lines.push('Already played today · 20%');
-  if (rec.hidden) lines.push(`${rec.hidden} special`);
+  if (rec.hidden) lines.push(`Big coin +${rec.hidden * COIN_SPECIAL}`);
   ui.coinPopPlus.textContent = `+${rec.payout}`;
   ui.coinPopSub.textContent = lines.join('\n');
   ui.coinPop.classList.remove('hidden');
@@ -4829,7 +3108,7 @@ function resetCoinStorage() {
   initCoins(); resetCoinRound(); spawnHoleCoins(); if (ui.coinTotal) ui.coinTotal.textContent = '0';
 }
 function coinsState() {
-  const live = (S.coins?.live || []).map(c => ({ x: c.x, y: c.y, z: c.z, i: c.i, id: c.id, got: !!c.got, visible: !!c.mesh?.visible }));
+  const live = (S.coins?.live || []).map(c => ({ x: c.x, y: c.y, z: c.z, i: c.i, id: c.id, got: !!c.got, visible: !!c.mesh?.visible, sparkle: c.sparkle ? { visible: !!c.sparkle.visible, x: c.sparkle.position.x, y: c.sparkle.position.y, z: c.sparkle.position.z } : null }));
   return { saved: S.coins.saved, shown: S.coins.shown, session: S.coins.session, streak: S.coins.streak, lastPayout: S.coins.lastPayout, perHole: S.coins.perHole, live, canSave: canSaveCoins(), day: coinDay(), found: readJson(COIN_KEYS.found, {}), paid: readJson(COIN_KEYS.paid, {}), devRound: !!S.devRound, practice: !!S.practice };
 }
 function restreakFromScores() {
@@ -4874,13 +3153,12 @@ function renderPicker() {
   const cards = COURSES.map((c, i) => { const par = coursePar(c), b = loadBest(c.id), w = WORLDS[c.world] || WORLDS.park, st = starsFor(b, par), clue = HOME_CLUE[c.id] || HOME_CLUE.park;
     const open = worldUnlocked(i), prev = COURSES[i - 1];
     return `<button class="pickcourse${open ? '' : ' locked'}" id="pick-${c.id}" data-course="${c.id}" data-i="${i}" ${open ? '' : 'aria-disabled="true"'} style="--tint:#${new THREE.Color(w.pick ? w.pick[0] : w.ground.fairway).getHexString()};--tint2:#${new THREE.Color(w.pick ? w.pick[1] : w.water || w.ground.ob).getHexString()}">
-      <span class="pworld">World ${i + 1}</span><span class="pname">${c.name}</span>
+      <span class="pworld">World ${i + 1}</span><span class="pname">${c.name}${coinsFoundOnCourse(c.id) ? '<i class="pcoin" aria-label="Special coin found"></i>' : ''}</span>
       <span class="pclue">${clue.svg}</span><span class="pcluetxt">${clue.txt}</span>
       <span class="plock"><b>🔒</b>Shoot par on ${prev ? prev.name : ''} to open</span>
       <span class="pstars" aria-label="${st} of 3 stars">${'★'.repeat(st)}<span class="off">${'★'.repeat(3 - st)}</span></span>
       <span class="pinfo">${c.holes.length} holes · Par ${par}</span>
       <span class="pbest">${b ? `Best ${b} (${fmtToPar(b - par)})` : 'Not played yet'}</span>
-      <span class="pholes" aria-label="${coinsFoundOnCourse(c.id)} of 27 special coins">${c.holes.map((_, i) => `<i class="${coinsFoundOnHole(c.id, i) === 3 ? 'got' : ''}"></i>`).join('')}</span>
       <span class="pplay">Tap to see holes ▶</span></button>`; });
   for (let k = 0; k < HOME_SOON; k++) cards.push(`<div class="upcoming" data-i="${COURSES.length + k}"><span class="psil">?</span><span class="pname">Coming soon</span></div>`);
   picker.list.innerHTML = cards.join('');
@@ -4941,14 +3219,14 @@ function showWorldPage(c) {
   picker.page = 'holes'; picker.world = c; picker.el.classList.add('holes');
   $('homestage')?.classList.add('hidden'); $('homeground')?.classList.add('hidden'); $('homedots')?.classList.add('hidden');
   el.classList.remove('hidden'); picker.back.classList.remove('hidden');
-  const found = coinsFoundOnCourse(c.id), bests = loadHoleBests(c.id);
+  const gotBig = coinsFoundOnCourse(c.id) > 0, bests = loadHoleBests(c.id);
   $('wptitle').textContent = c.name;
-  $('wpcoins').textContent = `${found}/27`;
+  $('wpcoins').setAttribute('aria-label', gotBig ? 'Special coin found' : 'Special coin not found');
+  $('wpbigcoin')?.classList.toggle('got', gotBig);
   $('wpholes').innerHTML = c.holes.map((h, i) => {
-    const n = coinsFoundOnHole(c.id, i), b = Number(bests[i]);
+    const b = Number(bests[i]);
     const best = b > 0 ? `Best ${b} (${fmtToPar(b - h.par)})` : '—';
-    const slots = [0, 1, 2].map(k => `<i class="${k < n ? 'got' : ''}"></i>`).join('');
-    return `<div class="wphole"><b>${i + 1}</b><span class="wpname">${h.name}</span><span class="wppar">Par ${h.par}</span><span class="wpbest">${best}</span><span class="wpcoinslots">${slots}</span></div>`;
+    return `<div class="wphole"><b>${i + 1}</b><span class="wpname">${h.name}</span><span class="wppar">Par ${h.par}</span><span class="wpbest">${best}</span></div>`;
   }).join('');
 }
 function worldPlay() { const c = picker.world || COURSES[picker.sel]; if (c) loadCourse(c.id); }
@@ -5190,6 +3468,54 @@ function stepPhysics(dt) {
     else { v.x *= 0.35; v.z *= 0.35; v.y = Math.min(v.y, 0) * 0.5; } // clipped the side of a leg: knocked down
     S.fs.roll = 0;
     p.x += a.dir.x * side * (lim - Math.abs(along) + 0.02); p.z += a.dir.y * side * (lim - Math.abs(along) + 0.02); S.knocked = true;
+    return 'tree';
+  }
+  for (const c of H.iceCaves || []) {
+    const rx = p.x - c.x, rz = p.z - c.z, along = rx * c.dir.x + rz * c.dir.y, across = rx * c.right.x + rz * c.right.y, hy = p.y - c.y;
+    if (Math.abs(along) > c.halfD + DISC_R || Math.abs(across) > c.halfW + DISC_R || hy > c.ledgeH + DISC_R) continue;
+    const archCeil = c.h * Math.sqrt(Math.max(0, 1 - (across / (c.openHalf + 0.35)) ** 2 * 0.25));
+    if (Math.abs(across) < c.openHalf - DISC_R && hy < archCeil - DISC_R) continue; // flying cleanly inside the ice tunnel
+    if (Math.abs(across) < c.openHalf && Math.abs(along) < c.halfD - 0.1 && hy < c.h + 0.45) {
+      if (Math.abs(across) >= c.openHalf - DISC_R && hy < archCeil) { // clipped tunnel inner side wall
+        const side = -Math.sign(across) || 1;
+        bounceOff(v, c.right.x * side, c.right.y * side, PHYS.rockN, PHYS.rockT);
+        const push = Math.abs(across) - (c.openHalf - DISC_R) + 0.03;
+        p.x += c.right.x * side * push; p.z += c.right.y * side * push;
+      } else { // clipped tunnel ceiling from inside
+        v.y = -Math.max(0.5, Math.abs(v.y) * 0.35); v.x *= 0.65; v.z *= 0.65;
+        p.y = c.y + archCeil - DISC_R - 0.03;
+      }
+      S.knocked = true; S.fs.roll = 0; S.fs.bank *= 0.5; return 'tree';
+    }
+    const penFront = (c.halfD + DISC_R) - Math.abs(along), penSide = (c.halfW + DISC_R) - Math.abs(across), penTop = (c.ledgeH + DISC_R) - hy;
+    if (penTop < Math.min(penFront, penSide) && hy > c.ledgeH - 0.8) { // top of glacier ledge: slide off onto snow
+      const nx = Math.abs(across) > 0.2 ? c.right.x * Math.sign(across) : c.dir.x * (Math.sign(along) || -1);
+      const nz = Math.abs(across) > 0.2 ? c.right.y * Math.sign(across) : c.dir.y * (Math.sign(along) || -1);
+      v.y = Math.max(1.0, Math.abs(v.y) * 0.25); v.x = v.x * 0.45 + nx * 2.8; v.z = v.z * 0.45 + nz * 2.8;
+      p.y = c.y + c.ledgeH + DISC_R + 0.04; S.knocked = true; S.fs.roll = 0; return 'tree';
+    }
+    if (penFront <= penSide) {
+      const side = Math.sign(along) || -Math.sign(v.x * c.dir.x + v.z * c.dir.y) || 1;
+      bounceOff(v, c.dir.x * side, c.dir.y * side, PHYS.rockN, PHYS.rockT);
+      p.x += c.dir.x * side * (penFront + 0.03); p.z += c.dir.y * side * (penFront + 0.03);
+    } else {
+      const side = Math.sign(across) || 1;
+      bounceOff(v, c.right.x * side, c.right.y * side, PHYS.rockN, PHYS.rockT);
+      p.x += c.right.x * side * (penSide + 0.03); p.z += c.right.y * side * (penSide + 0.03);
+    }
+    S.knocked = true; S.fs.roll = 0; S.fs.bank *= 0.5; return 'tree';
+  }
+  for (const l of H.landers || []) {
+    const dx = p.x - l.x, dz = p.z - l.z, hy = p.y - l.y, tierR = hy < 2.65 ? l.r : 1.45, rr = tierR + DISC_R;
+    if (Math.abs(dx) > rr || Math.abs(dz) > rr || hy > l.h + DISC_R) continue;
+    const d = Math.hypot(dx, dz); if (d >= rr) continue;
+    const nx = dx / (d || 1), nz = dz / (d || 1);
+    if (hy > 4.05 && v.y < 0) { // top of lunar lander: bounce and slide clear of the roof
+      v.y = Math.max(1.0, Math.abs(v.y) * 0.35); v.x = v.x * 0.4 + nx * 3.2; v.z = v.z * 0.4 + nz * 3.2;
+      p.y = l.y + l.h + DISC_R + 0.04; S.knocked = true; S.fs.roll = 0; return 'tree';
+    }
+    bounceOff(v, nx, nz, PHYS.rockN, PHYS.rockT);
+    p.x = l.x + nx * (rr + 0.03); p.z = l.z + nz * (rr + 0.03); S.knocked = true; S.fs.roll = 0; S.fs.bank *= 0.5;
     return 'tree';
   }
   for (const b of H.banks) {
@@ -6263,9 +4589,10 @@ const STORY_CLUES = {
     for (let i = 0; i < 30; i++) { const a = rnd() * 6.28, r = 0.5 + rnd() * 1.9, d = sm(SG.disc, DISC_MATS[i % DISC_MATS.length], 4, 4, 4, Math.cos(a) * r, 0.35 + rnd() * 0.25, Math.sin(a) * r * 0.85, g);
       d.rotation.set(1.1 + rnd() * 0.6, a, rnd() * 0.5); }
   },
-  waterfall(g) { // a little rock cliff whose waterfall has frozen still, a mirror-still pool and frogs that went quiet
-    sm(SG.lump, SM.cliffRock, 3.4, 2.6, 1.6, 0, 1.6, -1.2, g); sm(SG.lump, SM.cliffRock, 1.8, 1.8, 1.4, -2.6, 0.9, -0.6, g); sm(SG.lump, SM.cliffRock, 1.6, 1.5, 1.3, 2.6, 0.8, -0.5, g);
-    const fall = sm(SG.fall, SM.ice, 1, 1, 1, 0, 1.75, 0.3, g); fall.rotation.x = -0.12; // the frozen sheet of water: rippled, bulging, icicles on the lip
+  waterfall(g) { // a little rock cliff with an alcove tucked behind the frozen waterfall, a mirror-still pool and frogs that went quiet
+    sm(SG.lump, SM.cliffRock, 3.6, 2.7, 1.2, 0, 1.65, -2.15, g); sm(SG.lump, SM.cliffRock, 1.7, 2.0, 1.5, -2.6, 1.0, -0.6, g); sm(SG.lump, SM.cliffRock, 1.6, 1.9, 1.5, 2.6, 0.95, -0.6, g);
+    sm(SG.lump, SM.cliffRock, 3.4, 0.9, 1.8, 0, 3.1, -0.7, g); // rock brow overhanging the alcove
+    const fall = sm(SG.fall, SM.ice, 1.05, 0.92, 1, 0, 2.05, 0.55, g); fall.rotation.x = -0.14; // the frozen sheet of water with gap underneath/behind
     sm(SG.splat, MAT.water, 2.6, 1, 1.7, 0, 0.08, 1.8, g);
     for (const [x, z] of [[-1.7, 2.2], [1.6, 2.6], [0.2, 3.3]]) { const f = new THREE.Group(); sm(SG.ball, SM.frog, 0.32, 0.22, 0.36, 0, 0.18, 0, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, -0.13, 0.36, 0.2, f); sm(SG.ball, SM.eyeW, 0.09, 0.09, 0.09, 0.13, 0.36, 0.2, f); f.position.set(x, 0.05, z); f.rotation.y = -0.4; g.add(f); }
   },
@@ -6951,6 +5278,9 @@ function mmDraw(cv, full, now) {
   for (const w of H.segs || []) { if (w.a.distanceTo(w.b) < 0.01) dot(w.a.x, w.a.y, Math.max(1.5, w.r * k), '#6b4a2f'); else line([w.a.x, w.a.y], [w.b.x, w.b.y], w.kind === 'fence' ? Math.max(1.6, 0.5 * k) : Math.max(2, w.r * 2 * k), w.kind === 'fence' ? '#d8dde2' : '#6b4a2f'); } // fence / fallen tree
   for (const r of d.rocks || []) dot(r.x, r.z, Math.max(1.2, (r.s || 1) * 0.9 * k), '#8d8d8d', '#555', 0.6);
   for (const o of H.solids || []) dot(o.x, o.z, Math.max(1.3, (o.r || 1) * k), o.kind === 'berg' || o.kind === 'serac' || o.kind === 'pillar' ? '#bff4ff' : '#9a9a9a', '#333', 0.6);
+  for (const c of H.iceCaves || []) { const [px, py] = T.to(c.x, c.z), a = Math.atan2(c.right.y, c.right.x), w = Math.max(4, c.halfW * 2 * k), d = Math.max(3, c.halfD * 2 * k);
+    g.save(); g.translate(px, py); g.rotate(a); g.fillStyle = '#9fe2ff'; g.strokeStyle = '#366'; g.lineWidth = 1; g.fillRect(-w / 2, -d / 2, w, d); g.strokeRect(-w / 2, -d / 2, w, d); g.restore(); }
+  for (const l of H.landers || []) dot(l.x, l.z, Math.max(2, l.r * k), '#ffd24a', '#333', 0.8);
   for (const a of H.arches || []) { const [px, py] = T.to(a.x, a.z), [qx, qy] = T.to(a.x + a.right.x * a.span / 2, a.z + a.right.y * a.span / 2); const L = Math.max(3, a.span / 2 * k);
     g.save(); g.translate(px, py); g.rotate(Math.atan2(qy - py, qx - px)); g.strokeStyle = '#f2e6c8'; g.lineWidth = Math.max(1.5, a.tube * k); g.beginPath(); g.moveTo(-L, 0); g.lineTo(L, 0); g.stroke();
     g.fillStyle = '#6a5a40'; g.fillRect(-L - 1.5, -1.5, 3, 3); g.fillRect(L - 1.5, -1.5, 3, 3); g.restore(); }
@@ -7118,7 +5448,7 @@ window.__game = {
     [S.roundSeed, S.holeIdx, mm.blip] = keep; return hit / tot; },
   mapBlip: () => { mmPlanBlip(true); mm.dirty = true; return mm.blip && mm.blip.kind; },
   surface: (x, z) => H.surface(x, z) || 'ground',
-  obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), banks: H.banks.length, vents: H.vents.map(v => ({ x: v.x, z: v.z, r: v.r, up: v.up, push: v.push })), penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
+  obstacles: () => ({ solids: H.solids.map(o => ({ kind: o.kind, x: o.x, z: o.z, r: o.r, h: o.h })), arches: H.arches.map(a => ({ x: a.x, z: a.z, span: a.span, h: a.h, yaw: a.yaw, R: a.R, tube: a.tube })), iceCaves: (H.iceCaves || []).map(c => ({ x: c.x, z: c.z, span: c.span, h: c.h, depth: c.depth, yaw: c.yaw })), landers: (H.landers || []).map(l => ({ x: l.x, z: l.z, r: l.r, h: l.h, yaw: l.yaw })), banks: H.banks.length, vents: H.vents.map(v => ({ x: v.x, z: v.z, r: v.r, up: v.up, push: v.push })), penguins: H.penguins.map(p => ({ x: p.x, z: p.z })) }),
   fx: () => ({ penguinHops: S.penguinHops || 0, puffs: S.puffs || 0, snow: snowfall.visible, snowN: SNOW_N, sizzles: S.sizzles || 0, ventBoosts: S.ventBoosts || 0, embers: embers.visible, embersN: EMBER_N, plume: H.plume.length, lavaGlow: MAT.water.emissiveMap === lavaTex }),
   setVents(on) { S.noVents = !on; },
   peekOcclusion: () => { // test: from the current camera, how much of the hole 8 Bigfoot is hidden by trees: raycasts to every body part (centre + both side edges)
@@ -7209,7 +5539,7 @@ window.__game = {
   coinPayout, coinStreakAfter, COIN_R, COIN_PAY, COIN_SPECIAL,
   coinDay, setCoinDay: (d) => { S.coins.dayOverride = d || null; },
   resetCoinStorage, persistCoinTotal,
-  clearLiveCoins: () => { (S.coins.live || []).forEach(c => { if (c.mesh?.parent) c.mesh.parent.remove(c.mesh); }); S.coins.live = []; },
+  clearLiveCoins: () => { (S.coins.live || []).forEach(c => { if (c.mesh?.parent) c.mesh.parent.remove(c.mesh); if (c.sparkle?.parent) c.sparkle.parent.remove(c.sparkle); }); S.coins.live = []; },
   addTestCoin: (x, y, z, id = 'test:0:0') => {
     const mesh = makeCoinMesh(); mesh.position.set(x, y, z); H.group.add(mesh);
     const c = { x, y, z, i: S.coins.live.length, id, mesh, got: coinWasFound(id) };
