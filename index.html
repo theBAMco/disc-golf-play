@@ -261,7 +261,7 @@ body.charging #minimap { opacity: .55; }
 #storyphoto span { display: block; margin-top: 8px; text-align: center; color: #333; font: italic 800 18px/1.1 "Comic Sans MS", "Marker Felt", system-ui, sans-serif; text-shadow: none; }
 @keyframes photoIn { from { transform: translateX(-50%) rotate(-14deg) scale(.6); opacity: 0; } to { transform: translateX(-50%) rotate(-4deg) scale(1); opacity: 1; } }
 
-/* ===== DEV TOOLS (only shown with ?dev=1; delete together with the DEV TOOLS START..END block in game.js, same folder) ===== */
+/* ===== DEV TOOLS (only shown with ?dev=1). To strip: delete this section and the matching DEV TOOLS START..END block in the game source (the src folder), then rebuild dist/disc-golf.html with scripts/build-dist.py. ===== */
 .devbar { position: fixed; top: 250px; left: 10px; z-index: 60; display: flex; gap: 4px; }
 .devbar button, .devpanel button { font: 800 13px system-ui, sans-serif; border: 0; border-radius: 10px; color: #fff; background: rgba(120, 20, 120, .78); box-shadow: 0 2px 0 rgba(0,0,0,.35); touch-action: manipulation; }
 .devchip { padding: 8px 10px; letter-spacing: .5px; } .devmini { width: 34px; padding: 8px 0; }
@@ -274,7 +274,7 @@ body.charging #minimap { opacity: .55; }
 .devpanel .devbtn.hole { font-size: 16px; }
 
 /* Throw-height slider: thin, right edge, sitting just above the curve buttons (clear of the help box on small phones); top notch = Sky, bottom = Low */
-#heightbar { --h: 1; position: absolute; right: max(6px, env(safe-area-inset-right)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 118px); z-index: 5;
+#heightbar { --h: 1; position: absolute; right: max(24px, env(safe-area-inset-right) + 16px); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 118px); z-index: 5;
   width: 46px; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 0; border-radius: 14px;
   background: rgba(10,40,20,.38); pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: ns-resize; }
 #heightbar .hcap { font: 800 8px/1 system-ui, sans-serif; letter-spacing: .8px; color: rgba(255,248,224,.8); }
@@ -977,6 +977,7 @@ const PRACTICE_HOLE = {
 //   hole: 0-based hole index where the coin sits
 //   x, y, z: world coordinates of the coin
 //   sparkle: [x, y, z] optional tee-visible sparkle clue position (defaults to coin [x, y, z])
+//   r: optional pickup radius in metres (defaults to COIN_R)
 //   proof: { disc, height, power, yaw, curve } a verified scripted throw from the tee that collects it
 
 const COIN_R = 1.2;
@@ -988,17 +989,17 @@ const COIN_SPOTS = {
     x: -5.0,
     y: 9.6,
     z: -26.0,
-    sparkle: [-5.0, 9.6, -25.4],
+    sparkle: [-5.0, 14.2, -25.4],
     proof: { disc: 'driver', height: 3, power: 0.43, yaw: -0.175, curve: 0 },
   },
   river: {
     // Hole 5 (Footbridge): tucked in the alcove behind the waterfall (low Skimmer)
     hole: 4,
     x: -10.0,
-    y: 0.65,
-    z: -33.3,
+    y: 0.70,
+    z: -33.0,
     sparkle: [-10.0, 1.3, -32.1],
-    proof: { disc: 'driver', height: 0, power: 0.56, yaw: -0.295, curve: 0 },
+    proof: { disc: 'driver', height: 0, power: 0.28, yaw: -0.28, curve: 0 },
   },
   antarctica: {
     // Hole 6 (Snow Ledge): inside the ice cave tunnel under the glacier ledge (low Skimmer)
@@ -1010,22 +1011,24 @@ const COIN_SPOTS = {
     proof: { disc: 'driver', height: 0, power: 0.72, yaw: 0.27, curve: 0 },
   },
   volcano: {
-    // Hole 5 (Steam Vent Gauntlet): floating high over the lava river on a steam vent updraft
+    // Hole 5 (Steam Vent Gauntlet): floating high over the left edge of the lava river (Sky lob; lands dry in the left rough)
     hole: 4,
-    x: -20.4,
-    y: 7.5,
-    z: -103.3,
-    sparkle: [-20.4, 7.5, -103.3],
-    proof: { disc: 'driver', height: 1, power: 0.9, yaw: 0.09, curve: 0 },
+    x: -12.7,
+    y: 8.2,
+    z: -50.1,
+    r: 3.0,
+    sparkle: [-12.7, 8.2, -50.1],
+    proof: { disc: 'driver', height: 3, power: 0.80, yaw: -0.20, curve: 0 },
   },
   moon: {
-    // Hole 6 (Earthrise Bomber): floating on top of the old lunar lander (floaty low-gravity lob)
+    // Hole 6 (Earthrise Bomber): floating just above the old lunar lander (floaty low-gravity High lob)
     hole: 5,
     x: 13.0,
-    y: 5.4,
+    y: 9.0,
     z: -84.0,
-    sparkle: [13.0, 5.4, -84.0],
-    proof: { disc: 'driver', height: 3, power: 0.75, yaw: 0.22, curve: 0 },
+    r: 4.5,
+    sparkle: [13.0, 9.0, -84.0],
+    proof: { disc: 'driver', height: 2, power: 0.75, yaw: 0.20, curve: 0 },
   },
 };
 
@@ -2952,7 +2955,7 @@ function coinStreakAfter(streak, score, par) { // par or better stacks x1, x1.5,
   return { streak: 0, mult: 1 };
 }
 function coinDay() { return S.coins?.dayOverride || new Date().toLocaleDateString('en-CA'); }
-function canSaveCoins() { return !S.devRound && !S.practice; }
+function canSaveCoins() { return new URLSearchParams(location.search).get('dev') !== '1' && !S.devRound && !S.practice; }
 function readJson(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key) || ''); return v && typeof v === 'object' && !Array.isArray(v) ? v : fallback; } catch { return fallback; } }
 function writeJson(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }
 function loadCoinTotal() { try { const n = Number(localStorage.getItem(COIN_KEYS.total)); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; } catch { return 0; } }
@@ -3020,7 +3023,7 @@ function spawnHoleCoins() {
   const mesh = makeCoinMesh(); mesh.position.set(s.x, s.y, s.z); mesh.visible = !already; H.group.add(mesh);
   const sp = makeCoinSparkle(), [sx, sy, sz] = s.sparkle || [s.x, s.y, s.z];
   sp.position.set(sx, sy, sz); sp.visible = !already; H.group.add(sp);
-  S.coins.live.push({ x: s.x, y: s.y, z: s.z, i: 0, id, mesh, sparkle: sp, got: already, proof: s.proof || null });
+  S.coins.live.push({ x: s.x, y: s.y, z: s.z, r: s.r || COIN_R, i: 0, id, mesh, sparkle: sp, got: already, proof: s.proof || null });
 }
 function coinChime() {
   try {
@@ -3050,7 +3053,7 @@ function updateCoinFx(dt) {
     if (c.sparkle && c.sparkle.visible) {
       const pulse = Math.pow(0.5 + 0.5 * Math.sin(t * 3.4 + c.i), 2.2);
       const camD = camera.position.distanceTo(c.sparkle.position);
-      const baseS = THREE.MathUtils.clamp(camD * 0.055, 0.9, 5.2);
+      const baseS = THREE.MathUtils.clamp(camD * 0.11, 2.3, 7.5); // grows with distance so far clues stay readable
       c.sparkle.scale.setScalar(baseS * (0.65 + 0.65 * pulse));
       c.sparkle.material.opacity = 0.45 + 0.55 * pulse;
       c.sparkle.material.rotation = t * 0.6;
@@ -3068,7 +3071,7 @@ function collectCoinsAlong(ax, ay, az, bx, by, bz) {
   let n = 0;
   for (const c of S.coins.live) {
     if (c.got) continue;
-    if (segPointDist(ax, ay, az, bx, by, bz, c.x, c.y, c.z) > COIN_R) continue;
+    if (segPointDist(ax, ay, az, bx, by, bz, c.x, c.y, c.z) > (c.r || COIN_R)) continue;
     c.got = true; n++; if (c.mesh) c.mesh.visible = false; if (c.sparkle) c.sparkle.visible = false;
     markCoinFound(c.id); addCoins(COIN_SPECIAL);
     coinChime(); coinSparkle(c.x, c.y, c.z);
@@ -3098,7 +3101,7 @@ function showCoinPop(rec) {
   else lines.push(rec.name || 'No score bonus');
   if (rec.reduced) lines.push('Already played today · 20%');
   if (rec.hidden) lines.push(`Big coin +${rec.hidden * COIN_SPECIAL}`);
-  ui.coinPopPlus.textContent = `+${rec.payout}`;
+  ui.coinPopPlus.textContent = `+${rec.payout + (rec.hidden || 0) * COIN_SPECIAL}`;
   ui.coinPopSub.textContent = lines.join('\n');
   ui.coinPop.classList.remove('hidden');
 }
@@ -5552,8 +5555,8 @@ window.__game = {
 
 // ======================= DEV TOOLS (hole jumper) — START =======================
 // Only with ?dev=1 in the URL (combines with other params, e.g. ?dev=1&pull=2). Without it nothing below runs and play is unchanged.
-// To strip before the finished product: delete this whole block (START..END) in game.js and the DEV TOOLS section (.devbar/.devpanel/...)
-// at the end of style.css (both in the src folder), then rebuild dist/disc-golf.html with scripts/build-dist.py (it inlines both). Tests: tests/dev-jumper.mjs.
+// To strip before the finished product: delete this whole block (START..END) and the DEV TOOLS section in the stylesheet (both in the src folder),
+// then rebuild dist/disc-golf.html with scripts/build-dist.py (it inlines both). Tests: tests/dev-jumper.mjs.
 // A '◀ DEV ▶' chip under the map icon (left) opens a panel: pick any of the 5 worlds, jump to hole 1-9 (fresh at the tee, with that hole's
 // story props, monsters, backdrop and per-hole effects), Prev/Next (wraps across worlds), and 'Play finale' (sinks a putt on hole 9 so
 // the ending plays). Once you've jumped, this round never saves a best score (so no PRs, stars or unlocks change); starting a fresh round
